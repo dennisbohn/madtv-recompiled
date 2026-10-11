@@ -1,0 +1,1 @@
+Nuked-OPL3, Commit 765ec962e473aeb767e4cba74ffdc8f588ffbfe8 (2026-08-24), https://github.com/nukeykt/Nuked-OPL3, Lizenz LGPL-2.1 (siehe LICENSE)

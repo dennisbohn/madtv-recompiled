@@ -1,0 +1,16 @@
+addr	name	c_signature	confidence	note
+1cec:000b	text_draw	void text_draw(int16_t x, int16_t y, const char *str)	high	text_box(x,y,str,0,0,DAT_8e62 (offscreen 320x120 work bitmap),-1)
+1cec:0033	text_draw_right_to_free	void text_draw_right_to_free(int16_t x, int16_t y, char *str, Bitmap *dst)	high	right-aligned at x (x - text_width(str)); then far_free(str). Ghidra shows extra junk args to text_width
+1cec:0076	text_draw_free	void text_draw_free(int16_t x, int16_t y, char *str)	high	text_draw into DAT_8e62 then far_free(str) (typical with fmt() results)
+1cec:00ab	text_draw_to	void text_draw_to(int16_t x, int16_t y, const char *str, Bitmap *dst)	high	text_box(x,y,str,0,0,dst,-1)
+1cec:00d1	text_box_wrap	void text_box_wrap(int16_t x, int16_t y, const char *str, int16_t width, uint16_t flags)	high	text_box into DAT_8e62, unlimited lines
+1cec:00fb	text_draw_to_free	void text_draw_to_free(int16_t x, int16_t y, char *str, Bitmap *dst)	high	text_box(x,y,str,0,0,dst,-1); far_free(str)
+1cec:012e	text_draw_centered_to_free	void text_draw_centered_to_free(int16_t x, int16_t y, char *str, Bitmap *dst)	high	centered on x (x - text_width/2); far_free(str)
+1cec:0177	text_draw_centered	void text_draw_centered(int16_t x, int16_t y, const char *str)	high	centered on x into DAT_8e62
+1cec:01b5	text_draw_centered_to	void text_draw_centered_to(int16_t x, int16_t y, const char *str, Bitmap *dst)	high	centered on x into dst
+1cec:01f1	text_box_centered	void text_box_centered(int16_t x, int16_t y, const char *str, int16_t width, uint16_t flags, Bitmap *dst, int16_t max_lines)	high	x - text_width(str)/2 then full text_box; callers ADD SP,0x12
+1cec:022e	text_box_to_free	void text_box_to_free(int16_t x, int16_t y, char *str, int16_t width, uint16_t flags, Bitmap *dst)	high	text_box(...,-1); far_free(str); ADD SP,0x10
+1cec:0263	text_box_free	void text_box_free(int16_t x, int16_t y, char *str, int16_t width, uint16_t flags, Bitmap *dst, int16_t max_lines)	high	text_box(all args); far_free(str)
+1cec:0297	text_box_wrap_free	void text_box_wrap_free(int16_t x, int16_t y, char *str, int16_t width, uint16_t flags)	high	text_box into DAT_8e62 then far_free(str)
+1cec:02ce	text_box	void text_box(int16_t x, int16_t y, const char *str, int16_t width, uint16_t flags, Bitmap *dst, int16_t max_lines)	high	word-wrapping text renderer: width in 8-px columns (0 -> 0x50), '~' forces line break, flags bit0 = break at ' '/'-', bit1 = draw_string mode 1 (proportional digits); line height 8 (font DS:8b86==0) or 7 (font 1); per line: text_fit_width, strncpy into temp, draw_string(x,y,line,dst,mode); max_lines -1 = unlimited. 9 words on stack (ADD SP,0x12)
+1cec:046d	text_line_count	int16_t text_line_count(const char *str, int16_t width, uint16_t flags)	high	same wrapping rules as text_box, returns number of lines

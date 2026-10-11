@@ -1,0 +1,10 @@
+addr	name	c_signature	confidence	note
+3264:0001	ad_market_update	void ad_market_update(void)	med	day begin (also AI 3b0a_2e4d, 19e6_2174): uses max_i32 of audience totals, refreshes advertiser table DS:3f3e (51x24) and ad offers DS:1980 (10x7) via rand_range
+3264:0274	production_market_update	void production_market_update(void)	med	day begin: resets finished productions in DS:713c (stride 0x1b3), refills production offers DS:1953/194a with 2bd1_208f/rand_range
+3264:0438	market_update_prices	void market_update_prices(void)	med	name from notes; film DB scan (2bd1_3ba7 film_price) and dealer offer refresh; also called from ai_tick and room_leave
+3264:0717	auction_day_end	void auction_day_end(void)	med	auction lots DS:1aed stride 9 {int16 prog_id (<1000 film, >=1000 series); int32 bid; int8 bidder; int8 days}; unsold lots age, sold ones flag 0x20 + transfer via 2bd1_20e4
+3264:08ce	ratings_calc	void ratings_calc(int16_t phase)	high	phase 1=minute 0 (programme), 2=minute 5 (ads), 3=minute 55; from broadcast_hour_tick
+3264:1759	daily_topic_pick	void daily_topic_pick(void)	low	shifts 4-entry history DS:0094, picks rand_range(15) not in history and !=10,15 -> DS:00a0
+3264:17e2	schedule_get_programme	int16_t schedule_get_programme(int16_t player, int16_t hour)	high	walks back over 9999 continuation slots, returns programme id of DS:43f7[player][hour]
+3264:1825	name_table_get	char *name_table_get(int16_t id, int16_t part)	low	returns far char* (DX:AX) into text block DS:0110 at word[(id-0x98)*2 - part], "<not set>" if 0; part=1/2 (first/last name?)
+3264:185a	day_check_players	void day_check_players(void)	low	day begin: counts empty prog/ad slots of human (DS:79e2/79e4), AI bonus via ai_adjust(p, 100000L, -1) for weakest, detects player with player_info+0xd <5 -> DS:7a34 (bankrupt/out?), redistributes

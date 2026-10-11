@@ -1,0 +1,18 @@
+addr	name	c_signature	confidence	note
+1433:0002	text_cache_news	void text_cache_news(int16_t player)	med	opens language file idx6 (DS:055e+lang*16+0xc: 49/248.HES), reads offset index (0x322 bytes) into DAT_609b, loads texts for player's news items (DS:455f + player*600, stride 0x1e, count DS:7286[player]), the 3 news slots DS:3d4b+player*0x78 and (room 2 substate 2) DS:6127 into cache DS:729a (0x18 entries x 6 bytes {id; char *text})
+1433:0120	text_cache_load_news	void text_cache_load_news(int16_t slot, int16_t text_id)	med	note arg order (slot, id). length = idx[id]-idx[id-1]; far_calloc + hes_read(file DS:8ed8, buf, idx[id-1], len) -> DS:729a[slot]
+1433:01de	text_cache_news_free	void text_cache_news_free(void)	high	far_free_ptr all 0x18 entries of DS:729a cache
+1433:021b	text_cache_titles	void text_cache_titles(int16_t room, int16_t player)	high	film texts from language file idx2 (207/252.HES, index 0x192 bytes): selects films depending on room (0: single film 'player' arg; 0x1f: archive+today's schedule; 99/100: all schedules; 4: dealer offers DS:2463 + archive; 8: offers + auction lists DS:19cd/1aed; 9/5/0xc: screenplay/episode based ids from DS:713c) and loads them into cache DS:63c5 (49 x 10 bytes {id; char *title; char *descr})
+1433:0855	text_cache_has_film	int16_t text_cache_has_film(int16_t film_id)	high	-1 if id present in DS:63c5[0..48], else 0
+1433:0889	text_cache_load_film	void text_cache_load_film(int16_t film_id, int16_t slot)	high	reads record id (Pascal-style length-prefixed strings) and stores 2 strings (title, description) into DS:63c5[slot]
+1433:09a2	text_cache_titles_free	void text_cache_titles_free(int16_t fixed)	high	fixed==0: frees slots 3..48, else slots 0..2 (via text_cache_film_free)
+1433:09df	text_cache_film_free	void text_cache_film_free(int16_t slot)	high	clears id and far_free_ptr both strings of DS:63c5[slot]
+1433:0a45	text_cache_descr	void text_cache_descr(int16_t room, int16_t player)	med	notes name kept; actually SERIES texts: language file idx3 (47/251.HES, index 0x66 bytes = 51 series), selection per room like text_cache_titles; cache DS:65af (15 x 0x5a bytes {id; 22 x char*} = title/descr + episode texts)
+1433:0feb	text_cache_has_series	int16_t text_cache_has_series(int16_t series_id)	high	-1 if id present in DS:65af[0..14], else 0
+1433:101f	text_cache_load_series	void text_cache_load_series(int16_t series_id, int16_t slot)	high	loads 22 length-prefixed strings of the record into DS:65af[slot]
+1433:1134	text_cache_descr_free	void text_cache_descr_free(int16_t fixed)	high	fixed==0: slots 3..14, else 0..2 (text_cache_series_free_slot)
+1433:1171	text_cache_series_free_slot	void text_cache_series_free_slot(int16_t slot)	high	clears id, far_free_ptr 22 strings of DS:65af[slot]
+1433:11cf	text_cache_series	void text_cache_series(int16_t room, int16_t player)	med	notes name kept; language file idx4 (45/250.HES, index 0x66) - screenplay/show texts: rooms 9 (bag list DS:1a25 + agency offers DS:194a, entry 0x22 first), 5 (studio DS:6145), 0xc (shopping lists DS:732c); cache DS:6af5 (10 x 0x42 bytes {id; 16 x char*})
+1433:1373	text_cache_load_show	void text_cache_load_show(int16_t text_id, int16_t slot)	high	loads 16 length-prefixed strings into DS:6af5[slot]
+1433:148c	text_cache_series_free	void text_cache_series_free(void)	high	frees all 10 entries of DS:6af5 cache
+1433:14a0	text_cache_show_free_slot	void text_cache_show_free_slot(int16_t slot)	high	far_free_ptr 16 strings of DS:6af5[slot]

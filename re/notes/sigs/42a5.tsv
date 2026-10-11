@@ -1,0 +1,11 @@
+addr	name	c_signature	confidence	note
+42a5:0002	snd_init	void snd_init(void)	high	loads 099.HES detect module, picks AdLib(type1) else Beeper(type0), sets DS:1602, loads 098/095.HES, psm_install
+42a5:01a8	music_load_play	void music_load_play(int16_t hes_no)	high	reads header via hes_read, LZW-unpacks song into para-aligned buffer DS:8ff8, driver slot 6(ptr,len); only called near (push cs) from music_on_enter
+42a5:027f	music_free	void music_free(void)	high	frees DS:9000 song buffer
+42a5:028f	music_start	void music_start(void)	high	driver slot5(1), slot9(4,0)
+42a5:02a8	music_stop	void music_stop(void)	high	driver slot9(2,0), slot5(0)
+42a5:02c0	snd_shutdown	void snd_shutdown(void)	high	EXTRA row: not in functions.tsv (only atexit-referenced); calls psm_uninstall
+42a5:02c6	music_on_enter	void music_on_enter(int16_t room, int16_t owner_player)	high	owner = DAT_7a16 (1-based room owner, compared with DS:8b88); song chosen only if AdLib (DS:1602==1); state DS:1604 song, DS:1606 last room
+42a5:04dd	music_on_leave	void music_on_leave(int16_t room, int16_t owner_player)	high	stops/frees song unless the next room keeps the same music; DS:1608 last room
+42a5:0582	para_align	void *para_align(void *p)	high	far ptr -> (seg+1):(off&0xfff0), returned in DX:AX; in port just return p (or align)
+42a5:059a	timer_init	int16_t timer_init(void)	high	stub returning -1 (alias 42fe:000a)

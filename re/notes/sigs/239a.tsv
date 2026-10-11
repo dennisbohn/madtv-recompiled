@@ -1,0 +1,15 @@
+addr	name	c_signature	confidence	note
+239a:000a	room_hover	void room_hover(void)	high	determines what is under the mouse (room hotspot 19e6_1f8c, panel areas, lists 1980/1b50 ...) and computes hover id (7000 = panel TV, 3000+ = ads, ...) and tooltip rect (globals 0x8f88/0x8f8a/0x8f86, hover pos at DS:ec88/ec8a); calls hover_dispatch(id)
+239a:1568	hover_dispatch	void hover_dispatch(int16_t id)	med	id 0 clears tooltip (screen flip); otherwise builds the tooltip / info card for the hovered object (big switch, ~19 cases: films, series, ads, news, ...); state in 0e80/0e82/0e84, 79ae, 79f8
+239a:3132	channel_info_show	void channel_info_show(void)	med	if DAT_79ae: (re)builds channel info card into bitmap DAT_8e6a (frame + channel_info_card_draw), then draw_sprite at (0x40,0x30)
+239a:31b2	money_tooltip_show	void money_tooltip_show(void)	med	text_window_draw (0x11,9)-(0x19,0xd) with fmt(DAT_89a8, money_available(8b88)); Ghidra shows bogus extra args to money_available
+239a:31f5	day_tooltip_show	void day_tooltip_show(void)	med	text_window_draw (0x10,0xc)-(0x16,0xd) with fmt(DAT_84b4, day DAT_71c4)
+239a:3228	channel_info_card_draw	void channel_info_card_draw(Bitmap *dst)	med	info card for channel DAT_79de into dst: player/channel name, programme now (film/series title 775c/77f2 + genre, episode), ad (DS:3f2f), audience flags (5533), viewers (long 248f) formatted with fmt_money; architecture.md called it info_card_film
+239a:3849	channel_programme_title_load	void channel_programme_title_load(void)	med	between minute 5 and 54: fetches title of the programme running on channel 79de (film text 2bd1_3024 / series 2bd1_30b8 + episode 2bd1_314c, loading via text cache 1433 if needed) into DS:775c / DS:77f2; clears DAT_7a40. architecture.md guessed tv_screen_update
+239a:3a2f	ad_requirements_text_build	void ad_requirements_text_build(int16_t ad)	low	builds string (DS:ec8c) describing the ad customer's target conditions from record DS:3f2f+ad*24 (+0xc sign) using ad_targets_text_build
+239a:3af8	ad_targets_text_build	void ad_targets_text_build(int16_t ad, int16_t sign)	low	builds up to 3 target strings (genre names via text table 8370[+0x1a / +0x11a]) into DS:-0x70b4 table and combined DS:ec9c
+239a:3cb1	tooltip_show_text	void tooltip_show_text(const char *text)	high	popup_box_show at hover rect (ec88,ec8a, size 8f8a x 8f86)
+239a:3cdb	card_band_fill	void card_band_fill(int16_t y, int16_t h, int16_t style)	med	1dd5_16bd(0, y, width 8f8a, h, style, bitmap 8ec2): fills horizontal band of the info card
+239a:3cff	layout_box	void layout_box(const char *spec)	med	box layout language: spec = 4 chars per line ("301 214 2-- ..."): char0 band style 1..3, char1 text slot 0..9 (strings at DS:-0x70b4), char2 font; creates popup box (popup_box_create) and fills bands + text
+239a:3dff	tooltip_present	void tooltip_present(void)	high	popup_box_present at hover pos (ec88, ec8a)
+239a:3e0f	info_card_film_small	void info_card_film_small(int16_t film)	med	prepares strings for small film info card (title 2bd1_3024, 2bd1_306e, genre name, ...) size 0x11 x 0x0c

@@ -1,0 +1,7 @@
+addr	name	c_signature	confidence	note
+4301:0001	intro_load_frame	void *intro_load_frame(int16_t hes_no)	high	load HES + LZW-unpack into new buffer; returns far ptr DX:AX; called near (push cs) from intro_scene_setup with ids from table DS:161c
+4301:0090	intro_scene_setup	void intro_scene_setup(void)	high	scene index in DS:9032 (global, set by caller), frees previous streams DS:160e/1612/1616
+4301:01f7	intro_frame_step	void intro_frame_step(void)	high	vga_wait_vsync + rle_delta_frame(&DS:9042 stream ptr, bitmap DS:9036)
+4301:0212	intro_tick	void intro_tick(void)	high	animation state machine (DS:9034,902c,9046,168c), blits to screen
+4301:0361	intro_run_scene	void intro_run_scene(void)	high	loop ticks_set(0)/intro_tick until key/mouse or end; duration in DS:9040 (global params, no stack args)
+4301:03ad	intro_play	void intro_play(void)	high	whole intro sequence; scene params passed via globals DS:9032/902e/9046/9040 before near calls

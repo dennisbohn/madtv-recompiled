@@ -1,0 +1,31 @@
+addr	name	c_signature	confidence	note
+1c74:0008	hes_init_file_list	void hes_init_file_list(void)	high	startup: dos_get_drive(&DS:8e90), dos_set_drive(DAT_8e92), hes_list(&DS:8c5c) = enumerate *.HES; called once from game_main
+1c74:0039	disk_detect	int16_t disk_detect(void)	med	far (retf) though Ghidra marks unknown; returns 2 if 500.HES is missing (hes_filesize(500)==-1), else 1; used by save/load menu (1581:4135)
+1c74:0051	timer_pause	void timer_pause(void)	high	nesting counter DS:0d02--; at 0 -> clock_suspend()+drive_io_begin(). Bracket around every disk access (pair: timer_resume)
+1c74:0067	timer_resume	void timer_resume(void)	high	DS:0d02++; at 1 -> drive_io_end()+clock_resume()
+1c74:007d	drive_io_begin	void drive_io_begin(void)	med	empty lib stub 44f5:000f, DS:0d04++ (debug counter), debug_nop()
+1c74:008c	drive_io_end	void drive_io_end(void)	med	dos_disk_reset (INT21/0D), stub, DS:0d04--
+1c74:00a0	debug_nop	void debug_nop(void)	high	empty far function (retf); called after debug counters 0d04/0d06 change
+1c74:00a1	hes_load_raw	void *hes_load_raw(int16_t hes_no)	high	size=hes_size_or_ask_disk(n,&tmp,1); far_calloc(size,1); hes_read_into; returns far ptr in DX:AX; caller frees with far_free
+1c74:00f4	hes_read_into	void hes_read_into(int16_t hes_no, void *buf)	high	timer_pause; hes_load(n,buf) (4500:0006); timer_resume. callers ADD SP,6
+1c74:0111	hes_load_unpack0	SpriteBank *hes_load_unpack0(int16_t hes_no)	high	loads packed sprite bank and unpacks with hes_unpack_sprites(src,dst,mode=0); returns new far_calloc'd bank (DX:AX)
+1c74:018e	hes_load_unpack	SpriteBank *hes_load_unpack(int16_t hes_no)	high	same as hes_load_unpack0 but unpack mode 1 (56 call sites: rooms/UI sprites)
+1c74:020d	rand_range	int16_t rand_range(int16_t n, int16_t seed)	high	srand((long)(ticks_get()+seed+DAT_8e8c:8e8e)); return rand()%n+1 (1..n). TC rand LCG must be reproduced
+1c74:023d	clock_reset	void clock_reset(void)	high	ticks_reset(); ticks_set(0); game-time accumulator DS:6123/6125 (int32)=0; DS:0d06++
+1c74:0260	clock_suspend	void clock_suspend(void)	high	if !clock_stopped(DS:7a72): accum(6123,int32) += ticks_get()*DAT_7282 (sec per tick); timer_shutdown stub; DS:0d06--
+1c74:0291	clock_resume	void clock_resume(void)	high	ticks_reset(); ticks_set(0); DS:6121 (last sim tick) = -(50/speed DAT_7a30); DS:0d06++
+1c74:02b5	clock_get_cached	void clock_get_cached(int16_t *out_seconds)	high	*out = DS:0d0a (last value computed by clock_get_seconds)
+1c74:02c3	clock_get_seconds	void clock_get_seconds(int16_t *out_seconds)	high	game time in seconds since 17:00 = accum/50 + (ticks/50)*DAT_7282; renormalises when ticks>59999; writes hour DS:71ca (17..23,0,1), minute 71cc, second 71ce, cache 0d0a
+1c74:0384	spritebank_fix_pointers	void spritebank_fix_pointers(SpriteBank *bank)	high	recomputes Bitmap.pixels of every entry: pixels start after header (2+count*8), each entry wcols*h*8 bytes
+1c74:03e4	far_free_ptr	void far_free_ptr(void **pp)	high	far_free(*pp); *pp=NULL
+1c74:0408	figure_frame_bytes	int32_t figure_frame_bytes(int16_t w, int16_t with_extra)	med	returns (DAT_836e [+DAT_836a if with_extra]) * w / 8 as long (LXMUL/LDIV); only called with (0x130,1); 836e derived from size of HES 4 bank in game_main
+1c74:0457	hes_size_or_ask_disk	int16_t hes_size_or_ask_disk(int16_t hes_no, int16_t *unpacked_size, int16_t mode)	high	Ghidra shows 1 param; callers push 4 words (ADD SP,8). loops hes_sprite_info(no,&size,unpacked_size,mode) until size!=-1, showing disk-change dialog 38b6:0a88 (text 0x11f if no<301 else 0x1ad) and waiting for click via game_tick; returns file size
+1c74:04d1	font_load	void font_load(int16_t hes_no, int16_t slot, int16_t mode)	high	actually a generic packed-sprite-bank cache: hes_size_or_ask_disk(n,&cache[slot].unpacked,mode); cache[slot].raw=hes_load_raw(n); cache = DS:7be0, 6 bytes/slot {void *raw; int16 unpacked_size}
+1c74:0517	font_get	SpriteBank *font_get(int16_t slot, int16_t mode)	high	unpacks cached raw bank cache[slot] (DS:7be0) into new far_calloc(unpacked_size) via hes_unpack_sprites(...,mode); returns DX:AX; used for building sprites (slot 2/3) and TV pictures (DS:05a0 table)
+1c74:0570	figure_sprites_load_all	void figure_sprites_load_all(void)	high	for players 0..2: figure_sprites_load(0x11+p or 0x18 if human figure state==2, p); slots 3,4 = HES 0x14,0x15; slot 5 = 0x17 or 0x16 depending on DAT_7a3c (event)
+1c74:0610	figure_sprites_load	void figure_sprites_load(int16_t hes_no, int16_t slot)	high	if DS:0d0c[slot]!=hes_no: unpack HES into temp and far_memcpy pixel data into big figure bank DAT_00f8 at slot*frame_bytes*10+0x1e2; caches hes in 0d0c[slot]
+1c74:06a3	far_calloc	void *far_calloc(uint16_t n, uint16_t size)	high	farcalloc((ulong)n,(ulong)size); returns DX:AX
+1c74:06c9	far_free	void far_free(void *p)	high	farfree(p)
+1c74:06db	clock_stop	void clock_stop(void)	high	nesting counter DS:0d08++; on first: accumulate elapsed ticks into DS:6123 (int32), ticks_set(0), clock_stopped DS:7a72=1
+1c74:0712	clock_start	void clock_start(void)	high	DS:0d08--; at 0: DS:7a72=0, ticks_set(0), DS:6121=0
+1c74:0733	text_get_copy	char *text_get_copy(int16_t text_id)	high	far_calloc(500,1) + far_memcpy of UI string table entry DS:8370[id] (far char*, 430 entries from language file idx0 = 199/253.HES); caller must far_free

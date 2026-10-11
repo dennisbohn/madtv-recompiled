@@ -1,0 +1,27 @@
+addr	name	c_signature	confidence	note
+38b6:0003	production_episode_panel	void production_episode_panel(void)	med	FAR fn (retf; Ghidra lost the far conv and sigs.tsv says near); lists player's production list DS:732c (count DS:7460) with 2bd1_22af status, entry DS:79c0
+38b6:0253	genre_menu_dialog	void genre_menu_dialog(int16_t xcol, int16_t yrow, int16_t mode)	med	counts per genre of room owner's archive / dealer offer into DS:8fc2[], builds menu with 11 genre names (fmt 0x14f9); mode 0 open (DS:8fc0, DS:79b0=1), 1 close
+38b6:03ca	bubble_text_overlay	void bubble_text_overlay(int16_t mode, char *text)	med	speech_bubble(mode,0x15,2,0x26,0xd,1) + text; mode 0 also room_enter(-6)
+38b6:041f	boss_dialog	void boss_dialog(int16_t mode, int16_t text_sel)	low	bubbles (0x13,1..) depending on DS:7a6e state and player_info[cur]+0xd (mood thresholds 10/75 -> texts 0xac/0xad..); text_sel -1 = keep DS:14ea; used by room 3 handler 19e6:0004
+38b6:066a	minigame_panel	void minigame_panel(int16_t mode)	low	20x10 cell grid DS:8ab4 + 4 counters DS:7a60, 9-DS:7a5e, DS:7a56, DS:7a64 (looks like a falling-block mini game); mode 0 open (DS:8fda), 2 redraw (called each game_tick), 1 close
+38b6:09b3	savegame_slots_draw	void savegame_slots_draw(void)	med	10 slot names far char* DS:8b92 in 2 columns
+38b6:0a2f	info_bubble_dialog	void info_bubble_dialog(int16_t mode)	low	speech_bubble(mode,10,5,0x1d,9,2) + text DS:87e8; mode 1 = close
+38b6:0a88	disk_request_dialog	void disk_request_dialog(int16_t mode, int16_t text_id)	high	mode 0: grab screen strip, draw box with ui_text[text_id] (0x11f/0x1ad = insert disk 1/2); mode 1: restore
+38b6:0b96	banner_two_lines	void banner_two_lines(int16_t mode, char *rec)	med	mode 0: draws two strings rec+1 and rec+0x15 in a box at row 0x50; mode 1 restore (DS:8fe4); caller passes a stack buffer
+38b6:0cb4	bubble_text_dialog	void bubble_text_dialog(int16_t mode, char *text)	high	speech_bubble(mode,0x13,1,0x26,0xd,2) + text box; mode 1 = close
+38b6:0cfa	bubble_text_dialog_small	void bubble_text_dialog_small(int16_t mode, char *text)	high	speech_bubble(mode,0x1a,2,0x26,0xc,1) + text; mode 1 = close
+38b6:0d45	speech_bubble	void speech_bubble(int16_t mode, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t style)	high	coords in 8px cols/rows; mode 0 push saved background on stack DS:8fe8[DS:14ee++] then draw, 2 redraw, 1 pop+restore
+38b6:0dc5	speech_bubble_text52	void speech_bubble_text52(int16_t mode)	low	bubble (2,2,0x12,7) with text 0x52; mode 1 = close
+38b6:0e0a	options_panel	void options_panel(void)	med	game speed buttons DS:7282 (20/30/60) and 3 switches (option_switch_draw for DS:7a10, DS:79f0, DS:79f2)
+38b6:1059	option_switch_draw	void option_switch_draw(int16_t pos)	med	on/off slider with texts DS:84d8/84dc, offset pos; callers pass the option flag value
+38b6:10f0	bubble_dialog_8820	void bubble_dialog_8820(int16_t mode)	low	NO callers found (dead code or referenced from unanalysed code); bubble (0x19,1,0x26,0xc) text DS:8820 + 2 buttons
+38b6:1179	status_bar_draw	void status_bar_draw(void)	med	status-bar player indicators (DS:79f0, DS:79de, active players) at (2,0xbc)
+38b6:1269	player_setup_screen	void player_setup_screen(int16_t skip_player)	med	new-game setup: 3 player columns with names/colours (texts 0x14a/0x14b); player == arg gets no name field
+38b6:14e5	station_bid_dialog	void station_bid_dialog(int16_t mode, int32_t *bids)	low	caller passes &DS:8eed (2 longs, -1 = none); entry DS:1ce9[cur][DS:79a8] (14-byte records, probably transmitter sites); mode 0 open (DS:8ff2),2 redraw
+38b6:1721	player_status_bubble	void player_status_bubble(int16_t mode)	low	bubble with player name and text chosen by player_info+0xc / out flag (0x17/0x18/0x19/0x105)
+38b6:17fd	player_message_dialog	void player_message_dialog(uint16_t player)	med	shows top entry of message queue DS:609f (types 0x113 film, 0x10e production...) addressed to player
+38b6:1d91	player_info_popup	void player_info_popup(uint16_t player)	low	popup with ui_text[DS:7a1a[player]] formatted with player name
+38b6:1e63	balance_sheet	void balance_sheet(void)	med	name from notes ("#_8l $" lines); uses hline_tiles_draw
+38b6:2396	hline_tiles_draw	void hline_tiles_draw(int16_t x0, int16_t x1, int16_t y)	high	repeats 8px sprite DS:010c+0x9a from x0 to x1
+38b6:23e5	yes_no_dialog	void yes_no_dialog(int16_t mode)	med	bubble + text DS:8a18 + two buttons; mode 1 = close
+38b6:2473	yes_no_dialog2	void yes_no_dialog2(int16_t mode)	med	bubble + text DS:87e4 + two buttons; mode 1 = close

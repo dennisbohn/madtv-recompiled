@@ -1,0 +1,38 @@
+addr	name	c_signature	confidence	note
+3b0a:000c	ai_tick	void ai_tick(void)	high	current AI DS:24e7 (0/1), player DS:00f2[ai]; state DS:24c5[ai] switch (14 cases, table cs:0069); substep counter DS:24c7[ai]
+3b0a:02cf	ai_optimize_programmes	void ai_optimize_programmes(void)	med	replaces scheduled films with better archive films (ai_rate_slot, bit_test genre prefs DS:7744)
+3b0a:066c	ai_optimize_ads	void ai_optimize_ads(void)	med	re-evaluates scheduled ads vs expected audience; ai_find_better_ad, schedule_place_ad, ai_ad_spot_count
+3b0a:081c	ai_find_better_ad	int16_t ai_find_better_ad(int16_t contract_idx, int16_t hour)	med	returns index of better-fitting contract or 0
+3b0a:0a41	ai_fill_ad_slots	void ai_fill_ad_slots(void)	med	fills empty ad slots for remaining hours
+3b0a:0cf3	ai_fill_programme_slots	void ai_fill_programme_slots(void)	med	near-called (push cs) from ai_plan_schedule; series_next_episode 2a62_0f7c, schedule_place_programme; contains a kbd_getkey call (debug hook?)
+3b0a:138e	ai_plan_schedule	void ai_plan_schedule(void)	med	architecture.md named it ai_buy_films, but body = live progs (4219), ad contracts (150e), then programme fill 0cf3
+3b0a:150e	ai_place_ad_contract	void ai_place_ad_contract(int16_t contract_idx, int8_t spots)	med	finds hours via ai_find_free_slots/ai_ad_target_ok, calls ai_place_ad_range
+3b0a:1864	ai_place_ad_range	void ai_place_ad_range(int16_t contract_idx, int8_t from_hour, int8_t to_hour)	high	schedule_place_ad for each programmed hour while contract not done; then ai_update_ad_contracts
+3b0a:190e	ai_choose_films	void ai_choose_films(void)	med	builds AI wish list DS:24f2 (+p*0x4d, 11-byte entries, count DS:6e33) from dealer offers and genre counts
+3b0a:1c47	ai_buy_films	void ai_buy_films(void)	med	executes wish list: pays price from money long, marks dealer offer DS:19cd/19d4, adds to archive
+3b0a:1ef1	ai_auction_bid	void ai_auction_bid(int16_t limit)	low	scans auction lots DS:1aed (10 x 9 B) and bids; arg = caller local [bp-0x18] (budget/limit guess)
+3b0a:2194	ai_auction_overbid	void ai_auction_overbid(void)	low	if player_info+0xd > 9: checks lots held by human (DS:8b88) via list DS:754a and overbids
+3b0a:24cc	ai_budget_plan	void ai_budget_plan(int8_t player)	med	compares archive quality/ratings of player, other AI and human; sets budget percents DS:6e09+p*0x3c+0x1c
+3b0a:2900	ai_eval_ratings	int8_t ai_eval_ratings(int8_t mode, int8_t player)	low	mode 0: weighted audience from DS:1cef/78a0; mode 1: from yesterday schedule DS:3919; day 1 returns 10/15
+3b0a:2a7f	ai_sell_programme	void ai_sell_programme(int16_t genre, int16_t idx)	high	genre 11 = series (series_price 2bd1_3c6e) else film_price; adds to money and AI income DS:6e11; programme_remove_from_archives
+3b0a:2bb9	ai_sell_old_programmes	void ai_sell_old_programmes(void)	med	sells weak archive films (quality+3 < DS:24df) via ai_sell_programme
+3b0a:2dbc	series_avg_quality	int16_t series_avg_quality(int16_t series_id)	high	id may carry +1000; avg of episode quality bytes in series DB DS:2626
+3b0a:2e4d	ai_choose_ad_contracts	void ai_choose_ad_contracts(void)	med	AI at ad agency: ad_market_update, ai_can_take_contract, ai_ad_contract_init
+3b0a:30bd	ai_can_take_contract	int8_t ai_can_take_contract(int16_t advertiser_id)	med	checks spot load and advertiser restrictions (DS:3f2f stride 24); returns 1/0
+3b0a:323f	archive_total_length	int8_t archive_total_length(int8_t player)	med	sum of programme lengths (film +4 / series +0x23) in archive; caller compares with 14/21
+3b0a:32f0	ai_genre_total_length	int16_t ai_genre_total_length(int8_t genre)	med	no callers found (dead code); sum of lengths in one genre for current AI
+3b0a:3410	ai_ad_spots_per_day	int8_t ai_ad_spots_per_day(int16_t contract_idx, int8_t player)	high	(required - done) / (days left + 1); 0 if done bit set
+3b0a:34c6	ai_ad_target_ok	int8_t ai_ad_target_ok(int16_t hour_or_prog, int16_t advertiser_id, int8_t is_prog)	high	is_prog 0: arg is hour -> resolve scheduled programme; checks advertiser genre restrictions (negative entries, abs)
+3b0a:361d	ai_check_arrival	int8_t ai_check_arrival(void)	med	architecture 'ai_walk/arrive': handles AI figure reaching target, timers DS:24cf, may trigger money event; returns 1 when state handler may run
+3b0a:3854	ai_goto_next	void ai_goto_next(void)	med	picks next AI state and sends figure there (17x ai_figure_goto, ai_choose_studio_action); switch with table in code, decompile broken; no args
+3b0a:3cb4	ai_switch_player	void ai_switch_player(void)	high	DS:24e7 ^= 1 (toggle active AI)
+3b0a:3cc5	ai_figure_goto	void ai_figure_goto(int16_t figure, int16_t room_type, int16_t owner, int16_t sub)	high	building_find_door -> sets figure DS:7b22[(figure-1)*15] target floor/door and door sprite
+3b0a:3d84	ai_choose_studio_action	void ai_choose_studio_action(int8_t player)	med	sets DS:262a[p*3] studio and next action at +2 (5/6/...) based on studios DS:6145
+3b0a:3ea3	production_avg_quality	int8_t production_avg_quality(int16_t prod_id)	high	DS:713c record: series -> avg over episodes, else byte +8
+3b0a:3f21	ai_unfinished_avg_quality	int16_t ai_unfinished_avg_quality(int8_t player)	high	avg production_avg_quality over list DS:1a25 (count DS:7652)
+3b0a:3f93	ai_day_plan	void ai_day_plan(void)	high	from day_begin; per AI: ai_update_avg_income, ai_eval_ratings, ai_ad_spots_per_day, ai_budget_plan, ai_update_ad_contracts
+3b0a:4219	ai_schedule_live	uint16_t ai_schedule_live(void)	low	schedules genre-7 programmes via schedule_place_programme(...,7,...); returns last 2bd1_004b value
+3b0a:4344	ai_state_news_event	void ai_state_news_event(void)	low	uses 2bd1_1e49/1637/2404/1d2b/1847 with string buffer DS:8b8a and DS:7c5e; then ai_goto_next
+3b0a:462c	ai_check_can_act	int8_t ai_check_can_act(void)	high	FAR (retf), no args (Ghidra flagged near, shows bogus 0x3000 arg); returns 0 normal, 1 if budget DS:6e1d<=50000 or hour<18 or DS:24ea set, 2 if cur_room==0x19
+3b0a:46aa	ai_state_show_event	void ai_state_show_event(void)	low	formats text into DS:8b8a and grabs two screen boxes (2bd1_175f) -> DS:7ab2/7ab6
+3b0a:4839	ai_update_avg_income	void ai_update_avg_income(int8_t player)	high	DS:6e35[p*0x3c] = avg of 3 longs at +0x2c

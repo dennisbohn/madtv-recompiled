@@ -1,0 +1,5 @@
+addr	name	c_signature	confidence	note
+42fe:000e	ticks_reset	void ticks_reset(void)	high	DS:9014 = 0
+42fe:0015	timer_shutdown	void timer_shutdown(void)	high	empty; atexit-registered and also called directly from 1c74:0260
+42fe:0016	ticks_get	uint16_t ticks_get(void)	high	returns DS:9014 (timer IRQ tick counter, incremented by sound driver); callers compare unsigned (jb)
+42fe:001a	ticks_set	void ticks_set(uint16_t n)	high	DS:9014 = n; driver slot3(&DS:900c) registers counter struct

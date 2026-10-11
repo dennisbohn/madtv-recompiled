@@ -1,0 +1,19 @@
+# Nur Quelltexte, Notizen, Werkzeuge und fertige Binaries – keine Spieldateien.
+/*
+!/.gitignore
+!/README.md
+!/bin/
+!/port/
+!/re/
+!/src/
+!/build.ps1
+
+# Build-Ausgaben und Testbilder
+/port/build/
+
+# aus dem Originalspiel erzeugte Analysedaten (Ghidra-Projekt, Disassembler-Ausgaben)
+/re/out/
+/re/ghidra_project/
+
+__pycache__/
+*.pyc

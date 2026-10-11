@@ -1,0 +1,15 @@
+addr	name	c_signature	confidence	note
+4151:0002	ai_count_short_programmes	int8_t ai_count_short_programmes(void)	med	current AI player = DS:00f2[DS:24e7]; counts 1-hour films and series in archive (not flagged); returns count in AL
+4151:010c	ai_find_free_slots	int8_t ai_find_free_slots(int8_t *out_hours, int8_t min_len)	high	fills caller stack buffer (far ptr) with hours that start a free run of >= min_len slots (runs break at hour 8/7); returns count
+4151:01e0	ai_ads_all_satisfied	int8_t ai_ads_all_satisfied(void)	med	returns 0 if any ad contract state (DS:4ebf+p*0x4d, 7 bytes each) still lacks its done bits
+4151:0276	ai_update_ad_contracts	void ai_update_ad_contracts(void)	med	evaluates current AI's ad contracts (list DS:1b50, advertiser DS:3f2f stride 24), sums earnings from table DS:00a8 (longs), removes finished contracts
+4151:0480	ai_adjust	void ai_adjust(int16_t player, int32_t amount, int16_t contract_idx)	high	Ghidra shows 1 param; really 4 words (ADD SP,8; BP+6 player byte, BP+8/A long, BP+C idx). If contract_idx>=0 and contract not complete -> amount=0; distributes amount over 7 AI budget accounts DS:6e09+p*0x3c (long[7]) by percent bytes at +0x1c. idx=-1 = unconditional
+4151:0553	ai_init_new_game	void ai_init_new_game(void)	high	for both AIs (DS:00f2[0..1]): reset budget %, studio state DS:262a, splits money/5, ai_budget_plan, ai_adjust(p,money,-1)
+4151:06a8	ai_ad_spot_count	void ai_ad_spot_count(int16_t hour, int16_t contract_idx, int8_t add, int8_t player)	high	add!=0 -> +1 else -1 on prime(hour>=8)/nonprime and total spot counters of contract state, recomputes done bits 0/1/2
+4151:0786	ai_ad_contract_init	void ai_ad_contract_init(int16_t contract_idx)	high	required spots via ai_ad_spots_per_day, clears counters and bits
+4151:080a	ai_archive_avg_quality	int16_t ai_archive_avg_quality(int8_t player)	med	average film byte +3 and series_avg_quality over archive; callers use AL
+4151:08e8	ai_rent_studio	void ai_rent_studio(void)	med	AI state handler: picks affordable free studio (DS:6145 table) -> studio_rent_request; then ai_goto_next
+4151:09fd	ai_buy_production	void ai_buy_production(void)	med	AI state handler: best production offer DS:194a (stride 9) within budget; ai_update_avg_income; ai_goto_next
+4151:0d1a	ai_produce_episode	void ai_produce_episode(void)	med	AI state handler: studio_produce_episode on AI studio DS:262a[p*3] unless film already in archive; ai_goto_next
+4151:0e28	ai_prepare_episode	void ai_prepare_episode(void)	med	AI state handler: moves unfinished production into owned studio, studio_prepare_episode; ai_goto_next
+4151:0f75	ai_cast_episode	void ai_cast_episode(void)	low	AI state handler: assigns cast/staff for current episode (episode rec +8+(ep-1)*0x23, 10 roles x 3 bytes), budget DS:6e19; ai_goto_next

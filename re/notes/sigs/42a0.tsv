@@ -1,0 +1,4 @@
+addr	name	c_signature	confidence	note
+42a0:0001	bit_set	void bit_set(uint16_t *w, int16_t bit)	high	*w |= 1<<bit; called with &DS:7a66
+42a0:0016	bit_clear	void bit_clear(uint16_t *w, int16_t bit)	high	*w &= ~(1<<bit)
+42a0:002d	bit_test	int16_t bit_test(uint16_t w, int16_t bit)	high	returns 0/1 in AL (callers test AL only); w passed by value

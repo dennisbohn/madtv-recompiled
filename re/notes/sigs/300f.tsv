@@ -1,0 +1,9 @@
+addr	name	c_signature	confidence	note
+300f:000b	finance_day_rotate	void finance_day_rotate(void)	high	copies today's finance stats DS:71d1 (21 longs) to yesterday DS:7472, clears today, sets stats[0] = current money of player 8b88 (8bbc+8)
+300f:0052	stats_day_rotate	void stats_day_rotate(void)	high	per player: 1c78->1c6a (14 B); 74ca->789e, 7690->791e (0x80 B), 5533->5553; shifts 7-day viewer history 6d89 and stores 7-day average (long, sum/7) at 6da5; clears 74ca/7690
+300f:0204	studio_slot_release	void studio_slot_release(int16_t slot)	low	record DS:6145+slot*16: if id (+0) set: clears it, sets +5=0,+4=1 and removes all productions of owner (+3) with that id (production_remove)
+300f:0286	stations_settle	void stations_settle(int16_t player)	med	transmitter stations DS:1ce9+p*0x1ce (32 x 14 B; long price +0, status +0xc): status 1 (bought today) -> subtract price from money, money_add(3, price); status 2 (sold) -> zero values; clears status, then stations_reach_update(player)
+300f:03a5	production_clear_first	void production_clear_first(int16_t player)	low	memset 15 B of first production entry DS:732c+p*0x4b; no callers
+300f:03c2	case_remove	void case_remove(int16_t idx)	med	removes idx from programme list DS:2463 (count 732a) = player's suitcase of bought programmes
+300f:03f8	production_costs_update	void production_costs_update(int16_t player)	low	for each production of player: compares cast bytes with show data (far 713c); for human player pays changed cast fees money_add(7, fee from actor table 4ff3 / 6215); if 74c6[p] > 100 subtract 100 and money_add(6, table 722c)
+300f:0599	case_store_to_archive	void case_store_to_archive(void)	med	moves programmes from suitcase list 2463 into current player's archive 6ef9 (by genre, series genre 0xb, max 4 per genre); films 0x1d / 0xbb trigger events 2bd1_24a5 / 2bd1_24d9

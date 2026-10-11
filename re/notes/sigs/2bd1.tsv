@@ -1,0 +1,82 @@
+addr	name	c_signature	confidence	note
+2bd1:0005	shows_free_count	int16_t shows_free_count(void)	med	counts records 1..50 of far DAT_713c (stride 0x1b3) with owner byte +4 == 0 and flag bit1 (+5) set
+2bd1:004b	programmes_mark_scheduled	void programmes_mark_scheduled(void)	med	clears flag bit1 (+7 films / +0x26 series) for all programmes, then sets it for every programme still in today's schedules (43f7) from the current planning hour on
+2bd1:012f	newscast_quality_sum	int16_t newscast_quality_sum(void)	med	sum of DS:3f2b[p] (newscast rating) of active players, max 0x5f
+2bd1:016c	channel_value_sum	int16_t channel_value_sum(void)	low	sum of DS:2481[p] of active players, max 0x5f
+2bd1:01ac	show_episode_count	int16_t show_episode_count(int16_t show)	med	if show record (713c) is series-based (+5 bit0) returns episode count of linked series (+6 -> 2626 +0x22), else 1
+2bd1:01f6	programmes_topicality_recover	void programmes_topicality_recover(void)	med	films: topicality +3 raised to next multiple of max(+1)/5; series episodes: +1 raised in steps of +0/20
+2bd1:0301	hour_start	void hour_start(void)	med	name from architecture.md. Checks the 12 studio/production slots DS:6145 (16 B): finished today at this hour -> message 0x10e, programme_buy of produced film/series, flags, studio_slot_release, 3077_10b8/0f08; refreshes text caches if in room 0x1f / 4
+2bd1:0668	archive_capacity_check	int16_t archive_capacity_check(int16_t player, int16_t prog, int16_t genre)	low	counts programmes of genre (genre 0 -> taken from prog via programme_genre_get) in player's archive + own auction lots + studio slots; >=4 -> show_message(0x58) and return -1, else 0. No direct callers found (maybe via pointer)
+2bd1:07c2	programme_genre_get	void programme_genre_get(int16_t *prog, int16_t *genre)	high	film (<1001): *genre = film genre byte; series: *prog -= 1000, *genre = 0xb
+2bd1:07fb	ad_spots_remaining	int16_t ad_spots_remaining(int16_t player, int16_t hour)	med	remaining spots of the ad scheduled at hour (plan+0x3c = 4433, id-3000) for player: contract count (1b50 list +4) minus later scheduled spots
+2bd1:08f0	ad_contracts_expire	void ad_contracts_expire(void)	med	contracts in 1b50 lists whose deadline day (+5) == today: penalty (ad rec +0x14 long) subtracted from money, money_add(5), message 0x10f/0x110, removed from ad schedule and list_remove
+2bd1:0a80	special_film_check	void special_film_check(void)	low	handling of special film 0x3a (owner byte film+5): auction lot placement (auction_lot_set) or, if owner did not air it within 3 days, removal and image halving (8bbc+0xc >>1), 340d_01cb
+2bd1:0bc8	auction_lot_set	void auction_lot_set(int16_t lot, int16_t prog, int16_t kind)	med	fills auction lot DS:1aed+lot*9 with programme: kind 0/-1 film (price film_price, random owner 3..9 when -1, special films 0x1d/0xbb set event counters 7a22/7a7c), else series (+1000, series_price); clears bidder
+2bd1:0d6e	player_message_push	void player_message_push(int16_t msg_id, int16_t player, int32_t a1, int32_t a2, int32_t a3, int32_t a4, int32_t a5)	high	only for human player 8b88: stores 26-B message {id, 5 longs, day 71c4, hour 71ca} in DS:609f[7227]; message_slot_alloc; 1054_3bb6. Callers pass ints sign-extended to longs
+2bd1:0e2f	loan_interest_pay	void loan_interest_pay(void)	med	if credit DAT_7abe (long) != 0: money -= credit/20, money_add(0xf, credit/20)
+2bd1:0e8b	daily_costs_pay	void daily_costs_pay(void)	med	per player: studio rents (6145 slot +6 long, cat 8), station upkeep (1ce9 total /5, cat 9), news subscriptions (1000/10000 per category, cat 10); AI players book into budget DS:6e15.. and 4151_0480
+2bd1:10d6	market_daily_cleanup	void market_daily_cleanup(void)	low	clears unsold entries of lists DS:1980 (ads, 7 B), DS:194a (shows, 9 B, after 2 days) and DS:19cd (8 B, marks programmes bit5)
+2bd1:11e3	licenses_expire	void licenses_expire(void)	med	films in players' archive (genre slot 0x6f31) whose licence end day (+0xf) == today are removed (programme_remove_from_archives) with message 0x113; films 0x1d/0xbb -> special_film_1d_tick / special_film_bb_tick
+2bd1:12cc	actors_market_shuffle	void actors_market_shuffle(void)	low	picks 15 distinct random actors from DS:4ff3 (12 B, 16 per group) into DS:5473
+2bd1:13b0	start_programmes_assign	void start_programmes_assign(void)	med	new game: gives each player a random series and films (programme_buy with price 0), builds an initial schedule (43f7) for the human player
+2bd1:1637	station_reach_at	int32_t station_reach_at(int16_t x, int16_t y)	med	population inside a 16x16 circle mask (DS:11f2) at x,y on population map far DAT_7c5e (2 bit/px, 0x15 words per row); returns long (DX:AX)
+2bd1:1729	map_cell_value	int16_t map_cell_value(int16_t x, int16_t y, uint16_t *map)	med	2-bit value at x,y mapped through DS:1272
+2bd1:175f	map_population_sum	int32_t map_population_sum(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t *map)	high	sum over rect of 2-bit cells weighted by DS:127a; returns long (Ghidra shows int)
+2bd1:1847	stations_reach_update	void stations_reach_update(int16_t player)	med	coverage_map_build(player); total reach (1ce9+p*0x1ce +4) = map_population_sum(full map 8b8a); +0 = sum of station values
+2bd1:1906	coverage_map_build	void coverage_map_build(int16_t player)	med	clears coverage map far DAT_8b8a, stamps each owned station (DS:1ce9 + p*0x1ce, 33 x 14 B: long value, long ?, x +8, y +0xa, status +0xc) (stations 1/2 = left/right half), reach halves into longs 7ab2/7ab6
+2bd1:1af5	building_map_door_pos	void building_map_door_pos(int16_t floor, int16_t slot, int16_t *x, int16_t *y)	med	screen position of a door in the building overview map: y=(14-floor)*15+9, x by door x (0x7c62 table) class DS:1b3b (4 cases), floors <8 in right column
+2bd1:1b88	door_name_text	char *door_name_text(int16_t floor, int16_t slot)	med	returns allocated name of room at door (text table 8370 via +0x28/+0x32 ids, owner name 8bbc-0x7444 if owner +0x46); returns far ptr DX:AX. 1cd9 is its tail
+2bd1:1cd9	seg2bd1_unk_1cd9	void seg2bd1_unk_1cd9(void)	low	not a function: epilogue fragment of door_name_text (Ghidra caseD_0); do not port separately
+2bd1:1cef	hour_index	int16_t hour_index(void)	high	DAT_71ca hour -> slot: hour<17 ? hour+7 : hour-17 (17:00 -> 0)
+2bd1:1d05	hour_index_after_min5	int16_t hour_index_after_min5(void)	high	hour_index()+1 if minute DAT_71cc >= 5
+2bd1:1d18	hour_index_after_min55	int16_t hour_index_after_min55(void)	high	hour_index()+1 if minute >= 55 (first still plannable slot)
+2bd1:1d2b	coverage_stamp	void coverage_stamp(int16_t station, int16_t player, uint16_t *src_map, uint16_t *dst_map)	med	ORs the 16x16 circle mask of station (x,y from 1ce9 record +8/+0xa) masked by src population map into dst coverage map
+2bd1:1e49	station_reach_gain	int32_t station_reach_gain(int16_t x, int16_t y)	med	additional population a new station at x,y would cover (union with existing coverage 8b8a minus existing); returns long
+2bd1:1fdf	mask_population_count	int32_t mask_population_count(uint16_t *mask)	high	sum over 16x16 2-bit mask (32 words) weighted by DS:1282; int sign-extended to long (cwd) in DX:AX
+2bd1:208f	show_role_count	int16_t show_role_count(int16_t show)	low	number of role slots (show rec +9+i*3, i 1..10) with type 0x11..0x29 (actor roles)
+2bd1:20e4	programme_buy	void programme_buy(int16_t prog, int16_t player, int32_t price)	high	sets owner, subtracts price from money, adds to archive by genre (max 4) or to suitcase (2463, human, <10) else unowned; money_add(1 film / 2 series)
+2bd1:22af	episode_cast_complete	int16_t episode_cast_complete(int16_t show, int16_t episode)	med	1 if every role slot of the episode has an actor assigned (+0xb != 0)
+2bd1:2316	actor_suitability	int16_t actor_suitability(int16_t show, int16_t episode, int16_t role, int16_t actor)	low	percentage match of actor attributes (DS:4ff9 +0xc*actor) to role requirements (show +0x168), using 3b06_0000 (min)
+2bd1:2404	round_to_step	int32_t round_to_step(int32_t value, int32_t step)	high	(value + step/2) / step * step; returns long
+2bd1:2431	rating_from_viewers	int32_t rating_from_viewers(int16_t player, int32_t viewers)	low	viewers relative to player's total reach (1ce9+p*0x1ce +4) scaled by 0x9a0 (rounded LDIV/LMUL); returns long
+2bd1:24a5	special_film_1d_tick	void special_film_1d_tick(void)	med	countdown DAT_7a22 for special film 0x1d: extends licence 3 days, or removes it from archives when expired
+2bd1:24d9	special_film_bb_tick	void special_film_bb_tick(void)	med	same for special film 0xbb with counter DAT_7a7c
+2bd1:250c	event_npc_init	void event_npc_init(void)	med	daily setup of the event figure (figure 5 at DS:7bb8) and event type DAT_7a3c (1..4 / bailiff if human money < -0x2 7960), news 0xa6
+2bd1:266b	random_events	void random_events(void)	med	name from architecture.md: drives the event figure (state 79a6[0x47+type] / 7a68): walks to target door (tables 0x7c80/0x7ca8), room_entry_check, then event_npc_strike; timer 7a42
+2bd1:2a41	event_npc_strike	void event_npc_strike(void)	med	event figure acts at door (7a46 floor/7a44 slot): room destroyed/blocked, studio released, programme stolen/destroyed (programme_lose), news reset; news 0xa7/0xa8; messages 0x133..0x138; +50000 money_add(0x10) insurance (?)
+2bd1:2e9e	programme_lose	void programme_lose(int16_t prog, int16_t msg_id, int16_t player)	med	removes programme from archives and from remaining schedule (1054_2298), resets running ratings, message; event type 3 refunds half the film price (money_add 0xb)
+2bd1:3024	film_title_get	char *film_title_get(int16_t film)	high	lookup in film text cache DS:63c5 (49 x 10 B: id, far title, far descr); NULL if not cached; returns far ptr DX:AX
+2bd1:306e	film_descr_get	char *film_descr_get(int16_t film)	high	description pointer (+6) from film text cache 63c5
+2bd1:30b8	series_title_get	char *series_title_get(int16_t series)	high	lookup in series text cache DS:65af (15 x 0x5a B): title (+2)
+2bd1:3102	series_descr_get	char *series_descr_get(int16_t series)	high	series cache +6 description
+2bd1:314c	episode_title_get	char *episode_title_get(int16_t series, int16_t episode)	high	series cache +0xa + (episode-1)*4
+2bd1:31a0	episode_descr_get	char *episode_descr_get(int16_t series, int16_t episode)	high	series cache +0x32 + (episode-1)*4
+2bd1:31f4	show_text_title_get	char *show_text_title_get(int16_t id)	med	third text cache DS:6af5 (0x42 B entries, filled by 1433_1373): pointer +2; loops until found (no bound)
+2bd1:322e	show_text_get	char *show_text_get(int16_t id, int16_t idx)	med	cache 6af5: pointer at +6+idx*4
+2bd1:3271	room_entry_check	int16_t room_entry_check(int16_t fig, int16_t query)	med	reason why figure fig cannot enter the door it stands at (event 7a48 -> msg 0x130..0x137, studio busy 0xf4, occupied by other figure 0x12e/299 (+ fine logic 7a96), room 0x36 closed 0x12f, owner out 0x49); query!=0 returns codes 1/2 instead of msg ids; 0 = free. architecture.md also calls it room_entry_blocked
+2bd1:363d	ratings_rank_update	void ratings_rank_update(void)	low	near-called (no far frame per Ghidra but called via far call from 3264): ranks active players by current rating (248d) into 5533 rank bytes and adjusts image via image_distribute(DS:8f94); 379e/3803/399e are inner fragments
+2bd1:379e	seg2bd1_unk_379e	void seg2bd1_unk_379e(void)	low	fragment of ratings_rank_update (uses caller BP/SI/DI), not a real function
+2bd1:3803	seg2bd1_unk_3803	void seg2bd1_unk_3803(void)	low	fragment of ratings_rank_update, not a real function
+2bd1:3895	image_distribute	void image_distribute(int16_t *deltas)	med	applies image deltas[1..3] to players' image (8bbc+0x15, 0..100) keeping the total at 100 (positive and negative parts balanced with 3b06_0000); lowers +0xc to image
+2bd1:399e	seg2bd1_unk_399e	void seg2bd1_unk_399e(void)	low	fragment of image_distribute (uses caller frame), not a real function
+2bd1:3b5d	price_step_next	int32_t price_step_next(int32_t value)	med	returns first long of table DS:128a (4 entries) greater than value (or last); returns DX:AX. Ghidra marks non-far, callers use far call with 4-byte arg
+2bd1:3b6f	seg2bd1_unk_3b6f	void seg2bd1_unk_3b6f(void)	low	overlapping-instruction fragment of price_step_next, not a real function
+2bd1:3b96	genre_value_get	int16_t genre_value_get(int16_t genre)	low	word table DS:129a[(char)genre]
+2bd1:3ba7	film_price	int32_t film_price(int16_t film)	high	from film record: 0 if base price (+8 long) 0 or quality +1 0; else round_to_step(price*... + quality*2*1000/topicality ...); returns long via round_to_step (Ghidra shows void)
+2bd1:3c6e	series_price	int32_t series_price(int16_t series)	high	from episodes (sum of +0/+1 bytes for flagged episodes) -> round_to_step; returns long (Ghidra shows void)
+2bd1:3d63	fmt_money	char *fmt_money(int32_t value, int16_t mode)	high	mode 1 = millions with one decimal (round 100000, fmt DS:12c2), 2 = round 10000 (DS:12c8), 3 = auto (>= 1,000,000 -> 1); returns allocated string (far)
+2bd1:3e86	ad_genre_allowed	int16_t ad_genre_allowed(int16_t ad, int16_t genre)	med	ad customer condition bytes DS:3f3b..3f3d: negative = forbidden genre -> 0; positive list -> 1 if genre listed; no positive -> 1
+2bd1:3f0b	news_count_by_category	int16_t news_count_by_category(int16_t category)	med	number of human player's news (455f archive, +0x1c) with category
+2bd1:3f4f	news_find_next	int16_t news_find_next(int16_t category, int16_t from)	med	index of next news after from with category in human player's archive, -1 if none
+2bd1:3fa2	image_at_least	int16_t image_at_least(int16_t player, int16_t min)	med	-1 if player image (8bbc+0x15) >= min else 0
+2bd1:3fc7	news_subscriptions_check	void news_subscriptions_check(void)	med	cancels news subscriptions (8bbc+0x10+cat) whose image threshold DS:12a6[cat] is no longer met; message 0x152
+2bd1:4048	player_flag	int16_t player_flag(int16_t bit, int16_t op)	med	op 1 bit_set / op 2 bit_clear on word DAT_7a66, returns bit_test (char) ; bit = player number in callers
+2bd1:408e	contest_tick	int16_t contest_tick(void)	med	every 3 days (DAT_7470 % 3): day 0 picks contest type DAT_7468 (random), day 2 evaluates winner (contest_winner), image changes via image_distribute, messages 0x2b/0x158/0x159/0x15a; returns 7470 % 3. Ghidra marks non-far but callers use far call
+2bd1:4226	seg2bd1_unk_4226	int16_t seg2bd1_unk_4226(void)	low	tail fragment of contest_tick (message 0x159, returns 7470%3), not a real function
+2bd1:427c	contest_score	int16_t contest_score(int16_t player)	med	contest score of player for current contest type DAT_7468 (switch with broken jump table, uses 7468[p], 8bbc+0xc ...); 0 if player out. Called via push cs/call near (bogus 0x2bd1 first param)
+2bd1:427f	seg2bd1_unk_427f	int16_t seg2bd1_unk_427f(void)	low	overlapping entry inside contest_score, not a real function
+2bd1:42b0	seg2bd1_unk_42b0	int16_t seg2bd1_unk_42b0(void)	low	switch-case fragment of contest_score, not a real function
+2bd1:42e1	seg2bd1_unk_42e1	void seg2bd1_unk_42e1(void)	low	switch-case fragment (thunk) of contest_score, not a real function
+2bd1:4327	seg2bd1_unk_4327	void seg2bd1_unk_4327(void)	low	switch-case fragment of contest_score, not a real function
+2bd1:432d	contest_winner	int16_t contest_winner(void)	high	player with highest contest_score among active players, 0 on tie
+2bd1:43b5	contest_share	int16_t contest_share(int16_t player)	high	contest_score(player)*100 / sum of all scores (0 if sum 0)

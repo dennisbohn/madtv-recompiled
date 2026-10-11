@@ -1,0 +1,45 @@
+addr	name	c_signature	confidence	note
+340d:0002	show_message_text	void show_message_text(char *text)	high	formats text with template DS:84d4 (fmt), room_enter(-1) message overlay, message_box_draw(0,str), frees string
+340d:0050	show_message	void show_message(int16_t text_id)	high	show_message_text(ui_text[text_id]) - far char* table DS:8370 (UI texts from HES 253)
+340d:006a	show_info_overlay	void show_info_overlay(char *text)	med	room_enter(-3) overlay then message_box_draw(0,text) without fmt; caller 1581:3aaf passes fmt result
+340d:0089	message_box_draw	void message_box_draw(int16_t mode, char *text)	high	speech_bubble(mode,10,3,0x1e,8,1); text box (1cec_00d1) unless mode==1 (close); screen_update
+340d:00d4	status_money_update	void status_money_update(void)	high	money of human (2a62_1041) /1000 formatted via DS:1344, status_text(y=0x7f)
+340d:0128	status_text	void status_text(char *text, int16_t y)	high	draws text into status-bar bitmap DS:8e88 and blits at (col 0x13, y); hides mouse if it overlaps; some callers pass extra args (ignored)
+340d:01cb	status_meter_draw	void status_meter_draw(void)	med	46-segment bar from player_info[cur].+0xc (DS:8bc8, 0..100) at (0x10,0xab)
+340d:0287	schedule_panel_open	void schedule_panel_open(int16_t player)	high	draws schedule grid frame (sprites, DS:0386.. blit params) then schedule_view(player)
+340d:03a3	schedule_view	void schedule_view(int16_t player)	high	draws the 7 visible hours (scroll DS:79a6) with programme titles (schedule_slot_title)
+340d:06dd	schedule_draw_rows	void schedule_draw_rows(int16_t player)	high	frames per hour row; colour by past/current hour (hour_index) and programme genre length
+340d:085f	schedule_slot_title	char *schedule_slot_title(int16_t hour, int16_t player)	high	returns NEW fmt-allocated string (caller frees): film title / series+episode / 9999 continuation / "Fehler aufgetreten"; one caller pushes a 3rd 0 (ignored)
+340d:09a2	archive_item_title	char *archive_item_title(int16_t genre, int16_t idx, int16_t player)	high	archive_title_by_id(archive[player][genre][idx] + (genre==11 ? 1000 : 0)); Ghidra shows void but DX:AX is returned
+340d:09e4	archive_title_by_id	char *archive_title_by_id(int16_t prog_id)	high	0 -> text 0x5c, <1000 film title, >=1000 series title; returns new string
+340d:0a56	archive_list_dialog	void archive_list_dialog(int16_t xcol, int16_t yrow, int16_t mode, int16_t player)	high	genre DS:79aa list of player's archive; mode 0 open+draw, 1 close (restore bg DS:8fb2); coords in 8-px units
+340d:0c07	station_map_panel	void station_map_panel(int16_t part)	low	room 0x19 view of player DS:79ac (data DS:1ce9 stride 0x1ce); part 0=all,1/2/... selects sub-areas; also called with 0x21
+340d:0f5b	room8_items_panel	void room8_items_panel(int16_t redraw)	low	0 = save background (bitmap DS:011c) and draw, 1 = restore+draw; 10 items DS:19d4 stride 8 (sprite pos DS:032e)
+340d:1022	dialog_frame	void dialog_frame(int16_t mode, int16_t frame_id)	high	frame rect from table DS:12e6[frame_id-1] {x0,y0,x1,y1 cols}; mode 0 open (save bg DS:8fb4) +draw, 2 redraw, 1 close/restore; contains a switch (Ghidra)
+340d:144f	ad_offers_panel	void ad_offers_panel(void)	med	draws up to 10 ad offers DS:1980 (stride 7) on shelf; bg saved in DS:0110
+340d:155a	archive_shelf_panel	void archive_shelf_panel(int16_t player)	med	genre DS:79aa title + cassette sprites per archive entry
+340d:167b	series_episode_dialog	void series_episode_dialog(int16_t mode)	med	episode list of series DS:79b4; mode 0 open, other = close (bg DS:8fb6)
+340d:1911	frame_draw	void frame_draw(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t style)	high	frame_draw_to(...,offscreen DS:8e62)
+340d:1934	frame_draw_to	void frame_draw_to(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t style, Bitmap *dst)	high	tile-based frame; style -> sprite base DS:132e[style]; pixels
+340d:1aa6	cursor_attach_item	void cursor_attach_item(int16_t w, int16_t h, int16_t grab_x, int16_t grab_y, char *text, int16_t style)	med	builds a dragged-item bitmap (DS:0390) with frame/text/sprite and installs it as mouse cursor (DS:8e70/8eb6/8ebe, DS:79b2=2); grab_x==-1 keeps old offset
+340d:1d02	cursor_drop_item	void cursor_drop_item(void)	high	undo cursor_attach_item: restore saved cursor bitmaps, free item bitmap, cursor_reset
+340d:1d9a	ad_contract_list_dialog	void ad_contract_list_dialog(int16_t xcol, int16_t yrow, int16_t mode, int16_t player)	high	10 contracts DS:1b50[player] (stride 0x46/7) with advertiser names DS:3f2f; mode 0 open,1 close (bg DS:8fb8)
+340d:1f43	building_directory_panel	void building_directory_panel(void)	med	13 floors x 4 doors from DS:8a40 using door tables DS:7c80/7ca8 (information board)
+340d:21a4	player_flags_draw	void player_flags_draw(int16_t player)	low	3 toggles player_info[player].+0x10..12 (see player_toggle_flag) + DS:7286[player] indicator
+340d:2246	news_slots_panel	void news_slots_panel(int16_t player, int16_t mode)	med	3 news slots DS:3d4b+player*0x78 (stride 0x1e) with news_format_text; mode 0 open,2 redraw,1 close (bg DS:8fba)
+340d:24a1	player_tabs_panel	void player_tabs_panel(int16_t mode)	low	tabs for players existing per 2bd1_3f0b, selected DS:7a52, flag DS:7a50; mode 0 open,2 redraw,1 close (bg DS:8fbc)
+340d:27e9	news_format_text	char *news_format_text(void *news_item, int16_t text_id)	med	looks up text_id in table DS:729a (20 x {int16 id; char *text}), copies and substitutes fields of the far record; returns new string
+340d:2a3c	station_map_view	void station_map_view(int16_t player, int16_t mode)	low	uses DS:79ac (= player arg at all call sites) data DS:1ce9 (32 x 14 B); mode 0 builds view (calls station_map_panel(0x21)); DS:1ce9 records probably transmitter sites
+340d:2da7	auction_panel	void auction_panel(int16_t mode)	med	10 auction lots DS:1aed in 2 columns; mode 0 open,2 redraw, >100 redraw only lot (mode-100); otherwise close (bg DS:8fbe)
+340d:3047	production_offers_panel	void production_offers_panel(void)	med	5 offers DS:194a stride 9 (skips state 'c'), bg DS:0110
+340d:313f	studio_booking_panel	void studio_booking_panel(void)	low	7-row chart with labels 14-i / 7-i (texts DS:1450/1455)
+340d:3434	message_box2_draw	void message_box2_draw(char *text, int16_t mode)	med	alt. speech bubble (8,3,0x1f,0xc) with two decor sprites + text; mode 1 = close only
+340d:34b0	status_ratings_update	void status_ratings_update(void)	high	status_text(fmt_money(rating DS:248f[cur]), y=0x93) or DS:145a text when paused/before first hour
+340d:351e	studio_panel_draw	void studio_panel_draw(void)	low	decor sprites; marker if studio DS:79be in use (DS:6145)
+340d:359d	studio_cast_preview	void studio_cast_preview(void)	low	computes cast/quality display for studio DS:79be production (DS:713c)
+340d:372f	studio_production_dialog	void studio_production_dialog(int16_t mode)	low	bubble (0xb,3,0x1f,9) listing episodes of studio DS:79be; mode 1 = close
+340d:386f	confirm_bubble_dialog	void confirm_bubble_dialog(int16_t mode)	low	bubble (7,2,0x1a,10) with texts 0xea/0xeb + two buttons; mode 1 = close
+340d:393b	production_plan_panel	void production_plan_panel(void)	low	player list DS:732c entry DS:79c0, sub-view DS:79c2; Ghidra body partly broken
+340d:40c6	people_select_dialog	void people_select_dialog(int16_t mode)	low	bubble with 10 portraits + names DS:722c (stride 8); mode 1 = close
+340d:41be	player_ranking_panel	void player_ranking_panel(void)	low	bars per active player (player_info +0x0c), bg bitmaps DS:010c/0110
+340d:440b	statistics_panel	void statistics_panel(void)	low	name from notes ("Statistik"); large drawing routine

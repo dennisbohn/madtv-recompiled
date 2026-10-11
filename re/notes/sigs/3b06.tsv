@@ -1,0 +1,4 @@
+addr	name	c_signature	confidence	note
+3b06:0000	min_i16	int16_t min_i16(int16_t a, int16_t b)	high	signed min
+3b06:0015	max_i16	int16_t max_i16(int16_t a, int16_t b)	high	signed max; the only caller (1581:0c78) pushes 3 words (int + long result of LDIV) - unprototyped call, callee reads only a and low word of b
+3b06:0027	max_i32	int32_t max_i32(int32_t a, int32_t b)	high	signed long max, returned in DX:AX (callers push dx:ax)

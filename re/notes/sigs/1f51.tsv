@@ -1,0 +1,72 @@
+addr	name	c_signature	confidence	note
+1f51:0003	mouse_show	void mouse_show(void)	high	Software cursor: refcount DAT_8aac++; on 1 saves bg under cursor (scr_grab into 8ebe/8e70), draws cursor sprite (bank -0x718c[cursor_shape 79b2]) or the drag image DAT_0390 (Bitmap*, size 0394/0396, hotspot 0398/039a); remembers pos in 7b06/7b16
+1f51:019e	mouse_hide	void mouse_hide(void)	high	refcount DAT_8aac--; restores saved background (8ebe) at 7b06/7b16; mirrors count into long 7aa2
+1f51:01f3	ease_step	void ease_step(int16_t *delta, int16_t *value)	high	moves value by delta/5 (at least +-1) and decrements delta accordingly (smooth scrolling/animation)
+1f51:0250	draw_string	void draw_string(int16_t x, int16_t y, const char *str, Bitmap *dst, int16_t fixed_digits)	high	x in pixels; 8px glyphs via bmp_glyph_trans; font bank DAT_8366 (or DAT_0108 if DAT_8b86); char->glyph map DS:012e, widths DS:022e; space=3px; fixed_digits=1 pads digits to 5px. Return value is garbage (void)
+1f51:036f	draw_frame_cells	void draw_frame_cells(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Bitmap *dst, int16_t style)	high	coords in 8px cells -> draw_frame(x*8,...)
+1f51:03c1	draw_frame	void draw_frame(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Bitmap *dst, int16_t style)	high	fills box + border with 8x8 tiles from bank DAT_7aea (style 1) or DAT_7aee; stores dst in 8f32 and bank in 8f36 for frame_piece_draw
+1f51:04cb	frame_piece_draw	void frame_piece_draw(int16_t piece_ofs, int16_t x, int16_t y)	high	piece_ofs = byte offset into frame tile bank (8f36), dst=8f32; x in pixels
+1f51:0516	text_window_draw	void text_window_draw(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text, int16_t visible)	med	if visible==1: draw_frame_cells on screen 8e62 then text_box (1cec_022e) inside; cell coords; text wird freigegeben (text_box_to_free)
+1f51:057c	window_open	int16_t window_open(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text, int16_t mode)	med	allocates save-under bitmap in slot table 8ec2[] (mode 1/3: first free slot>=1, mode 2: slot 0), stores pos/size in 7b08/7b18/8c1a/8c24/8c40; mode 1 also draws text window and flips screen (1dd5_0884). Returns slot; text wird freigegeben (text_box_to_free)
+1f51:0686	popup_box_show	void popup_box_show(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text)	med	popup_box_create + text_box + popup_box_present; used by 239a_3cb1 (tooltips); text wird freigegeben (text_box_to_free)
+1f51:06d5	window_close	void window_close(int16_t slot)	high	restores saved background of window slot to screen 8e62, flips, frees bitmap 8ec2[slot]
+1f51:0762	window_restore	void window_restore(int16_t slot)	high	same as window_close without flip/free (no callers found)
+1f51:07c3	room_frame_draw	void room_frame_draw(void)	med	disables clipping (0386=0); draws 320x120 border around the room view on screen 8e62 with tiles from bank DAT_8b7c
+1f51:08d9	room_frame_draw_alt	void room_frame_draw_alt(void)	med	clears screen 8e62 rows 0..0x78, border tiles from bank DAT_0104 (used by 340d_0287)
+1f51:0a15	sprite_ofs	int16_t sprite_ofs(int16_t idx)	high	returns idx*8-6 = byte offset of 1-based sprite idx in a SpriteBank {int16 count; Bitmap[]}; architecture.md guessed 'sprite_width' (wrong). Ghidra shows extra bogus args; callers pass 1 word
+1f51:0a26	figure_sprite_ofs	int16_t figure_sprite_ofs(int16_t fig, int16_t frame)	high	(figure[fig].+0xa (0x7b2c) * 10 + frame) -> sprite_ofs; figure table 0x7b22 stride 30
+1f51:0a50	drag_image_draw	void drag_image_draw(Bitmap *src)	med	masked-blit src at 0,0 into drag-cursor bitmap DAT_0390
+1f51:0a7f	bmp_draw_masked	void bmp_draw_masked(Bitmap *src, Bitmap *dst, int16_t x, int16_t y)	high	whole src transparent onto dst (blit_sprite_masked)
+1f51:0ab0	bmp_draw	void bmp_draw(Bitmap *src, Bitmap *dst, int16_t x, int16_t y)	high	whole src opaque onto dst (blit_rect)
+1f51:0ae1	draw_bitmap	void draw_bitmap(Bitmap *src, int16_t x, int16_t y)	high	opaque to screen DAT_8e62; called via push cs/call near (Ghidra bogus first param 0x1f51), far-return function
+1f51:0b14	screen_grab	void screen_grab(Bitmap *dst, int16_t x, int16_t y)	high	copies region of screen 8e62 at x,y (size of dst) into dst
+1f51:0b47	bank_draw_opaque	void bank_draw_opaque(int16_t ofs, int16_t x, int16_t y)	high	sprite at byte offset ofs of current bank DAT_8f2e, opaque, to current target DAT_8f2a
+1f51:0b8e	bank_draw	void bank_draw(int16_t ofs, int16_t x, int16_t y)	high	same as bank_draw_opaque but masked (most used, 123 calls)
+1f51:0bd5	target_draw_sprite	void target_draw_sprite(Bitmap *src, int16_t x, int16_t y)	high	masked to current target DAT_8f2a
+1f51:0c08	bank_draw_fixed_y	void bank_draw_fixed_y(int16_t ofs, int16_t x)	high	bank_draw with y=DAT_8f26 (Ghidra name caseD_2)
+1f51:0c50	bank_draw_fixed_x	void bank_draw_fixed_x(int16_t ofs, int16_t y)	high	bank_draw with x=DAT_8f24 (no callers)
+1f51:0c98	bank_draw_current	void bank_draw_current(int16_t x, int16_t y)	high	bank_draw with ofs=DAT_8f28 (no callers)
+1f51:0ce1	draw_sprite	void draw_sprite(Bitmap *src, int16_t x, int16_t y)	high	masked to screen DAT_8e62 (138 calls)
+1f51:0d14	draw_bitmap_fast	void draw_bitmap_fast(Bitmap *src, int16_t x, int16_t y)	high	bmp_blit (43eb) whole bitmap to screen 8e62, x rounded to 8px column
+1f51:0d4f	blit_sprite_masked	void blit_sprite_masked(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_t sx, int16_t sy, int16_t w, int16_t h)	high	transparent (color 0) blit with optional vertical clip (0386 enable, 038a top, 038e bottom); pixel coords, dx&7 -> shifted variant 4432
+1f51:0e6f	bmp_copy_at	void bmp_copy_at(Bitmap *src, Bitmap *dst, int16_t x, int16_t y)	high	bmp_blit whole src to dst at x(>>3),y (Ghidra name caseD_1)
+1f51:0ea9	bmp_copy	void bmp_copy(Bitmap *src, Bitmap *dst)	high	bmp_copy_at(src,dst,0,0)
+1f51:0ec4	blit_rect	void blit_rect(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_t sx, int16_t sy, int16_t w, int16_t h)	high	opaque version of blit_sprite_masked (43f2/43fd)
+1f51:0fd8	elevator_request_add	void elevator_request_add(int16_t floor)	med	appends floor to queue DAT_8c4c[] (count 8c34) if not present; used by 27bb
+1f51:100e	elevator_request_remove	void elevator_request_remove(int16_t floor)	med	removes floor from queue 8c4c
+1f51:105c	floor_door_prev	void floor_door_prev(int16_t floor, int16_t *slot, int16_t exclude)	med	cycles *slot downward (wrap to 3) until door type 0x7c76[floor*0x7a+slot] in 1..3 and != exclude (-1 = none)
+1f51:10cf	floor_door_count	int16_t floor_door_count(int16_t floor)	med	number of leading entries with type 1..3 in 0x7c76[floor*0x7a]
+1f51:110f	clip_set_small	void clip_set_small(void)	med	clip on, rect (0,0)-(0x18,0x0b)
+1f51:112e	clip_reset	void clip_reset(void)	high	clip on, rect (0,0)-(320,120) = room view
+1f51:114d	clip_set_upper	void clip_set_upper(void)	high	clip_reset with bottom=0x50
+1f51:1158	mouse_x	int16_t mouse_x(void)	high	DAT_7bd6 adjusted (+5 for cursor shape 2, minus drag hotspot 0398)
+1f51:1186	mouse_y	int16_t mouse_y(void)	high	DAT_7bd8 adjusted
+1f51:11ef	building_walls_draw	void building_walls_draw(int16_t variant)	low	tiles side walls/shaft columns (bank DAT_8362) on screen for y 4..0x70; variant 1 uses sprites 10/13/12 else 11/15/14
+1f51:12ca	door_draw	void door_draw(int16_t floor, int16_t slot, int16_t state)	med	only in building view (836c==0); door type 0x7c76 selects sprite pair in bank 8c36, x from 0x7c62; state 1/2 (open/closed) into building bitmap 8eba
+1f51:1419	panel_build	void panel_build(void)	med	builds bottom panel bitmap DAT_8eb2 (320x80) from banks 8c58/79a2/799e
+1f51:1503	figure_draw	void figure_draw(int16_t fig, int16_t frame)	med	draws figure (0x7b22 table) masked onto screen if on visible floors (DAT_8a3c); sprite bank DAT_00f8, 16x19 px; Ghidra args garbled
+1f51:1628	input_poll	int16_t input_poll(void)	high	mouse_update + keyboard (44ef_000a): keys 0x15-0x1c move mouse with acceleration (0d36/0d38), others -> 1054_076c(key); returns click state DAT_7a2c (1=left,2=right)
+1f51:16dd	mouse_update	void mouse_update(void)	high	reads mouse buttons (43cb_0009) and motion deltas DAT_16a2/16a4 into 7a28/7a2a; sets click 7a2c
+1f51:1703	room_animate	void room_animate(int16_t mode)	med	per-room animation switch on DAT_836c (rooms 10,12,1,5,-3,8,2,4...); mode 1/3 = animate, 2 = free animation buffers 0d42[3]; switch tables broken in Ghidra
+1f51:2c36	anim_step_every	void anim_step_every(int16_t period, int16_t *frame)	high	frame divider: global counter DAT_0d9a; ++*frame every period calls
+1f51:2c53	room_region_restore	void room_region_restore(int16_t region)	med	region 1,3..9: blits saved background bitmap (0114/0118/0110/010c) to screen at fixed position, hiding mouse if it overlaps
+1f51:2e46	popup_box_create	void popup_box_create(int16_t x0, int16_t y0, int16_t x1, int16_t y1)	med	builds framed box bitmap in 8ec2 (uses static buffer DAT_0124 if set, else bitmap_alloc) from screen contents; cell coords
+1f51:3060	popup_box_present	void popup_box_present(int16_t xcol, int16_t yrow)	med	blits 8ec2 to VGA at xcol, yrow*8 (43de_0009); frees it if not static buffer
+1f51:3099	tv_picture_update	void tv_picture_update(void)	med	clip_reset; hides mouse if over panel area; composes TV picture (3105) and blits at col 0x1a,y 0x7f unless DAT_7a4c
+1f51:3105	tv_picture_compose	Bitmap *tv_picture_compose(void)	med	allocates 0x68x0x3a bitmap, copies TV background 7bdc, animates 5 layers (structs 0x830e..0x834e, 16 B each: bank ptr, x, state, counters) + shutter DAT_79d6/79d4; returns new bitmap (caller frees). Ghidra shows bogus args at call site
+1f51:38b1	tv_picture_bg_draw	void tv_picture_bg_draw(void)	med	draws static TV picture background into 7bdc (bank 79a2); called from 1054_34c2
+1f51:3946	tv_layer0_draw	void tv_layer0_draw(void)	low	static part of TV layer 0 (struct 830e: 8312 x, 8314 pose, 8318) into 7bdc
+1f51:3a78	tv_layer1_draw	void tv_layer1_draw(void)	low	static part of TV layer 1 (struct 831e)
+1f51:3b02	tv_layer2_draw	void tv_layer2_draw(void)	low	static part of TV layer 2 (struct 832e)
+1f51:3bb7	tv_layer3_draw	void tv_layer3_draw(void)	low	static part of TV layer 3 (struct 833e)
+1f51:3c2a	tv_layer4_draw	void tv_layer4_draw(void)	low	static part of TV layer 4 (struct 834e)
+1f51:3cc6	tv_picture_tick	void tv_picture_tick(void)	med	if DAT_79d6 (TV active) -> tv_picture_update; called from game_tick
+1f51:3cd2	room_items_draw	void room_items_draw(void)	low	draws up to 5 items (x positions 79a6[0x2a+i] > 0) with sprites 0x12+i of bank 010c at y=100; clip bottom 0x71
+1f51:3d24	room_stack_overlay_draw	void room_stack_overlay_draw(void)	low	draws a pile/stack of up to 36 elements (DAT_7a04) from bank 0100 using position tables DS:0dad/0e29; room overlay used in 1054_15fb
+1f51:3e0f	room_owner_marker_draw	void room_owner_marker_draw(void)	low	if 79a6[0x3a+player 7a16] set, draws sprite(s) from bank 0100 at 0xb0/0x4c (+0xc4/0x58 if ==0x29)
+1f51:3e66	room_variant_overlay_draw	void room_variant_overlay_draw(void)	low	draws sprite 1 of bank 0110 at position chosen by variant DAT_7a06 (HES 0xbc..0xbf)
+1f51:3eb9	room_crowd_draw	void room_crowd_draw(void)	low	sets DAT_7a32 from DAT_7a0e (switch), draws figures/crowd proportional to 7a0e from banks 0104/0100 with random offsets; far function (Ghidra: not far / bogus arg)
+1f51:4095	mouse_overlaps_rect	int16_t mouse_overlaps_rect(int16_t x0, int16_t y0, int16_t x1, int16_t y1)	med	returns -1 if the cursor (or drag image) rectangle overlaps rect, else 0; used to hide mouse before redraw
+1f51:410c	anim_blink_draw	void anim_blink_draw(void *anim, int16_t state, int16_t sprite, int16_t dx, int16_t y)	med	anim struct {SpriteBank* +0; x +4; state +6; ...; blink +0xe}: if anim.state==state randomly (1/50) starts 10-frame blink drawing sprite at (x+dx,y) to current target
+1f51:416f	mouse_in_rect	int16_t mouse_in_rect(int16_t x0, int16_t y0, int16_t x1, int16_t y1)	high	1 if mouse_x/mouse_y inside inclusive rect
+1f51:41a1	game_end_sequence	void game_end_sequence(void)	med	frees room, loads HES 0x7d/0x4b/0xef/0xf0, plays 105-frame animation (table DS:0e67), waits for key/click, fades and calls exit(0)

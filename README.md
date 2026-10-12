@@ -6,9 +6,9 @@ Das Originalprogramm `MTV.EXE` (Turbo C 2.0) wurde Funktion für Funktion zurüc
 Verhalten des Originals: Spiellogik, Grafik, KI, Spielstände (kompatibel mit dem Original)
 und die AdLib-Musik (OPL3-Emulation).
 
-Das Repository enthält **keine** Spieldaten. Die fertige Spielfassung wird als einzelne
-`MadTV.exe` unter *Releases* angeboten; sie bringt die Spieldaten der überarbeiteten Fassung
-von Mad TV mit.
+Der Quellcode in diesem Repository enthält **keine** Spieldaten. Die fertige Spielfassung
+wird getrennt davon als einzelne `MadTV.exe` unter *Releases* angeboten; nur diese Datei
+bringt die Spieldaten der überarbeiteten Fassung von Mad TV mit.
 
 ## Spielen
 
@@ -63,4 +63,4 @@ Archive aus `V2_DIR` (Standard `../Gamefiles2`) ein, entfernt dabei alle Spielst
 - Nuked-OPL3 © Nuke.YKT – LGPL-2.1 (`port/third_party/nuked-opl3/LICENSE`)
 - SDL2 – zlib-Lizenz
 
-Mad TV ist © 1991 Rainbow Arts. Dieses Projekt enthält keine Spieldaten des Originals.
+Mad TV ist © 1991 Rainbow Arts. Der Quellcode dieses Projekts enthält keine Spieldaten.

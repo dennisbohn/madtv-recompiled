@@ -3,7 +3,7 @@
 CC      ?= gcc
 CFLAGS  ?= -O2 -g -std=c11 -Wall -Wextra -Wno-unused-parameter
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
-SDL_LIBS   := $(shell pkg-config --libs sdl2)
+SDL_LIBS   := $(shell pkg-config --libs sdl2) -lole32
 
 BUILD := build
 GAME_DIR := ../Gamefiles
@@ -17,9 +17,13 @@ GAME_SRC := $(wildcard src/game/*.c)
 
 all: $(BUILD)/madtv.exe $(BUILD)/hesview.exe $(BUILD)/unpacktest.exe $(BUILD)/rttest.exe $(BUILD)/SDL2.dll
 
+# Programmsymbol als Windows-Ressource
+$(BUILD)/madtv_res.o: res/madtv.rc res/version.rc res/madtv.ico | $(BUILD)
+	windres -I res res/madtv.rc -O coff -o $@
+
 # Das Spiel. game.h und stubs.c werden aus re/notes/sigs erzeugt (re/tools/gen_game_h.py).
-$(BUILD)/madtv.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h | $(BUILD)
-	$(CC) $(CFLAGS) $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(SDL_LIBS)
+$(BUILD)/madtv.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(BUILD)/madtv_res.o | $(BUILD)
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(BUILD)/madtv_res.o $(SDL_LIBS)
 
 $(BUILD)/hesview.exe: tools/hesview.c $(PLATFORM) $(HEADERS) | $(BUILD)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) -Isrc -o $@ tools/hesview.c $(PLATFORM) $(SDL_LIBS)
@@ -50,4 +54,23 @@ test: $(BUILD)/unpacktest.exe $(BUILD)/rttest.exe $(BUILD)/fmttest.exe $(BUILD)/
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test
+.PHONY: all clean test release
+
+# ---- Gebündelte Einzel-EXE (Spieldaten eingebettet, SDL statisch) ----
+# Spieldaten werden nur lokal eingebettet und nie ins Repository übernommen.
+V1_EXE   ?= ../Gamefiles/MTV.EXE
+V2_DIR   ?= ../Gamefiles2
+RELEASE  := $(BUILD)/release
+SDL_STATIC_LIBS := $(shell pkg-config --static --libs sdl2) -static -static-libgcc
+
+$(RELEASE)/bundle.rc: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOURCE1.RSC $(V2_DIR)/SOURCE2.RSC
+	python -I tools/make_bundle.py $(V1_EXE) $(V2_DIR) $(RELEASE)
+
+$(RELEASE)/bundle_res.o: $(RELEASE)/bundle.rc res/version.rc
+	windres -I $(RELEASE) -I res $(RELEASE)/bundle.rc -O coff -o $@
+
+$(RELEASE)/MadTV.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(RELEASE)/bundle_res.o
+	$(CC) $(CFLAGS) -g0 $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(RELEASE)/bundle_res.o $(SDL_STATIC_LIBS)
+	strip $@
+
+release: $(RELEASE)/MadTV.exe

@@ -4,6 +4,8 @@
  * Das Gebäude wird in die Bitmap DS:8eba (208 x 150) gezeichnet, 5 Etagen à 30 Pixel; der
  * sichtbare Ausschnitt folgt der eigenen Figur (Scrollwert DS:8c2e). Etagen haben je 0x7a Byte
  * Türdaten ab DS:7c62 (x-Positionen, Typen, Schilder, Besitzer ...). */
+#include <string.h>
+
 #include "game.h"
 
 #define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
@@ -282,6 +284,222 @@ void building_sides_draw(void)
     DS_I16(0x11a4) = g_scroll;
 }
 
+/* PORT: in figures_update gezeichnete Figuren (Reihenfolge, Bild, Zustand fürs Schrittversatz)
+ * für das flüssige Nachzeichnen zwischen den Gebäudeschritten (building_render_smooth) */
+static int16_t g_drawn_fig[6], g_drawn_frame[6], g_drawn_state[6], g_drawn_anim[6], g_drawn_count;
+
+/* Absperrung beim Gang zum Chef und Markierung über einer Tür (Teil von building_animate) */
+static void building_markers_draw(void)
+{
+    if (DS_I16(0x7a0c) != 0) {
+        /* Absperrung beim Gang zum Chef */
+        for (int16_t x = 8; x < 0x134; x += 0x14)
+            draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x835e), 10), x, 0x69);
+        draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x835e), 2), 0x106, 0x5c);
+    }
+    if (DS_I16(0x7a42) > 999) {
+        g_clip_on = 1;
+        g_clip_top = 4;
+        g_clip_bottom = 0x70;
+        draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x8362), 0x8a), (int16_t)(DOOR_X(DS_I16(0x7a46), DS_I16(0x7a44)) - 5),
+                    (int16_t)((DS_I16(0x7a46) * -0x1e - (0x155 - g_scroll)) + 0x1c6));
+        g_clip_on = 0;
+    }
+}
+
+/* ---- PORT: flüssige Gebäudeansicht ----
+ * Das Original bewegt Aufzug, Scroll und Figuren nur bei jedem Gebäudeschritt (alle
+ * 50/Spieltempo Takte, normal 4 Takte = 12,5 Hz) um mehrere Pixel und zeichnet dabei die
+ * Szene. Hier merkt sich jeder Schritt Scroll und Kabinenhöhe (Schnappschuss). Zwischen den
+ * Schritten zeichnet building_render_smooth die Ansicht bei jedem angezeigten Bild mit
+ * Zwischenwerten für Scroll und Kabine zwischen vorletztem und letztem Schritt neu – also
+ * höchstens einen Schritt verzögert, aber nie schneller. Gehende Figuren bleiben in ihren
+ * Originalschritten. Die Spiellogik und ihre Zustände bleiben unverändert; gezeichnet wird mit
+ * denselben Funktionen in derselben Reihenfolge wie in building_animate. */
+typedef struct {
+    int16_t scroll;
+    int16_t elev_pos; /* Kabinenhöhe stetig: Etage * 30 - Versatz */
+} BuildingSnap;
+
+static BuildingSnap g_snap_prev, g_snap_cur;
+static int g_snap_count;
+static uint64_t g_snap_time; /* Zeitpunkt des letzten Schritts (µs), auf gleichmäßigem Raster */
+
+/* Dauer eines Gebäudeschritts in µs (50/Spieltempo Takte) */
+static uint32_t building_step_us(void)
+{
+    return ticks_to_us((uint32_t)(50 / (int32_t)g_game_speed_setting));
+}
+
+static void building_snapshot_take(void)
+{
+    /* Die Spielschleife bemerkt einen fälligen Schritt erst beim nächsten Abfragen (bis zu einer
+     * Bilddauer später). Die Schritte liegen aber im festen Abstand der Spieltakte; daher wird
+     * der Schrittzeitpunkt auf ein gleichmäßiges Raster gelegt und nur sanft nachgeführt. */
+    uint64_t now = time_us(), step = building_step_us();
+    uint64_t expected = g_snap_time + step;
+    if (g_snap_count > 0 && now + step / 2 >= expected && now <= expected + step / 2)
+        g_snap_time = (uint64_t)((int64_t)expected + ((int64_t)now - (int64_t)expected) / 8);
+    else
+        g_snap_time = now;
+    g_snap_prev = g_snap_cur;
+    g_snap_cur.scroll = g_scroll;
+    g_snap_cur.elev_pos = (int16_t)(g_elev_floor * 0x1e - g_elev_offset);
+    if (g_snap_count < 2)
+        g_snap_count++;
+}
+
+/* Zwischenwert; Sprünge über 8 Pixel (Etagenwechsel, Versetzen) werden nicht interpoliert */
+static int16_t snap_lerp(int16_t a, int16_t b, uint32_t num, uint32_t den)
+{
+    int d = b - a;
+    if (d > 8 || d < -8)
+        return b;
+    return (int16_t)(a + (int)((int64_t)d * num / den));
+}
+
+/* Seitenbereiche links/rechts als zwei getrennte Ebenen (wie building_sides_draw, aber nicht in
+ * ein Bild gemischt): die Stadtkulisse läuft mit Scroll / g_elev_speed (Parallaxe), Logo und
+ * Straßenobjekte am Erdgeschoss mit vollem Scroll. Jede Ebene bekommt ihren eigenen Feinanteil,
+ * sonst zittern sie gegeneinander. Puffer: Zeile 0 = Bildschirmzeile 3 (über dem Bereich). */
+static void building_sides_layers(int32_t scroll_fine)
+{
+    static Bitmap *back[2], *front[2];
+    if (!back[0])
+        for (int k = 0; k < 2; k++) {
+            back[k] = bitmap_alloc(0x48, 0x6e); /* 8 Pixel Reserve: Blits arbeiten in 8er-Spalten */
+            front[k] = bitmap_alloc(0x48, 0x6e);
+        }
+    if (g_elev_speed <= 0)
+        return;
+    SpriteBank *b00f4 = DS_PTR(SpriteBank, 0x00f4), *b7b12 = DS_PTR(SpriteBank, 0x7b12);
+    int16_t s = (int16_t)(g_scroll / g_elev_speed);
+    int16_t clip_on = g_clip_on;
+    g_clip_on = 0;
+    for (int k = 0; k < 2; k++) {
+        /* Kulisse: Bild ab Zeile s+4; darüber wiederholt sich (wie im Original) seine erste Zeile */
+        Bitmap *img = bank_bmp(b00f4, k == 0 ? 10 : 2);
+        blit_rect(img, back[k], 0, (int16_t)(s + 1), 0, 0, 0x38, (int16_t)(0x6d - s));
+        for (int16_t r = 0; r <= s && r < 0x6e; r++)
+            blit_rect(img, back[k], 0, r, 0, 0, 0x38, 1);
+        bmp_fill(front[k], 0, 0, 9, 0x6e, 0);
+    }
+    if (g_scroll < 0x17) /* Logo rechts */
+        blit_sprite_masked(bank_bmp(b7b12, 10), front[1], 0, (int16_t)(g_scroll + 0x5b - 3), 0, 0, 0x38,
+                           (int16_t)(0x16 - g_scroll));
+    if (g_scroll < 0xc)
+        blit_sprite_masked(bank_bmp(b7b12, 0x12), front[0], 4, (int16_t)(g_scroll + 0x66 - 3), 0, 0, 0x38,
+                           (int16_t)(0xb - g_scroll));
+    if (g_scroll < 0x22) /* ragt bis x 0x3d; ab 0x38 deckt das Gebäude es ab */
+        blit_sprite_masked(bank_bmp(DS_PTR(SpriteBank, 0x8c36), 0xd2), front[0], 0x1d, (int16_t)(g_scroll + 0x50 - 3), 0,
+                           0, 0x20, (int16_t)(0x21 - g_scroll));
+    g_clip_on = clip_on;
+
+    int back_frac = (int)(scroll_fine / g_elev_speed - (int32_t)s * 256), front_frac = (int)(scroll_fine & 0xff);
+    display_layer(0, 4, 0x38, 0x6d, back_frac, back[0], 0);
+    display_layer(0x108, 4, 0x38, 0x6d, back_frac, back[1], 0);
+    if (g_scroll < 0x22) {
+        display_layer(0, 4, 0x38, 0x6d, front_frac, front[0], 1);
+        display_layer(0x108, 4, 0x38, 0x6d, front_frac, front[1], 1);
+    }
+}
+
+void building_render_smooth(void)
+{
+    if (g_snap_count < 2 || g_cur_room != 0 || DS_I16(0x012c) == 2)
+        return;
+    /* Fortschritt für den Zeitpunkt, zu dem dieses Bild erscheint (nächster V-Sync) */
+    uint32_t den = building_step_us();
+    uint64_t show = display_next_frame_us();
+    uint32_t num = show <= g_snap_time ? 0 : show - g_snap_time >= den ? den : (uint32_t)(show - g_snap_time);
+
+    /* Logikwerte sichern und Zwischenwerte einsetzen */
+    int16_t scroll = g_scroll, elev_floor = g_elev_floor, elev_offset = g_elev_offset;
+    int16_t state[6], anim[6];
+    for (int16_t i = 0; i < 6; i++) {
+        state[i] = FIG_STATE(i);
+        anim[i] = FIG_ANIM(i);
+    }
+    /* Scroll mit Nachkommaanteil (1/256): gezeichnet wird beim ganzzahligen Teil, den Rest
+     * verschiebt die Darstellung fein (display_subpixel_shift) */
+    int32_t scroll_fine = (int32_t)g_snap_cur.scroll * 256;
+    int16_t ds = (int16_t)(g_snap_cur.scroll - g_snap_prev.scroll);
+    if (ds >= -8 && ds <= 8)
+        scroll_fine = (int32_t)g_snap_prev.scroll * 256 + (int32_t)((int64_t)ds * 256 * num / den);
+    g_scroll = (int16_t)(scroll_fine >> 8);
+    int16_t pos = snap_lerp(g_snap_prev.elev_pos, g_snap_cur.elev_pos, num, den);
+    if (pos != g_snap_cur.elev_pos) {
+        if (g_snap_cur.elev_pos > g_snap_prev.elev_pos) { /* aufwärts: Versatz <= 0 */
+            g_elev_floor = (int16_t)(pos / 0x1e);
+            g_elev_offset = (int16_t)(g_elev_floor * 0x1e - pos);
+        } else { /* abwärts: Versatz >= 0 */
+            g_elev_floor = (int16_t)((pos + 0x1d) / 0x1e);
+            g_elev_offset = (int16_t)(g_elev_floor * 0x1e - pos);
+        }
+    }
+    /* Gehende Figuren bleiben bewusst in ihren Originalschritten: ihre Laufanimation ist auf
+     * diese Schrittweite abgestimmt, Zwischenpositionen würden die Beine "rutschen" lassen. */
+
+    /* zeichnen wie building_animate (ohne Logik) */
+    building_draw(g_scroll);
+    building_sides_draw();
+    building_view_present();
+    g_clip_on = 1;
+    g_clip_top = 4;
+    g_clip_bottom = 0x71;
+    for (int16_t n = 0; n < g_drawn_count; n++) {
+        int16_t f = g_drawn_fig[n];
+        FIG_STATE(f) = g_drawn_state[n];
+        FIG_ANIM(f) = g_drawn_anim[n];
+        if (FIG_FLOOR(f) <= g_top_floor && g_top_floor - 4 <= FIG_FLOOR(f))
+            figure_draw(f, g_drawn_frame[n]);
+    }
+    g_clip_on = 0;
+
+    /* Hinweise (Türschilder, Grüße, Meldungen, Tooltips) und Absperrung sind Bedienoberfläche bzw.
+     * stehen fest auf dem Bildschirm: sie dürfen nicht mit Gebäude oder Kulisse fein verschoben
+     * werden. Was sie zeichnen, wird als oberste, unverschobene Ebene herausgelöst (Vergleich mit
+     * dem Bild davor, so bleiben alle Farben erhalten) und im Grundbild wieder entfernt. */
+    enum { SCENE_W = 0x140 }; /* Breite der Spielszene DS:8e62 */
+    static uint8_t before[SCENE_W * 0x6e], over[SCENE_W * 0x6e], mask[SCENE_W * 0x6e];
+    uint8_t *up = g_upper_screen->pixels + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
+    memcpy(before, up, sizeof before);
+    building_hover_draw();
+    building_markers_draw();
+    int any = 0;
+    for (int i = 0; i < SCENE_W * 0x6e; i++) {
+        mask[i] = up[i] != before[i];
+        over[i] = up[i];
+        any |= mask[i];
+    }
+    memcpy(up, before, sizeof before);
+
+    display_layers_begin();
+    /* Feinverschiebung des Gebäudeausschnitts (0x38/4, 208 x 109); oben rückt die Gebäudezeile
+     * über dem Ausschnitt nach */
+    int16_t row = (int16_t)(g_top_floor * 0x1e - (g_scroll + 0x6d) - 1);
+    if ((scroll_fine & 0xff) != 0 && row >= 0 && row < g_building->h)
+        display_subpixel_shift(0x38, 4, 0xd0, 0x6d, (int)(scroll_fine & 0xff),
+                               g_building->pixels + row * g_building->wcols * 8);
+    building_sides_layers(scroll_fine);
+    if (any)
+        display_overlay(0, 4, SCENE_W, 0x6d, over, mask, SCENE_W);
+
+    /* Logikwerte zurück (g_top_floor bleibt passend zur gezeichneten Gebäudebitmap) */
+    g_scroll = scroll;
+    g_elev_floor = elev_floor;
+    g_elev_offset = elev_offset;
+    for (int16_t i = 0; i < 6; i++) {
+        FIG_STATE(i) = state[i];
+        FIG_ANIM(i) = anim[i];
+    }
+
+    /* Gebäudeausschnitt auf den Bildschirm (wie screen_update beim Scrollen, ohne Warten) */
+    ScrRectArgs a = {g_upper_screen, 0, 4, 0x28, 0x6d, 0, 4};
+    scr_blit_rect(&a);
+    display_layers_commit(); /* Ebenen gehören zu genau diesem Grundbild */
+}
+
 /* 27bb:0b9e – ein Animationsschritt im Gebäude (Aufzug, Passanten, Bild, Figuren, Hinweise) */
 void building_animate(void)
 {
@@ -310,21 +528,9 @@ void building_animate(void)
     if (g_cur_room == 0) {
         building_hover_draw();
         mouse_update();
-        if (DS_I16(0x7a0c) != 0) {
-            /* Absperrung beim Gang zum Chef */
-            for (int16_t x = 8; x < 0x134; x += 0x14)
-                draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x835e), 10), x, 0x69);
-            draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x835e), 2), 0x106, 0x5c);
-        }
-        if (DS_I16(0x7a42) > 999) {
-            g_clip_on = 1;
-            g_clip_top = 4;
-            g_clip_bottom = 0x70;
-            draw_sprite(bank_bmp(DS_PTR(SpriteBank, 0x8362), 0x8a), (int16_t)(DOOR_X(DS_I16(0x7a46), DS_I16(0x7a44)) - 5),
-                        (int16_t)((DS_I16(0x7a46) * -0x1e - (0x155 - g_scroll)) + 0x1c6));
-            g_clip_on = 0;
-        }
+        building_markers_draw();
     }
+    building_snapshot_take(); /* PORT: für building_render_smooth */
 }
 
 /* Animationsbild beim Gehen: Schritt-Zyklus aus Position und Geschwindigkeit */
@@ -342,6 +548,7 @@ void figures_update(void)
 {
     static int16_t frame; /* Original: Register DI bleibt zwischen den Figuren erhalten */
     int16_t order[6], count = 0;
+    g_drawn_count = 0;
     for (int16_t i = 0; i < 6; i++) {
         DS_I16(0x8f8e) = FIG_STATE(i);
         if (FIG_STATE(i) > 1 && FIG_STATE(i) != 3)
@@ -427,6 +634,10 @@ void figures_update(void)
         DS_I16(0x8f8e) = FIG_FLOOR(f);
         if (FIG_FLOOR(f) <= g_top_floor && g_top_floor - 4 <= FIG_FLOOR(f) && g_cur_room == 0)
             figure_draw(f, frame);
+        g_drawn_fig[g_drawn_count] = f; /* PORT: fürs Nachzeichnen merken */
+        g_drawn_frame[g_drawn_count] = frame;
+        g_drawn_state[g_drawn_count] = FIG_STATE(f);
+        g_drawn_anim[g_drawn_count++] = *anim;
         int16_t a = *anim, st = FIG_STATE(f);
         if ((a > 6 && st == 2) || (a > 4 && st == 4) || (a > 2 && st == 5)) {
             *anim = (int16_t)(st == 5 ? 2 : 0);

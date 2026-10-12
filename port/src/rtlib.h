@@ -67,6 +67,8 @@ void bmp_blit_rect_trans(const BlitRectArgs *a);
 void bmp_blit_trans_shift(const BlitShiftArgs *a);
 void bmp_blit_rect_trans_shift(const BlitRectShiftArgs *a);
 void scr_blit_rect(const ScrRectArgs *a);
+/* PORT: pixelgenaues Rechteck aus src auf den Bildschirm */
+void scr_blit_px(const Bitmap *src, int sx, int sy, int w, int h, int dx, int dy);
 
 /* ---- Maus (relativ: mouse_poll legt die Bewegung in DS:16a2/16a4 ab) ---- */
 int16_t mouse_init(void);
@@ -84,6 +86,25 @@ int16_t timer_init(void);
 void timer_shutdown(void);
 void ticks_reset(void);
 uint16_t ticks_get(void);
+/* PORT: Spieltakte in 1/256 Takt (nur Differenzen nutzen) */
+uint32_t ticks_fine(void);
+/* PORT: Anzahl angezeigter Bilder */
+uint32_t display_frame_count(void);
+/* PORT: Zeitpunkt des nächsten angezeigten Bilds und aktuelle Zeit (µs), Dauer von n Takten (µs) */
+uint64_t display_next_frame_us(void);
+/* PORT: Bereich des nächsten Bilds um frac256/256 Spielpixel nach unten versetzt darstellen;
+ * row_above = Zeile (w Palettenindizes), die oben nachrückt */
+void display_subpixel_shift(int x, int y, int w, int h, int frac256, const uint8_t *row_above);
+/* PORT: eigene Ebene x/y/w/h, um frac256/256 Pixel nach unten versetzt; bmp enthält h+1 Zeilen,
+ * beginnend mit der Zeile über dem Bereich; transparent: Farbe 0 frei */
+void display_layer(int x, int y, int w, int h, int frac256, const Bitmap *bmp, int transparent);
+/* PORT: Ebenen/Feinverschiebungen neu beginnen; nach dem Zeichnen ins Grundbild abschließen */
+void display_layers_begin(void);
+void display_layers_commit(void);
+/* PORT: unverschobene Ebene mit Deckungsmaske (px/mask: h+1 Zeilen ab der Zeile über dem Bereich) */
+void display_overlay(int x, int y, int w, int h, const uint8_t *px, const uint8_t *mask, int stride);
+uint64_t time_us(void);
+uint32_t ticks_to_us(uint32_t n);
 uint16_t ticks_peek(void);
 void ticks_set(uint16_t n);
 

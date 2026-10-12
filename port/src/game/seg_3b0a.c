@@ -146,7 +146,11 @@ void ai_optimize_programmes(void)
     int8_t p = AI_PLAYER, ok = 1;
     for (int16_t h = start; h <= 0xe; h++) {
         int16_t prog = SCHEDULE(p, h), s = h;
-        uint8_t *cur = FILM(prog); /* ORIGINAL: bei Fortsetzungen (9999) der Datensatz "Film 9999" */
+        /* ORIGINAL-BUG: bei Fortsetzungsstunden (9999) liest das Original den Datensatz "Film 9999"
+         * weit hinter der Filmtabelle (zufälliger Speicher). PORT: leerer Datensatz statt eines
+         * Zugriffs außerhalb des Speichers – Qualität/Länge 0, der Platz wird nicht getauscht. */
+        static uint8_t no_film[0x17];
+        uint8_t *cur = prog == 9999 ? no_film : FILM(prog);
         if (prog == 9999) {
             while (SCHEDULE(p, s) == 9999)
                 s--;

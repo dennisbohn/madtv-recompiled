@@ -44,7 +44,7 @@ void vga_init_segs(void)
 
 void vga_wait_vsync(void)
 {
-    platform_present_now();
+    platform_wait_retrace(); /* 70 Hz wie Modus 13h, unabhängig vom Monitor */
 }
 
 void vga_set_palette(const void *pal)
@@ -209,6 +209,14 @@ void bmp_blit_trans_shift(const BlitShiftArgs *a)
         copy_trans(d, s, w);
 }
 
+/* PORT: pixelgenaues Rechteck aus src (sx/sy) auf den Bildschirm (dx/dy) */
+void scr_blit_px(const Bitmap *src, int sx, int sy, int w, int h, int dx, int dy)
+{
+    int ss = src->wcols * 8;
+    for (int r = 0; r < h; r++)
+        memcpy(g_screen + (dy + r) * SCREEN_W + dx, src->pixels + (sy + r) * ss + sx, (size_t)w);
+}
+
 void scr_blit_rect(const ScrRectArgs *a)
 {
     int ss = a->src->wcols * 8, w = a->w * 8;
@@ -220,8 +228,11 @@ void scr_blit_rect(const ScrRectArgs *a)
 
 /* ======================================================================== Maus */
 
+static const uint8_t *cursor_overlay(int *w, int *h, int *stride, int *x, int *y, int have_abs);
+
 int16_t mouse_init(void)
 {
+    platform_set_cursor_provider(cursor_overlay); /* PORT: Zeiger-Overlay */
     return 1;
 }
 
@@ -234,17 +245,68 @@ void mouse_setup(void)
     MOUSE_DY = 0;
 }
 
+/* PORT: Zeiger-Overlay. Das Original zeichnete Mauszeiger und gezogene Objekte selbst in den
+ * Bildschirmspeicher (mit Hintergrundsicherung), und zwar nur, wenn die Spielschleife lief. Im
+ * Port zeichnet sie die Darstellungsschicht bei jedem angezeigten Bild über das fertige Bild;
+ * diese Funktion sagt ihr, was zu zeichnen ist – nach denselben Regeln wie das Original:
+ *   Sichtbarkeitszähler DS:8aac == 1: Zeigerbild DS:8e74[Form DS:79b2] an der Zeigerposition
+ *   Zähler == 0 und gezogenes Objekt DS:0390: Objekt um seinen Griffpunkt versetzt, auf den
+ *   oberen Bildbereich (y < 0x78) begrenzt. */
+static const uint8_t *cursor_overlay(int *w, int *h, int *stride, int *x, int *y, int have_abs)
+{
+    /* Position in 1/256 Spielpixel: neueste Mausposition (zwischen den Spielpixeln), begrenzt wie
+     * im Spiel (DS:79cc..79d2); an einer Grenze sitzt der Zeiger auf dem ganzen Pixel */
+    int cx = DS_I16(0x7bd6) * 256, cy = DS_I16(0x7bd8) * 256;
+    if (have_abs) {
+        cx = *x < DS_I16(0x79cc) * 256 ? DS_I16(0x79cc) * 256 : *x > DS_I16(0x79d0) * 256 ? DS_I16(0x79d0) * 256 : *x;
+        cy = *y < DS_I16(0x79ce) * 256 ? DS_I16(0x79ce) * 256 : *y > DS_I16(0x79d2) * 256 ? DS_I16(0x79d2) * 256 : *y;
+    }
+    int16_t visible = DS_I16(0x8aac);
+    Bitmap *drag = DS_PTR(Bitmap, 0x0390);
+    if (visible == 1) {
+        int16_t shape = DS_I16(0x79b2);
+        if (shape < 1 || shape > 3)
+            return NULL;
+        Bitmap *b = DS_ADDR(Bitmap *, 0x8e74)[shape];
+        *w = *stride = b->wcols * 8;
+        *h = b->h;
+        *x = cx;
+        *y = cy;
+        return b->pixels;
+    }
+    if (visible == 0 && drag) {
+        int16_t dw = DS_I16(0x0394), dh = DS_I16(0x0396);
+        *w = dw;
+        *h = dh;
+        *stride = drag->wcols * 8;
+        int ox = cx - DS_I16(0x0398) * 256, oy = cy - DS_I16(0x039a) * 256;
+        *x = ox < 0 ? 0 : ox > (0x13f - dw) * 256 ? (0x13f - dw) * 256 : ox;
+        *y = oy < 0 ? 0 : oy > (0x78 - dh) * 256 ? (0x78 - dh) * 256 : oy;
+        return drag->pixels;
+    }
+    return NULL;
+}
+
 int16_t mouse_poll(void)
 {
     int16_t dx, dy;
     uint16_t buttons;
     platform_mouse_take(&dx, &dy, &buttons);
     int16_t ax, ay;
-    if (platform_mouse_abs(&ax, &ay)) {
+    if (platform_mouse_abs(DS_I16(0x7bd6), DS_I16(0x7bd8), &ax, &ay)) {
         /* PORT: Windows-Zeiger absolut – Bewegung bis dorthin melden (Zeiger DS:7bd6/7bd8 plus
          * noch nicht verarbeitete Bewegung DS:7a28/7a2a) */
         dx = (int16_t)(ax - DS_I16(0x7bd6) - DS_I16(0x7a28));
         dy = (int16_t)(ay - DS_I16(0x7bd8) - DS_I16(0x7a2a));
+        /* Liegt der Zeiger außerhalb des Bereichs, den das Spiel seinem Zeiger gerade erlaubt
+         * (DS:79cc..79d2: untere/rechte Kante, Dialoge), wird die gemeldete Position darauf
+         * beschnitten – im Vollbild entsteht so keine tote Zone (wie beim DOS-Maustreiber). */
+        int16_t cx = ax < DS_I16(0x79cc) ? DS_I16(0x79cc) : ax > DS_I16(0x79d0) ? DS_I16(0x79d0) : ax;
+        int16_t cy = ay < DS_I16(0x79ce) ? DS_I16(0x79ce) : ay > DS_I16(0x79d2) ? DS_I16(0x79d2) : ay;
+        if (cx != ax || cy != ay)
+            platform_mouse_confine(cx, cy);
+        if (platform_debug_env("MADTV_MOUSELOG"))
+            platform_debug_log("MOUSE ziel=%d,%d zeiger=%d,%d begrenzt=%d,%d", ax, ay, DS_I16(0x7bd6), DS_I16(0x7bd8), cx, cy);
     }
     MOUSE_DX = dx;
     MOUSE_DY = dy;
@@ -309,7 +371,7 @@ void ticks_reset(void)
 
 /* Zählerstand ohne Ereignisverarbeitung und ohne Schlafen (für rand_range: im Original ein
  * einfacher Speicherzugriff; mit Schlafen würde der Zufallsseed in Schleifen springen) */
-uint16_t ticks_peek(void)
+static uint32_t tick_speed(void)
 {
     static int speed = -1; /* Testhilfe MADTV_SPEED=n: alle Spieltakte n-mal schneller */
     if (speed < 0) {
@@ -317,10 +379,75 @@ uint16_t ticks_peek(void)
         if (speed < 1)
             speed = 1;
     }
+    return (uint32_t)speed;
+}
+
+uint16_t ticks_peek(void)
+{
     uint32_t elapsed = platform_ms() - g_tick_base_ms;
-    uint16_t t = (uint16_t)(g_tick_base + (uint32_t)((uint64_t)elapsed * (uint32_t)speed * TICK_NUM / TICK_DEN));
+    uint16_t t = (uint16_t)(g_tick_base + (uint32_t)((uint64_t)elapsed * tick_speed() * TICK_NUM / TICK_DEN));
     TICK_COUNTER = t;
     return t;
+}
+
+/* PORT: Spieltakte in 1/256 Takt seit Programmstart – für Übergänge, die zwischen den 50-Hz-
+ * Takten flüssig weiterlaufen sollen (nur Differenzen sind aussagekräftig) */
+uint32_t ticks_fine(void)
+{
+    return (uint32_t)((uint64_t)platform_ms() * tick_speed() * TICK_NUM * 256 / TICK_DEN);
+}
+
+/* PORT: Anzahl angezeigter Bilder – Spielcode, der zwischen seinen Takten flüssig nachzeichnet,
+ * erkennt daran, dass ein neues Bild fällig war */
+uint32_t display_frame_count(void)
+{
+    return platform_frame_count();
+}
+
+/* PORT: Bereich des nächsten Bilds um Bruchteile eines Pixels nach unten versetzt darstellen */
+void display_subpixel_shift(int x, int y, int w, int h, int frac256, const uint8_t *row_above)
+{
+    video_set_subpixel_shift(x, y, w, h, frac256, row_above);
+}
+
+/* PORT: Ebenen neu beginnen / abschließen (siehe video_layers_begin/_commit) */
+void display_layers_begin(void)
+{
+    video_layers_begin();
+}
+
+void display_layers_commit(void)
+{
+    video_layers_commit();
+}
+
+/* PORT: eigene, fein verschobene Ebene für das nächste Bild (siehe video_add_layer) */
+void display_layer(int x, int y, int w, int h, int frac256, const Bitmap *bmp, int transparent)
+{
+    video_add_layer(x, y, w, h, frac256, bmp->pixels, bmp->wcols * 8, transparent, NULL);
+}
+
+/* PORT: unverschobene Ebene mit Deckungsmaske (px/mask: h+1 Zeilen ab der Zeile über dem Bereich) */
+void display_overlay(int x, int y, int w, int h, const uint8_t *px, const uint8_t *mask, int stride)
+{
+    video_add_layer(x, y, w, h, 0, px, stride, 0, mask);
+}
+
+/* PORT: Zeitpunkt (µs), zu dem das nächste Bild erscheint, und die aktuelle Zeit (µs) */
+uint64_t display_next_frame_us(void)
+{
+    return platform_next_frame_us();
+}
+
+uint64_t time_us(void)
+{
+    return platform_time_us();
+}
+
+/* PORT: Dauer von n Spieltakten in µs (50,008 Hz, Testhilfe MADTV_SPEED eingerechnet) */
+uint32_t ticks_to_us(uint32_t n)
+{
+    return (uint32_t)((uint64_t)n * 1000000ull * 1000ull * TICK_DEN / TICK_NUM / 1000000ull / tick_speed());
 }
 
 uint16_t ticks_get(void)
@@ -336,72 +463,103 @@ uint16_t ticks_get(void)
 
 /* ======================================================================== HES-Dateien */
 
+/* PORT: Spielstände getrennt von den Spieldaten. Das Original schreibt sie als 209.HES (Namen
+ * der 10 Plätze) und 210..219.HES in den Spielordner. Der Port legt genau diese Dateien im
+ * Spielstand-Ordner von Windows ab (platform_save_dir); das Spiel merkt davon nichts. Spielstände
+ * im Spielordner werden nicht gelesen. */
+static int hes_is_save(int16_t no)
+{
+    return no >= 0xd1 && no <= 0xdb;
+}
+
 static FILE *hes_open(int16_t no, const char *mode)
 {
     char path[600];
-    snprintf(path, sizeof path, "%s/%03d.HES", platform_game_dir(), no);
+    if (hes_is_save(no)) {
+        snprintf(path, sizeof path, "%s/%03d.HES", platform_save_dir(), no);
+    } else {
+        snprintf(path, sizeof path, "%s/%03d.HES", platform_game_dir(), no);
+    }
     return fopen(path, mode);
 }
 
-/* ---- Korrigierte Spieldaten aus der zweiten Programmversion ----
- * Die Spieldaten in "Gamefiles" sind an einigen Stellen unfertig (Shows ohne Länge und
- * Zuschauer-Bits, Darstellernamen "<Not set>", ältere Texte, Titelbild ohne Schriftzug und
- * Copyright, unfertige Abspannszene im Intro). Die zweite Version (Ordner "Gamefiles2" neben
- * "Gamefiles") enthält dieselben Dateien korrigiert in SOURCE1.RSC und SOURCE2.RSC:
- * Verzeichnis aus 6-Byte-Einträgen (u32 Offset, u16 Länge), Eintrag n = Datei n.HES.
- * Übernommen werden nur diese Daten-, Text- und Introdateien, keine Spielstände. */
-static const int16_t g_overlay_files[][2] = { /* HES-Nummer, Archiv */
-    {42, 1},  {43, 1},  {45, 1},  {46, 1},  {47, 1},  {199, 1}, {201, 1}, {203, 1}, {204, 1}, {206, 1},
-    {207, 1}, {246, 1}, {251, 1}, {253, 1}, {300, 2}, {307, 2}, {308, 2}, {309, 2}, {327, 2}, {328, 2},
-};
-static uint8_t *g_rsc[3];
+/* ---- Spieldaten-Archive der überarbeiteten Fassung ----
+ * Die zweite Fassung von Mad TV liefert alle HES-Dateien in zwei Archiven SOURCE1.RSC und
+ * SOURCE2.RSC: Verzeichnis aus 600 Einträgen zu 6 Byte (u32 Offset, u16 Länge), Eintrag n =
+ * Datei n.HES. Sie enthalten jede Datei der Originalfassung, einige davon korrigiert (Shows mit
+ * Länge und Zuschauer-Bits, Darstellernamen, Texte, Titelbild mit Copyright, Intro-Szenen).
+ * Gelesen wird daher zuerst aus den Archiven, erst dann aus einzelnen NNN.HES-Dateien. Die Archive
+ * kommen aus dem Programm selbst (eingebettet) oder aus dem Spielordner bzw. "<Spielordner>2".
+ * Spielstände (209–219) werden nie aus den Archiven gelesen. */
+enum { RSC_ENTRIES = 600 };
+static const uint8_t *g_rsc[3];
 static long g_rsc_size[3];
-static int g_rsc_tried[3];
 
-static const uint8_t *hes_overlay(int16_t no, long *len)
+static void rsc_init(void)
 {
-    int which = 0;
-    for (size_t i = 0; i < sizeof g_overlay_files / sizeof *g_overlay_files; i++)
-        if (g_overlay_files[i][0] == no)
-            which = g_overlay_files[i][1];
-    if (!which)
-        return NULL;
-    if (!g_rsc_tried[which]) {
-        g_rsc_tried[which] = 1;
-        char path[600];
-        snprintf(path, sizeof path, "%s2/SOURCE%d.RSC", platform_game_dir(), which);
-        FILE *f = fopen(path, "rb");
-        if (f) {
+    static int done;
+    if (done)
+        return;
+    done = 1;
+    for (int k = 1; k <= 2; k++) {
+        char name[16];
+        snprintf(name, sizeof name, "SOURCE%d", k);
+        size_t len = 0;
+        const uint8_t *emb = platform_resource(name, &len);
+        if (emb) {
+            g_rsc[k] = emb;
+            g_rsc_size[k] = (long)len;
+            continue;
+        }
+        static const char *const fmts[] = {"%s/SOURCE%d.RSC", "%s2/SOURCE%d.RSC"};
+        for (size_t v = 0; v < sizeof fmts / sizeof *fmts && !g_rsc[k]; v++) {
+            char path[600];
+            snprintf(path, sizeof path, fmts[v], platform_game_dir(), k);
+            FILE *f = fopen(path, "rb");
+            if (!f)
+                continue;
             fseek(f, 0, SEEK_END);
-            g_rsc_size[which] = ftell(f);
+            long size = ftell(f);
             fseek(f, 0, SEEK_SET);
-            g_rsc[which] = malloc((size_t)g_rsc_size[which]);
-            if (g_rsc[which] && fread(g_rsc[which], 1, (size_t)g_rsc_size[which], f) != (size_t)g_rsc_size[which]) {
-                free(g_rsc[which]);
-                g_rsc[which] = NULL;
+            uint8_t *buf = malloc(size > 0 ? (size_t)size : 1);
+            if (buf && fread(buf, 1, (size_t)size, f) == (size_t)size) {
+                g_rsc[k] = buf;
+                g_rsc_size[k] = size;
+                fprintf(stderr, "Spieldaten aus %s\n", path);
+            } else {
+                free(buf);
             }
             fclose(f);
-            if (g_rsc[which])
-                fprintf(stderr, "Spieldaten-Korrekturen aus %s\n", path);
         }
     }
-    const uint8_t *rsc = g_rsc[which];
-    long size = g_rsc_size[which];
-    if (!rsc || size < 600 * 6)
+}
+
+/* Datei no aus einem der Archive (SOURCE1 vor SOURCE2) oder NULL */
+static const uint8_t *rsc_entry(int16_t no, long *len)
+{
+    if (no < 0 || no >= RSC_ENTRIES || hes_is_save(no))
         return NULL;
-    const uint8_t *e = rsc + no * 6;
-    uint32_t off = (uint32_t)(e[0] | e[1] << 8 | e[2] << 16 | (uint32_t)e[3] << 24);
-    uint16_t l = (uint16_t)(e[4] | e[5] << 8);
-    if (l == 0 || (long)off + l > size)
-        return NULL;
-    *len = l;
-    return rsc + off;
+    rsc_init();
+    for (int k = 1; k <= 2; k++) {
+        const uint8_t *rsc = g_rsc[k];
+        long size = g_rsc_size[k];
+        if (!rsc || size < RSC_ENTRIES * 6)
+            continue;
+        const uint8_t *e = rsc + no * 6;
+        uint32_t off = (uint32_t)(e[0] | e[1] << 8 | e[2] << 16 | (uint32_t)e[3] << 24);
+        uint16_t l = (uint16_t)(e[4] | e[5] << 8);
+        if (l == 0 || (long)off + l > size)
+            continue;
+        *len = l;
+        return rsc + off;
+    }
+    return NULL;
 }
 
 int32_t hes_filesize(int16_t no)
 {
     long ol;
-    if (hes_overlay(no, &ol))
+    if (rsc_entry(no, &ol))
         return (int32_t)ol;
     FILE *f = hes_open(no, "rb");
     if (!f)
@@ -417,7 +575,7 @@ int32_t hes_filesize(int16_t no)
 static int32_t hes_read_clamped(int16_t no, void *buf, long ofs, long len)
 {
     long olen;
-    const uint8_t *od = hes_overlay(no, &olen);
+    const uint8_t *od = rsc_entry(no, &olen);
     if (od) {
         if (ofs > olen)
             ofs = olen;
@@ -491,11 +649,12 @@ int16_t hes_list(int16_t *out)
 {
     int16_t count = 0;
     for (int no = 0; no < 1000; no++) {
-        FILE *f = hes_open((int16_t)no, "rb");
-        if (f) {
+        long len;
+        FILE *f = rsc_entry((int16_t)no, &len) ? NULL : hes_open((int16_t)no, "rb");
+        if (f)
             fclose(f);
+        if (f || rsc_entry((int16_t)no, &len))
             out[1 + count++] = (int16_t)no;
-        }
     }
     out[0] = count;
     return count;

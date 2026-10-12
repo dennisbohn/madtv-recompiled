@@ -2,14 +2,24 @@
 #include "platform.h"
 
 #include <SDL.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "video.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <shlobj.h>
+#else
+#include <sys/stat.h>
+#endif
+
 static char g_game_dir[512] = "Gamefiles";
-static uint32_t g_last_present;
+static uint64_t g_last_present_us;
+static uint32_t g_present_count;
+static PlatformCursorFn g_cursor_fn;
 static int g_quit;
 
 /* Tastaturpuffer wie beim BIOS (16 Einträge) */
@@ -22,7 +32,134 @@ static float g_mouse_dx, g_mouse_dy;
 static uint16_t g_mouse_buttons;
 /* Die Maus wird nicht eingefangen: der Spielzeiger folgt der absoluten Position des
  * Windows-Zeigers (im Fenster ausgeblendet), so bleiben Titelleiste und Schließknopf erreichbar */
-static int g_abs_x, g_abs_y, g_abs_new;
+static int g_abs_x, g_abs_y, g_abs_new, g_abs_seen;
+static float g_abs_fx, g_abs_fy; /* dieselbe Position mit Nachkommaanteil (für die Darstellung) */
+/* Im Vollbild ist die Maus gefangen und meldet nur Bewegungen (relativ). Daraus wird ein
+ * "virtueller Zeiger" in Spielpixeln geführt, der wie der Windows-Zeiger im Fenster behandelt
+ * wird; die Grenzen des Spiels beschneiden ihn (platform_mouse_confine), so gibt es keine toten
+ * Zonen. Beim Umschalten startet er an der aktuellen Position des Spielzeigers. */
+static int g_rel_mode, g_rel_synced;
+static float g_rel_x, g_rel_y, g_rel_pend_x, g_rel_pend_y;
+
+static void mouse_mode_update(void)
+{
+    int rel = video_is_fullscreen();
+    if (rel != g_rel_mode) {
+        g_rel_mode = rel;
+        g_rel_synced = 0;
+        g_rel_pend_x = g_rel_pend_y = 0;
+        SDL_SetRelativeMouseMode(rel ? SDL_TRUE : SDL_FALSE);
+    }
+}
+
+/* Testläufe mit simulierten Klicks/Bewegungen: echte Maus über dem Fenster nicht einmischen */
+static int scripted_mouse(void)
+{
+    static int scripted = -1;
+    if (scripted < 0)
+        scripted = (getenv("MADTV_CLICKS") != NULL || getenv("MADTV_MOVES") != NULL) && getenv("MADTV_ABSMOVES") == NULL;
+    return scripted;
+}
+
+static uint64_t now_us(void)
+{
+    return SDL_GetPerformanceCounter() * 1000000ull / SDL_GetPerformanceFrequency();
+}
+
+void platform_set_cursor_provider(PlatformCursorFn fn)
+{
+    g_cursor_fn = fn;
+}
+
+/* Bild mit aktuellem Zeiger anzeigen */
+static void present(void)
+{
+    if (g_cursor_fn) {
+        /* Position in 1/256 Spielpixel: der Zeiger wird zwischen den Spielpixeln dargestellt */
+        int w = 0, h = 0, stride = 0, x = (int)floorf(g_abs_fx * 256), y = (int)floorf(g_abs_fy * 256);
+        const uint8_t *px = g_cursor_fn(&w, &h, &stride, &x, &y, g_abs_seen && !scripted_mouse());
+        video_set_cursor(px, w, h, stride, x, y);
+    }
+    video_present();
+    g_last_present_us = now_us();
+    g_present_count++;
+}
+
+/* Ist ein neues Bild fällig? Einmal pro Bildwiederholung des Monitors (Rate jede Sekunde neu
+ * abfragen, falls das Fenster auf einen anderen Monitor wandert); 1 ms Reserve für VSync. */
+static uint64_t g_frame_us = 16666;
+
+static int present_due(void)
+{
+    static uint64_t checked_us;
+    uint64_t frame_us = g_frame_us;
+    uint64_t now = now_us();
+    if (now - checked_us > 1000000) {
+        checked_us = now;
+        frame_us = g_frame_us = 1000000ull / (uint64_t)video_refresh_rate();
+    }
+    return now - g_last_present_us + 1000 >= frame_us;
+}
+
+/* Ordner für Spielstände: Windows-Ordner "Gespeicherte Spiele" (FOLDERID_SavedGames, auch wenn
+ * umgeleitet) bzw. SDL-Benutzerordner, darin "Mad TV Recompiled". MADTV_SAVEDIR ersetzt ihn
+ * (Testläufe). Der Ordner wird bei Bedarf angelegt. */
+const char *platform_save_dir(void)
+{
+    static char dir[600];
+    if (dir[0])
+        return dir;
+    const char *env = getenv("MADTV_SAVEDIR");
+    if (env && *env)
+        snprintf(dir, sizeof dir, "%s", env);
+#ifdef _WIN32
+    if (!dir[0]) {
+        static const GUID saved_games = {0x4c5c32ff, 0xbb9d, 0x43b0, {0xb5, 0xb4, 0x2d, 0x72, 0xe5, 0x4e, 0xaa, 0xa4}};
+        PWSTR wide = NULL;
+        if (SHGetKnownFolderPath(&saved_games, 0, NULL, &wide) == S_OK) {
+            char base[500];
+            if (WideCharToMultiByte(CP_ACP, 0, wide, -1, base, sizeof base, NULL, NULL) > 0)
+                snprintf(dir, sizeof dir, "%s\\Mad TV Recompiled", base);
+        }
+        CoTaskMemFree(wide);
+    }
+#endif
+    if (!dir[0]) {
+        char *pref = SDL_GetPrefPath("", "Mad TV Recompiled");
+        if (pref) {
+            snprintf(dir, sizeof dir, "%s", pref);
+            size_t n = strlen(dir);
+            if (n > 0 && (dir[n - 1] == '/' || dir[n - 1] == '\\'))
+                dir[n - 1] = 0;
+            SDL_free(pref);
+        } else {
+            snprintf(dir, sizeof dir, "%s", g_game_dir);
+        }
+    }
+#ifdef _WIN32
+    CreateDirectoryA(dir, NULL);
+#else
+    mkdir(dir, 0755);
+#endif
+    return dir;
+}
+
+const uint8_t *platform_resource(const char *name, size_t *len)
+{
+#ifdef _WIN32
+    HRSRC r = FindResourceA(NULL, name, MAKEINTRESOURCEA(10)); /* RT_RCDATA */
+    HGLOBAL g = r ? LoadResource(NULL, r) : NULL;
+    const uint8_t *p = g ? LockResource(g) : NULL;
+    if (p) {
+        *len = SizeofResource(NULL, r);
+        return p;
+    }
+#else
+    (void)name;
+#endif
+    *len = 0;
+    return NULL;
+}
 
 const char *platform_game_dir(void)
 {
@@ -127,6 +264,7 @@ static void on_key(const SDL_KeyboardEvent *k)
     SDL_Keycode sym = k->keysym.sym;
     if ((s == SDL_SCANCODE_RETURN && (k->keysym.mod & KMOD_ALT)) || s == SDL_SCANCODE_F11) {
         video_toggle_fullscreen();
+        mouse_mode_update();
         return;
     }
     uint8_t sc = pc_scancode(s);
@@ -176,12 +314,28 @@ static void pump_events(void)
         case SDL_MOUSEMOTION: {
             int w, h;
             video_logical_size(&w, &h);
-            /* logische Renderpixel (SDL rechnet Fensterskalierung und Ränder heraus) -> Spielpixel */
-            g_abs_x = e.motion.x * SCREEN_W / w;
-            g_abs_y = e.motion.y * SCREEN_H / h;
-            g_abs_x = g_abs_x < 0 ? 0 : g_abs_x >= SCREEN_W ? SCREEN_W - 1 : g_abs_x;
-            g_abs_y = g_abs_y < 0 ? 0 : g_abs_y >= SCREEN_H ? SCREEN_H - 1 : g_abs_y;
+            /* logische Renderpixel (SDL rechnet Fensterskalierung und Ränder heraus) -> Spielpixel.
+             * Nicht begrenzen: Werte außerhalb (schwarze Ränder) erkennt mouse_poll und holt den
+             * Zeiger zurück. */
+            if (g_rel_mode) { /* Vollbild: nur die Bewegung zählt */
+                float dx = (float)e.motion.xrel * SCREEN_W / (float)w, dy = (float)e.motion.yrel * SCREEN_H / (float)h;
+                if (!g_rel_synced) { /* Startpunkt noch unbekannt: Bewegung sammeln */
+                    g_rel_pend_x += dx;
+                    g_rel_pend_y += dy;
+                    break;
+                }
+                g_rel_x += dx;
+                g_rel_y += dy;
+                g_abs_fx = g_rel_x;
+                g_abs_fy = g_rel_y;
+            } else {
+                g_abs_fx = (float)e.motion.x * SCREEN_W / (float)w;
+                g_abs_fy = (float)e.motion.y * SCREEN_H / (float)h;
+            }
+            g_abs_x = (int)floorf(g_abs_fx);
+            g_abs_y = (int)floorf(g_abs_fy);
             g_abs_new = 1;
+            g_abs_seen = 1;
             break;
         }
         case SDL_MOUSEBUTTONDOWN:
@@ -201,8 +355,47 @@ static void pump_events(void)
 void platform_present_now(void)
 {
     pump_events();
-    video_present();
-    g_last_present = SDL_GetTicks();
+    present();
+}
+
+uint32_t platform_frame_count(void)
+{
+    return g_present_count;
+}
+
+uint64_t platform_time_us(void)
+{
+    return now_us();
+}
+
+uint64_t platform_next_frame_us(void)
+{
+    return g_last_present_us + g_frame_us;
+}
+
+void platform_wait_frame(void)
+{
+    uint32_t n = g_present_count;
+    for (;;) {
+        platform_pump();
+        if (g_present_count != n)
+            break;
+        SDL_Delay(1);
+    }
+}
+
+void platform_wait_retrace(void)
+{
+    static const uint64_t period_us = 14268; /* 1/70,086 Hz – VGA-Modus 13h */
+    uint64_t next = (now_us() / period_us + 1) * period_us;
+    for (;;) {
+        platform_pump();
+        uint64_t now = now_us();
+        if (now >= next)
+            break;
+        if (next - now > 2000)
+            SDL_Delay(1);
+    }
 }
 
 /* ---- Testhilfen (nur über Umgebungsvariablen aktiv) ----
@@ -212,8 +405,29 @@ void platform_present_now(void)
  *   Zusatz "*n" liefert die Taste n-mal hintereinander */
 static void debug_hooks(void)
 {
-    static int shots_done;
+    static int shots_done, outshot_done;
     uint32_t now = platform_ms();
+    const char *outshot = getenv("MADTV_OUTSHOT"); /* datei.bmp:ms[,...] – fertiges Fensterbild */
+    if (outshot) {
+        int idx = 0;
+        for (const char *p = outshot; *p; idx++) {
+            const char *colon = strchr(p, ':'), *comma = strchr(p, ',');
+            if (!colon)
+                break;
+            if (!(outshot_done & (1 << idx)) && now >= (uint32_t)strtoul(colon + 1, NULL, 10)) {
+                char path[260];
+                size_t n = (size_t)(colon - p) < sizeof path - 1 ? (size_t)(colon - p) : sizeof path - 1;
+                memcpy(path, p, n);
+                path[n] = 0;
+                video_request_output_shot(path);
+                outshot_done |= 1 << idx;
+                break; /* eins pro angezeigtem Bild */
+            }
+            if (!comma)
+                break;
+            p = comma + 1;
+        }
+    }
     const char *shots = getenv("MADTV_SCREENSHOT");
     if (shots) {
         int idx = 0;
@@ -296,11 +510,8 @@ void platform_pump(void)
 {
     pump_events();
     debug_hooks();
-    uint32_t now = SDL_GetTicks();
-    if (now - g_last_present >= 14) {
-        video_present();
-        g_last_present = now;
-    }
+    if (present_due())
+        present();
 }
 
 int32_t platform_key_peek(void)
@@ -402,10 +613,80 @@ static void debug_moves(void)
     }
 }
 
+/* Testhilfe MADTV_ABSMOVES=ms:x:y[,...]: Windows-Zeiger zum Zeitpunkt ms auf Spielpixel x/y setzen
+ * (wie ein echtes Bewegungsereignis) */
+/* Testhilfe MADTV_SDLMOVES=ms:wx:wy[,...]: echtes SDL-Bewegungsereignis in Fensterkoordinaten
+ * einspeisen (läuft wie die echte Maus durch die Umrechnung des Renderers) */
+static void debug_sdlmoves(void)
+{
+    static unsigned done;
+    const char *moves = getenv("MADTV_SDLMOVES");
+    if (!moves)
+        return;
+    uint32_t now = platform_ms();
+    int idx = 0;
+    for (const char *p = moves; *p; idx++) {
+        char *end;
+        unsigned ms = (unsigned)strtoul(p, &end, 10);
+        long x = 0, y = 0;
+        if (*end == ':')
+            x = strtol(end + 1, &end, 10);
+        if (*end == ':')
+            y = strtol(end + 1, &end, 10);
+        if (!(done & (1u << idx)) && now >= ms) {
+            done |= 1u << idx;
+            SDL_Event ev;
+            memset(&ev, 0, sizeof ev);
+            ev.type = SDL_MOUSEMOTION;
+            ev.motion.windowID = video_window_id();
+            ev.motion.x = (int)x;
+            ev.motion.y = (int)y;
+            ev.motion.xrel = (int)x; /* im Vollbild (relative Maus) als Bewegung gedeutet */
+            ev.motion.yrel = (int)y;
+            SDL_PushEvent(&ev);
+        }
+        if (*end != ',')
+            break;
+        p = end + 1;
+    }
+}
+
+static void debug_absmoves(void)
+{
+    static unsigned done;
+    const char *moves = getenv("MADTV_ABSMOVES");
+    if (!moves)
+        return;
+    uint32_t now = platform_ms();
+    int idx = 0;
+    for (const char *p = moves; *p; idx++) {
+        char *end;
+        unsigned ms = (unsigned)strtoul(p, &end, 10);
+        long x = 0, y = 0;
+        if (*end == ':')
+            x = strtol(end + 1, &end, 10);
+        if (*end == ':')
+            y = strtol(end + 1, &end, 10);
+        if (!(done & (1u << idx)) && now >= ms) {
+            done |= 1u << idx;
+            g_abs_x = (int)x;
+            g_abs_y = (int)y;
+            g_abs_fx = (float)x + 0.5f;
+            g_abs_fy = (float)y + 0.5f;
+            g_abs_new = g_abs_seen = 1;
+        }
+        if (*end != ',')
+            break;
+        p = end + 1;
+    }
+}
+
 void platform_mouse_take(int16_t *dx, int16_t *dy, uint16_t *buttons)
 {
     platform_pump();
     debug_moves();
+    debug_absmoves();
+    debug_sdlmoves();
     int ix = (int)g_mouse_dx, iy = (int)g_mouse_dy;
     g_mouse_dx -= (float)ix;
     g_mouse_dy -= (float)iy;
@@ -414,13 +695,30 @@ void platform_mouse_take(int16_t *dx, int16_t *dy, uint16_t *buttons)
     *buttons = (uint16_t)(g_mouse_buttons | debug_clicks());
 }
 
-int platform_mouse_abs(int16_t *x, int16_t *y)
+void platform_mouse_confine(int16_t x, int16_t y)
 {
-    /* Testläufe mit simulierten Klicks/Bewegungen: echte Maus über dem Fenster nicht einmischen */
-    static int scripted = -1;
-    if (scripted < 0)
-        scripted = getenv("MADTV_CLICKS") != NULL || getenv("MADTV_MOVES") != NULL;
-    if (!g_abs_new || scripted)
+    /* nur den gemeldeten/virtuellen Zeiger beschneiden; der echte Zeiger wird nie versetzt */
+    if (g_rel_mode || getenv("MADTV_ABSMOVES")) {
+        g_abs_x = x;
+        g_abs_y = y;
+        g_abs_fx = g_rel_x = (float)x; /* genau auf der Grenze (ganzes Pixel) */
+        g_abs_fy = g_rel_y = (float)y;
+    }
+}
+
+int platform_mouse_abs(int16_t cur_x, int16_t cur_y, int16_t *x, int16_t *y)
+{
+    if (g_rel_mode && !g_rel_synced) { /* virtuellen Zeiger am Spielzeiger ansetzen */
+        g_rel_synced = 1;
+        g_rel_x = (float)cur_x + 0.5f + g_rel_pend_x;
+        g_rel_y = (float)cur_y + 0.5f + g_rel_pend_y;
+        g_abs_fx = g_rel_x;
+        g_abs_fy = g_rel_y;
+        g_abs_x = (int)floorf(g_rel_x);
+        g_abs_y = (int)floorf(g_rel_y);
+        g_abs_new = g_abs_seen = 1;
+    }
+    if (!g_abs_new || scripted_mouse())
         return 0;
     g_abs_new = 0;
     *x = (int16_t)g_abs_x;
@@ -428,16 +726,26 @@ int platform_mouse_abs(int16_t *x, int16_t *y)
     return 1;
 }
 
-int platform_init(const char *game_dir)
+int platform_init(const char *game_dir, int windowed)
 {
     platform_set_game_dir(game_dir);
     /* auch der Klick, der das Fenster erst aktiviert, zählt (sonst muss man z. B. die Sprache
      * zweimal anklicken) */
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+    /* Fenster- und Taskleistensymbol aus der Programmressource 1 (res/madtv.rc) */
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL, "1");
+    /* in voller Monitorauflösung rendern (sonst skaliert Windows bei 150/200 % das fertige Bild
+     * noch einmal unscharf hoch); Fenstergröße und Mauskoordinaten bleiben in Punkten */
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
         return -1;
-    if (video_init("MadTV", 3) != 0)
+    if (video_init("Mad TV Recompiled", 3) != 0)
         return -1;
+    if (!windowed)
+        video_toggle_fullscreen(); /* Vollbild in Desktop-Auflösung, Bild im Seitenverhältnis 4:3 */
+    mouse_mode_update();
     SDL_ShowCursor(SDL_DISABLE); /* nur über dem Fenster; das Spiel zeichnet seinen eigenen Zeiger */
     atexit(platform_shutdown); /* auch bei exit() aus dem Spiel oder beim Schließen des Fensters */
     return 0;

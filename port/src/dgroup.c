@@ -40,12 +40,21 @@ int dgroup_load(const char *game_dir)
         return -1;
     }
 
-    memset(g_ds, 0, sizeof g_ds); /* BSS */
+    static uint8_t img[DGROUP_SIZE];
     fseek(f, start, SEEK_SET);
-    size_t got = fread(g_ds, 1, (size_t)len, f);
+    size_t got = fread(img, 1, (size_t)len, f);
     fclose(f);
     if (got != (size_t)len)
         return -1;
+    return dgroup_load_mem(img, (size_t)len);
+}
+
+int dgroup_load_mem(const uint8_t *data, size_t len)
+{
+    if (len < 0x2000 || len > DGROUP_SIZE)
+        return -1;
+    memset(g_ds, 0, sizeof g_ds); /* BSS */
+    memcpy(g_ds, data, len);
 
     /* Prüfung: Turbo-C-Copyright am Anfang von DGROUP */
     if (memcmp(g_ds + 4, "Turbo-C", 7) != 0)

@@ -1,0 +1,27 @@
+// Versionsangaben der EXE (Explorer: Eigenschaften -> Details). Version nur hier pflegen.
+#define MADTV_VERSION_NUM 0,1,0,0
+#define MADTV_VERSION_STR "0.1.0"
+
+1 VERSIONINFO
+FILEVERSION MADTV_VERSION_NUM
+PRODUCTVERSION MADTV_VERSION_NUM
+FILEOS 0x40004
+FILETYPE 0x1
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704B0"
+        BEGIN
+            VALUE "ProductName", "Mad TV Recompiled"
+            VALUE "FileDescription", "Mad TV Recompiled"
+            VALUE "ProductVersion", MADTV_VERSION_STR
+            VALUE "FileVersion", MADTV_VERSION_STR
+            VALUE "OriginalFilename", "MadTV.exe"
+            VALUE "LegalCopyright", "Mad TV (c) 1991 Rainbow Arts. Portierung: Dennis Bohn"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0407, 1200
+    END
+END

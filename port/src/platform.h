@@ -3,9 +3,11 @@
 #ifndef MADTV_PLATFORM_H
 #define MADTV_PLATFORM_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-int platform_init(const char *game_dir);
+/* windowed = 0: Vollbild (Desktop-Auflösung) */
+int platform_init(const char *game_dir, int windowed);
 void platform_shutdown(void);
 
 /* Ereignisse verarbeiten und den Bildschirm höchstens ~70-mal pro Sekunde anzeigen.
@@ -25,14 +27,43 @@ void platform_key_flush(void);
 
 /* Maus: aufgelaufene Bewegung seit dem letzten Aufruf in Spielpixeln, Tasten (Bit0 links, Bit1 rechts). */
 void platform_mouse_take(int16_t *dx, int16_t *dy, uint16_t *buttons);
-/* Absolute Position des Windows-Zeigers in Spielpixeln, falls er sich seit dem letzten Aufruf
- * bewegt hat (sonst 0). */
-int platform_mouse_abs(int16_t *x, int16_t *y);
+/* Position des Windows-Zeigers (im Vollbild: des virtuellen Zeigers) in Spielpixeln, falls er
+ * sich seit dem letzten Aufruf bewegt hat (sonst 0). */
+/* cur_x/cur_y: aktuelle Position des Spielzeigers (Startpunkt im Vollbild) */
+int platform_mouse_abs(int16_t cur_x, int16_t cur_y, int16_t *x, int16_t *y);
+/* Gemeldete Zeigerposition auf Spielpixel x/y beschneiden (Grenzen des Spiels). Im Vollbild
+ * (relative Maus) wird so der virtuelle Zeiger begrenzt; im Fenster bleibt der Windows-Zeiger
+ * frei, damit man das Fenster verlassen kann. */
+void platform_mouse_confine(int16_t x, int16_t y);
+
+/* Zeiger-Overlay: Das Spiel liefert über diese Funktion bei jedem angezeigten Bild das aktuelle
+ * Zeigerbild (Palettenindizes, 0 = transparent; NULL = kein Zeiger). x und y enthalten beim Aufruf
+ * die neueste Position des Windows-Zeigers in 1/256 Spielpixel, falls have_abs, und werden auf
+ * die Zeichenposition gesetzt (ebenfalls in 1/256 Spielpixel). */
+typedef const uint8_t *(*PlatformCursorFn)(int *w, int *h, int *stride, int *x, int *y, int have_abs);
+void platform_set_cursor_provider(PlatformCursorFn fn);
+
+/* Auf den nächsten (emulierten) VGA-Strahlrücklauf warten: 70 Hz wie im Original, unabhängig
+ * von der Bildwiederholrate des Monitors. Zeigt dabei Bilder an, sobald der Monitor eines will. */
+void platform_wait_retrace(void);
+
+/* Bis zum nächsten angezeigten Bild warten (V-Sync); für flüssige Übergänge */
+void platform_wait_frame(void);
+/* Anzahl bisher angezeigter Bilder (ändert sich einmal pro Bildwiederholung) */
+uint32_t platform_frame_count(void);
+/* Zeit in Mikrosekunden (hochauflösend) und voraussichtlicher Zeitpunkt, zu dem das nächste Bild
+ * erscheint (letzter V-Sync + Bilddauer) – für gleichmäßig verteilte Zwischenschritte */
+uint64_t platform_time_us(void);
+uint64_t platform_next_frame_us(void);
 
 /* Wurde das Fenster geschlossen? */
 int platform_quit_requested(void);
 
 const char *platform_game_dir(void);
+/* Ins Programm eingebettete Daten (Windows-Ressource RCDATA "name"), sonst NULL */
+const uint8_t *platform_resource(const char *name, size_t *len);
+/* Ordner für Spielstände (Windows: "Gespeicherte Spiele\Mad TV Recompiled"; MADTV_SAVEDIR ersetzt ihn) */
+const char *platform_save_dir(void);
 void platform_set_game_dir(const char *dir);
 
 /* Testhilfe: idx-ter Raum aus MADTV_ROOM, sobald fällig (-1 = nicht/noch nicht) */

@@ -579,30 +579,19 @@ void cursor_attach_item(int16_t w, int16_t h, int16_t grab_x, int16_t grab_y, ch
         g_drag_hot_x = min_i16((int16_t)(g_cursor_x - grab_x), (int16_t)(w - 0x10));
         g_drag_hot_y = (int16_t)(g_cursor_y - grab_y);
     }
-    DS_PTR(Bitmap, 0x7af8) = g_cursor_grab;
-    DS_PTR(Bitmap, 0x7afc) = g_cursor_bg_old;
-    DS_PTR(Bitmap, 0x7b00) = g_cursor_bg_new;
-    g_cursor_grab = bitmap_alloc((int16_t)(w + 8), h);
-    g_cursor_bg_new = bitmap_alloc((int16_t)(w + 8), h);
-    g_cursor_bg_old = bitmap_alloc((int16_t)(w + 8), h);
+    /* PORT: Das Original legte hier objektgroße Puffer für die Hintergrundsicherung an; das
+     * gezogene Objekt zeichnet im Port die Darstellungsschicht (Zeiger-Overlay, rtlib.c). */
     g_cursor_shape = 2;
-    g_cursor_old_x = -1;
     DS_I16(0x79d2) = (int16_t)((0x78 - g_drag_h) + g_drag_hot_y);
 }
 
-/* 340d:1d02 – gezogenen Gegenstand loslassen: Hintergrund zurück, normale Zeigerpuffer wiederherstellen */
+/* 340d:1d02 – gezogenen Gegenstand loslassen */
 void cursor_drop_item(void)
 {
     if (g_drag_bitmap == NULL)
         return;
-    scr_blit(g_cursor_bg_old, (int16_t)(g_cursor_old_x >> 3), g_cursor_old_y);
+    /* PORT: ohne Zurückschreiben des Hintergrunds und Puffertausch, siehe cursor_attach_item */
     far_free_ptr((void **)DS_ADDR(Bitmap *, 0x0390));
-    far_free(g_cursor_grab);
-    far_free(g_cursor_bg_old);
-    far_free(g_cursor_bg_new);
-    g_cursor_grab = DS_PTR(Bitmap, 0x7af8);
-    g_cursor_bg_old = DS_PTR(Bitmap, 0x7afc);
-    g_cursor_bg_new = DS_PTR(Bitmap, 0x7b00);
     g_cursor_shape = 1;
     cursor_reset();
     mouse_show();

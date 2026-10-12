@@ -15,12 +15,36 @@ void video_shutdown(void);
 void video_set_palette(const uint8_t rgb[768]);
 void video_set_title(const char *title);
 void video_toggle_fullscreen(void);
+int video_is_fullscreen(void);
+uint32_t video_window_id(void);
 /* Logische Ausgabegröße, in der SDL Mausbewegungen meldet (320x200 werden darauf gestreckt). */
 void video_logical_size(int *w, int *h);
 /* Framebuffer anzeigen (ersetzt das Warten auf den vertikalen Strahlrücklauf). */
 void video_present(void);
+/* Mauszeiger als Overlay: w x h Palettenindizes (0 = transparent, Zeilenabstand stride), oben
+ * links an Position x/y in 1/256 Spielpixel. px = NULL blendet ihn aus. Er wird bei jedem video_present über das Bild gelegt, liegt also
+ * immer auf dem 320x200-Raster, wird aber so oft gezeichnet, wie der Monitor Bilder anzeigt. */
+void video_set_cursor(const uint8_t *px, int w, int h, int stride, int x, int y);
+/* Bildwiederholrate des Monitors, auf dem das Fenster liegt (Hz; 60, falls unbekannt) */
+int video_refresh_rate(void);
 /* aktuelles Bild mit Palette als 8-Bit-BMP speichern (Testhilfe) */
 int video_save_bmp(const char *path);
+/* Bis zu 4 Bereiche (zwischen video_layers_begin und _commit): Bereich (Spielpixel) um frac256/256 Pixel
+ * nach unten versetzt darstellen – die Pixel bleiben ganze, scharfe 320x200-Pixel, nur ihre Lage wird fein
+ * verschoben. row_above (w Palettenindizes) ist die Zeile, die oben in den Bereich nachrückt. */
+void video_set_subpixel_shift(int x, int y, int w, int h, int frac256, const uint8_t *row_above);
+/* Bis zu 6 Ebenen (in dieser Reihenfolge übereinander, zwischen begin und commit): eigene Ebene
+ * über dem Bild, Bereich x/y/w/h (Spielpixel), um frac256/256 Pixel nach unten versetzt. px: h+1
+ * Zeilen Palettenindizes (Zeilenabstand stride), beginnend mit der Zeile über dem Bereich.
+ * Deckung: mask (gleicher Aufbau, != 0 = deckend) oder ohne mask: transparent -> Farbe 0 frei. */
+void video_add_layer(int x, int y, int w, int h, int frac256, const uint8_t *px, int stride, int transparent,
+                     const uint8_t *mask);
+/* Ebenen/Feinverschiebungen neu beginnen bzw. abschließen: commit merkt sich das Grundbild
+ * (oberer Bereich von g_screen); sie gelten, bis neue kommen oder sich das Grundbild ändert. */
+void video_layers_begin(void);
+void video_layers_commit(void);
+/* Testhilfe: das fertig skalierte Fensterbild beim nächsten Anzeigen als BMP speichern */
+void video_request_output_shot(const char *path);
 
 /* Sprite mit Farbschlüssel 0 an Pixelposition zeichnen, abgeschnitten am Rand. */
 void video_blit_trans(const uint8_t *px, int w, int h, int x, int y);

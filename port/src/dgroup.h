@@ -13,6 +13,7 @@
 #ifndef MADTV_DGROUP_H
 #define MADTV_DGROUP_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 _Static_assert(sizeof(void *) == 4, "MadTV-Port muss als 32-Bit-Programm gebaut werden");
@@ -36,5 +37,7 @@ int32_t ds_offset_of(const void *p);
 
 /* Lädt die initialisierten Daten aus MTV.EXE im angegebenen Ordner. Rückgabe 0 bei Erfolg. */
 int dgroup_load(const char *game_dir);
+/* DGROUP aus einem Speicherabbild (z. B. ins Programm eingebettet, siehe tools/make_bundle.py) */
+int dgroup_load_mem(const uint8_t *data, size_t len);
 
 #endif

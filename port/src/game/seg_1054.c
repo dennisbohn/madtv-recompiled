@@ -141,9 +141,7 @@ void game_main(void)
 
     /* Offscreen-Bitmaps */
     DS_PTR(Bitmap, 0x8c30) = bitmap_alloc(0x78, 100);
-    DS_PTR(Bitmap, 0x8e70) = bitmap_alloc(0x18, 0xb);
-    DS_PTR(Bitmap, 0x8ebe) = bitmap_alloc(0x18, 0xb);
-    DS_PTR(Bitmap, 0x8eb6) = bitmap_alloc(0x18, 0xb);
+    /* PORT: die Zeigerpuffer DS:8e70/8ebe/8eb6 entfallen (Zeiger-Overlay, rtlib.c) */
     DS_PTR(Bitmap, 0x8e88) = bitmap_alloc(0x30, 0xb);
     DS_PTR(Bitmap, 0x8e66) = bitmap_alloc(0x30, 0xb);
     DS_PTR(Bitmap, 0x7bdc) = bitmap_alloc(0x68, 0x3a);
@@ -1553,48 +1551,39 @@ void screen_transition(int16_t dir, int16_t delay, int16_t effect)
 }
 
 /* 1054:2fd9 – src ringweise auf den Bildschirm bringen: dir 1 von außen nach innen, sonst
- * von innen nach außen; je Ring delay Ticks Pause */
+ * von innen nach außen. Das Original zeichnet w/16 Ringe (je 8 Pixel breit und h/(w/8) Zeilen
+ * hoch) und wartet vor jedem Ring delay Takte.
+ * PORT: Statt in 8-Pixel-Ringen im 50-Hz-Takt wächst die aufgedeckte Fläche bei jedem
+ * angezeigten Bild pixelgenau mit der vergangenen Zeit. Zu den Zeitpunkten, an denen das
+ * Original einen Ring fertig hatte, ist exakt dieselbe Fläche sichtbar; Gesamtdauer
+ * (w/16 * delay Takte) und Form bleiben gleich. */
 void screen_wipe_in(Bitmap *src, int16_t x, int16_t y, int16_t w, int16_t h, int16_t dir, int16_t delay)
 {
-    int16_t cols = (int16_t)(w >> 3);
-    uint16_t step = (uint16_t)(h / cols);
-    int16_t xcol = (int16_t)(x >> 3);
-    int16_t ring, end, inc;
-    if (dir == 1) {
-        ring = 0;
-        end = (int16_t)(w >> 4);
-        inc = 1;
-    } else {
-        ring = (int16_t)((w >> 4) - 1);
-        end = -1;
-        inc = -1;
-    }
-    uint16_t start = ticks_get();
-    for (; ring != end; ring = (int16_t)(ring + inc)) {
-        uint16_t until = (uint16_t)(start + delay);
-        while (ticks_get() < until)
-            ;
-        start = ticks_get();
-        int16_t top = (int16_t)(ring * step);
-        int16_t span = (int16_t)((cols - ring - ring) * 8);
-        int16_t side_h = (int16_t)((h - top) - top);
-
-        /* oberer und unterer Streifen */
-        Bitmap *strip = bitmap_alloc(span, (int16_t)step);
-        blit_rect(src, strip, 0, 0, (int16_t)(ring << 3), top, span, (int16_t)step);
-        scr_blit(strip, (int16_t)(ring + xcol), (int16_t)(top + y));
-        int16_t bottom = (int16_t)((h - step) - top);
-        blit_rect(src, strip, 0, 0, (int16_t)(ring << 3), bottom, span, (int16_t)step);
-        scr_blit(strip, (int16_t)(ring + xcol), (int16_t)(bottom + y));
-        far_free(strip);
-
-        /* linke und rechte Spalte */
-        Bitmap *column = bitmap_alloc(8, side_h);
-        blit_rect(src, column, 0, 0, (int16_t)(ring << 3), top, 8, side_h);
-        scr_blit(column, (int16_t)(ring + xcol), (int16_t)(top + y));
-        blit_rect(src, column, 0, 0, (int16_t)(((cols - 1) - ring) * 8), top, 8, side_h);
-        scr_blit(column, (int16_t)(((cols - 1) - ring) + xcol), (int16_t)(top + y));
-        far_free(column);
+    uint32_t total = (uint32_t)(w >> 4) * (uint32_t)(delay > 0 ? delay : 0) * 256; /* in 1/256 Takt */
+    uint32_t start = ticks_fine();
+    for (;;) {
+        uint32_t elapsed = ticks_fine() - start;
+        int done = elapsed >= total;
+        /* aufgedeckte Breite je Seite (0..w/2) und Höhe je Seite im Verhältnis h/w wie im Original */
+        int px = done ? w / 2 : (int)((uint64_t)elapsed * (uint32_t)(w / 2) / total);
+        int py = done ? h / 2 : px * h / w;
+        if (done) {
+            scr_blit_px(src, 0, 0, w, h, x, y);
+            break;
+        }
+        if (dir == 1) { /* Rand wächst nach innen */
+            for (int r = 0; r < h; r++) {
+                if (r < py || r >= h - py) {
+                    scr_blit_px(src, 0, r, w, 1, x, y + r);
+                } else if (px > 0) {
+                    scr_blit_px(src, 0, r, px, 1, x, y + r);
+                    scr_blit_px(src, w - px, r, px, 1, x + w - px, y + r);
+                }
+            }
+        } else if (px > 0) { /* Mitte wächst nach außen */
+            scr_blit_px(src, w / 2 - px, h / 2 - py, 2 * px, 2 * py, x + w / 2 - px, y + h / 2 - py);
+        }
+        platform_wait_frame();
     }
 }
 
@@ -1893,9 +1882,6 @@ void language_select(void)
     char choices[40];
     hes_read_into(0x29, choices);
     banner_two_lines(0, choices);
-    DS_PTR(Bitmap, 0x8e70) = bitmap_alloc(0x18, 0xb);
-    DS_PTR(Bitmap, 0x8ebe) = bitmap_alloc(0x18, 0xb);
-    DS_PTR(Bitmap, 0x8eb6) = bitmap_alloc(0x18, 0xb);
     g_cur_room = -5;
     DS_I16(0x8aac) = 0;
     DS_I16(0x79b2) = 1;
@@ -1917,7 +1903,4 @@ void language_select(void)
 
     mouse_hide();
     banner_two_lines(1, NULL);
-    far_free(DS_PTR(Bitmap, 0x8e70));
-    far_free(DS_PTR(Bitmap, 0x8ebe));
-    far_free(DS_PTR(Bitmap, 0x8eb6));
 }

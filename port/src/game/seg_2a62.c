@@ -288,11 +288,14 @@ void news_chains_refill(void)
     }
 }
 
-/* 2a62:0a1c – wird Baustein-Variante schon in einer Kette benutzt? (Kette 0 wird nicht geprüft) */
+/* 2a62:0a1c – wird Baustein-Variante schon in einer Kette benutzt? */
 int16_t news_variant_in_use(int16_t topic, int16_t variant)
 {
     int16_t used = 0;
-    for (int16_t c = 1; c < 8; c++) /* ORIGINAL-BUG: 1..7 statt 0..6 */
+    /* PORT-FIX: Das Original prüft die Ketten 1..7 statt 0..6. "Kette 7" liegt hinter der Tabelle
+     * auf dem Zeiger DS:713c; im Port ist das ein 32-Bit-Zeiger, dessen unteres Wort als Themen-
+     * nummer weit aus dem Datensegment heraus lesen würde. Korrigiert: alle 7 Ketten. */
+    for (int16_t c = 0; c < 7; c++)
         for (int16_t k = 0; k < 5; k++)
             if (W(TOPIC(W(CHAIN(c), 0)), k * 2) % 1000 == topic && W(CHAIN(c), 6 + k * 2) == variant)
                 used = 1;

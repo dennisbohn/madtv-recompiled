@@ -65,6 +65,8 @@ static Bitmap *bank_sprite(SpriteBank *bank, int16_t idx)
     return (Bitmap *)((uint8_t *)bank + sprite_ofs(idx));
 }
 
+void building_render_smooth(void); /* PORT, seg_27bb.c */
+
 /* 1dd5:000f – ein Takt der Spielschleife; liefert die Tür-ID unter der Spielfigur oder 0 */
 int16_t game_tick(void)
 {
@@ -73,133 +75,18 @@ int16_t game_tick(void)
     g_mouse_buttons = input_poll();
     DS_I16(0x7a2c) = 0;
 
-    if (DS_ADDR(int16_t, 0x7b30)[g_player_idx * 15] != 0x45 &&
-        (g_mouse_acc_x != 0 || g_mouse_acc_y != 0 || g_cursor_old_x == -1)) {
-        while (g_mouse_acc_x != 0 || g_mouse_acc_y != 0 || g_cursor_old_x == -1) {
-            /* Bewegung anwenden (normal geglättet, beim Ziehen direkt) */
-            if (g_drag_bitmap == NULL) {
-                ease_step(&g_mouse_acc_x, &g_cursor_x);
-            } else {
-                g_cursor_x += g_mouse_acc_x;
-                g_mouse_acc_x = 0;
-            }
-            if (g_cursor_max_x < g_cursor_x)
-                g_cursor_x = g_cursor_max_x;
-            if (g_cursor_x < g_cursor_min_x)
-                g_cursor_x = g_cursor_min_x;
-            if (g_drag_bitmap == NULL) {
-                ease_step(&g_mouse_acc_y, &g_cursor_y);
-            } else {
-                g_cursor_y += g_mouse_acc_y;
-                g_mouse_acc_y = 0;
-            }
-            if (g_cursor_max_y < g_cursor_y)
-                g_cursor_y = g_cursor_max_y;
-            if (g_cursor_y < g_cursor_min_y)
-                g_cursor_y = g_cursor_min_y;
-
-            if (g_cursor_visible == 1) {
-                scr_grab(g_cursor_grab, (int16_t)(g_cursor_x >> 3), g_cursor_y);
-                int16_t ncol = (int16_t)(g_cursor_x >> 3), ocol = (int16_t)(g_cursor_old_x >> 3);
-                if (ncol < ocol + 3 && ocol < ncol + 3 && g_cursor_y < g_cursor_old_y + 0xb &&
-                    g_cursor_old_y < g_cursor_y + 0xb) {
-                    int16_t dcol, scol, dy, sy, w, h;
-                    if (ncol < ocol) {
-                        dcol = (int16_t)(ocol - ncol);
-                        scol = 0;
-                        w = dcol;
-                    } else {
-                        dcol = 0;
-                        scol = (int16_t)(ncol - ocol);
-                        w = scol;
-                    }
-                    w = (int16_t)(3 - w);
-                    if (g_cursor_y < g_cursor_old_y) {
-                        dy = (int16_t)(g_cursor_old_y - g_cursor_y);
-                        sy = 0;
-                        h = dy;
-                    } else {
-                        dy = 0;
-                        sy = (int16_t)(g_cursor_y - g_cursor_old_y);
-                        h = sy;
-                    }
-                    h = (int16_t)(0xb - h);
-                    blit_rect(g_cursor_bg_old, g_cursor_grab, (int16_t)(dcol << 3), dy, (int16_t)(scol << 3), sy,
-                              (int16_t)(w * 8), h);
-                    bmp_copy(g_cursor_grab, g_cursor_bg_new);
-                    bmp_draw_masked(g_cursor_bitmaps[g_cursor_shape], g_cursor_grab, (int16_t)(g_cursor_x & 7), 0);
-                    BlitRectArgs back = {g_cursor_grab, dcol, dy, w, h, g_cursor_bg_old, scol, sy};
-                    bmp_blit_rect(&back);
-                } else {
-                    bmp_copy(g_cursor_grab, g_cursor_bg_new);
-                    blit_sprite_masked(g_cursor_bitmaps[g_cursor_shape], g_cursor_grab, (int16_t)(g_cursor_x & 7),
-                                       0, 0, 0, 0x10, 10);
-                }
-                scr_blit(g_cursor_bg_old, (int16_t)(g_cursor_old_x >> 3), g_cursor_old_y);
-                scr_blit(g_cursor_grab, (int16_t)(g_cursor_x >> 3), g_cursor_y);
-                bmp_copy(g_cursor_bg_new, g_cursor_bg_old);
-                g_cursor_old_x = g_cursor_x;
-                g_cursor_old_y = g_cursor_y;
-            } else if (g_cursor_shape == 2) {
-                /* gezogenes Objekt am Zeiger, auf den oberen Bildbereich begrenzt */
-                g_drag_x = (int16_t)(g_cursor_x - g_drag_hot_x);
-                g_drag_y = (int16_t)(g_cursor_y - g_drag_hot_y);
-                if (g_drag_x < 0)
-                    g_drag_x = 0;
-                else if (g_drag_x + g_drag_w > 0x13f)
-                    g_drag_x = (int16_t)(0x13f - g_drag_w);
-                if (g_drag_y < 0)
-                    g_drag_y = 0;
-                else if (g_drag_y + g_drag_h > 0x78)
-                    g_drag_y = (int16_t)(0x78 - g_drag_h);
-                if (g_drag_x != g_cursor_old_x || g_drag_y != g_cursor_old_y) {
-                    scr_grab(g_cursor_grab, (int16_t)(g_drag_x >> 3), g_drag_y);
-                    int16_t ocol = (int16_t)(g_cursor_old_x >> 3), ncol = (int16_t)(g_drag_x >> 3);
-                    int16_t span = (int16_t)((g_drag_w + 0xf) >> 3);
-                    if (ncol < ocol + span && ocol < ncol + span && g_drag_y < g_cursor_old_y + g_drag_h &&
-                        g_cursor_old_y < g_drag_y + g_drag_h && g_cursor_old_x != -1) {
-                        int16_t dcol, scol, dy, sy, w, h;
-                        if (g_drag_x < g_cursor_old_x) {
-                            dcol = (int16_t)(ocol - ncol);
-                            scol = 0;
-                            w = (int16_t)(((g_drag_w + 7) >> 3) - dcol);
-                        } else {
-                            dcol = 0;
-                            scol = (int16_t)(ncol - ocol);
-                            w = (int16_t)(((g_drag_w + 7) >> 3) - scol);
-                        }
-                        w++;
-                        if (g_drag_y < g_cursor_old_y) {
-                            dy = (int16_t)(g_cursor_old_y - g_drag_y);
-                            sy = 0;
-                            h = dy;
-                        } else {
-                            dy = 0;
-                            sy = (int16_t)(g_drag_y - g_cursor_old_y);
-                            h = sy;
-                        }
-                        h = (int16_t)(g_drag_h - h);
-                        blit_rect(g_cursor_bg_old, g_cursor_grab, (int16_t)(dcol << 3), dy, (int16_t)(scol << 3), sy,
-                                  (int16_t)(w * 8), h);
-                        blit_rect(g_cursor_grab, g_cursor_bg_new, 0, 0, 0, 0, (int16_t)(g_drag_w + 8), g_drag_h);
-                        blit_sprite_masked(g_drag_bitmap, g_cursor_grab, (int16_t)(g_drag_x & 7), 0, 0, 0, g_drag_w,
-                                           g_drag_h);
-                        BlitRectArgs back = {g_cursor_grab, dcol, dy, w, h, g_cursor_bg_old, scol, sy};
-                        bmp_blit_rect(&back);
-                    } else {
-                        blit_rect(g_cursor_grab, g_cursor_bg_new, 0, 0, 0, 0, (int16_t)(g_drag_w + 8), g_drag_h);
-                        blit_sprite_masked(g_drag_bitmap, g_cursor_grab, (int16_t)(g_drag_x & 7), 0, 0, 0, g_drag_w,
-                                           g_drag_h);
-                    }
-                    if (g_cursor_old_x != -1)
-                        scr_blit(g_cursor_bg_old, (int16_t)(g_cursor_old_x >> 3), g_cursor_old_y);
-                    scr_blit(g_cursor_grab, (int16_t)(g_drag_x >> 3), g_drag_y);
-                    blit_rect(g_cursor_bg_new, g_cursor_bg_old, 0, 0, 0, 0, (int16_t)(g_drag_w + 8), g_drag_h);
-                    g_cursor_old_x = g_drag_x;
-                    g_cursor_old_y = g_drag_y;
-                }
-            }
-        }
+    /* Mausbewegung anwenden und auf den erlaubten Bereich begrenzen.
+     * PORT: Das Original bewegte den Zeiger hier in Fünftelschritten (ease_step) und zeichnete
+     * jeden Zwischenschritt samt Hintergrundsicherung in den Bildschirmspeicher, beim Ziehen
+     * stattdessen das gezogene Objekt. Zeiger und gezogenes Objekt zeichnet im Port die
+     * Darstellungsschicht bei jedem angezeigten Bild (Zeiger-Overlay, rtlib.c); übrig bleibt die
+     * Endposition, die das Original nach allen Schritten ebenfalls erreicht. */
+    if (DS_ADDR(int16_t, 0x7b30)[g_player_idx * 15] != 0x45 && (g_mouse_acc_x != 0 || g_mouse_acc_y != 0)) {
+        int x = g_cursor_x + g_mouse_acc_x, y = g_cursor_y + g_mouse_acc_y;
+        g_cursor_x = (int16_t)(x > g_cursor_max_x ? g_cursor_max_x : x < g_cursor_min_x ? g_cursor_min_x : x);
+        g_cursor_y = (int16_t)(y > g_cursor_max_y ? g_cursor_max_y : y < g_cursor_min_y ? g_cursor_min_y : y);
+        g_mouse_acc_x = 0;
+        g_mouse_acc_y = 0;
     }
 
     if (g_cur_room != -5) {
@@ -208,6 +95,11 @@ int16_t game_tick(void)
         uint16_t interval = (uint16_t)(50 / (int32_t)g_game_speed_setting);
         if (g_cur_room == 0) {
             /* Gebäudeansicht */
+            static uint32_t smooth_frame;
+            if (display_frame_count() != smooth_frame) { /* PORT: zwischen den Schritten flüssig */
+                smooth_frame = display_frame_count();
+                building_render_smooth();
+            }
             if ((uint16_t)(interval + g_clock_offset) <= ticks_get()) {
                 g_clock_offset = (int16_t)ticks_get();
                 if (DS_I16(0x7a3c) != 0)
@@ -218,6 +110,8 @@ int16_t game_tick(void)
                     DS_I16(0x7a24) = 1;
                 screen_update();
                 DS_I16(0x7a24) = 0;
+                building_render_smooth(); /* PORT: sofort Zwischenstand statt des neuen Schritts */
+                smooth_frame = display_frame_count();
                 tv_picture_tick();
                 if (DS_ADDR(int16_t, 0x7b32)[g_player_idx * 15] == 0)
                     door = DS_U8(0x7c80 + DS_ADDR(int16_t, 0x7b24)[g_player_idx * 15] * 0x7a +
@@ -261,18 +155,9 @@ int16_t game_tick(void)
 /* 1dd5:0884 – obere Bildhälfte (DS:8e62) mit Mauszeiger auf den Bildschirm bringen */
 void screen_update(void)
 {
+    /* PORT: Das Original malte den Zeiger vor der Übertragung in die Szene bzw. blendete ihn
+     * aus und danach wieder ein; den Zeiger zeichnet hier die Darstellungsschicht darüber. */
     vga_wait_vsync();
-    int16_t cursor_in_scene = g_cur_room == 0 || (g_cur_room == 1 && g_cur_dialog == 2);
-    if (cursor_in_scene) {
-        if (g_cursor_y < 0x78 && g_cursor_visible == 1) {
-            clip_reset();
-            blit_rect(g_upper_screen, g_cursor_bg_new, 0, 0, (int16_t)(g_cursor_x & 0xfff8), g_cursor_y, 0x18, 0xb);
-            draw_sprite(g_cursor_bitmaps[g_cursor_shape], g_cursor_x, g_cursor_y);
-            DS_I16(0x0386) = 0;
-        }
-    } else {
-        mouse_hide();
-    }
 
     if (DS_I16(0x7a24) == 1) {
         /* nur den Gebäudeausschnitt (ggf. ohne Aufzugschacht) übertragen */
@@ -294,44 +179,16 @@ void screen_update(void)
     } else {
         scr_blit(g_upper_screen, 0, 0);
     }
-
-    if (cursor_in_scene) {
-        if (g_cursor_y < 0x78 && g_cursor_visible == 1) {
-            clip_reset();
-            draw_bitmap_fast(g_cursor_bg_new, (int16_t)(g_cursor_x & 0xfff8), g_cursor_y);
-            DS_I16(0x0386) = 0;
-            int16_t h = g_cursor_y < 0x6e ? 0xb : (int16_t)(0x78 - g_cursor_y);
-            blit_rect(g_upper_screen, g_cursor_bg_old, 0, 0, (int16_t)(g_cursor_x & 0xfff8), g_cursor_y, 0x18, h);
-            bmp_copy(g_cursor_bg_old, g_cursor_grab);
-        }
-    } else {
-        mouse_show();
-    }
     DS_I16(0x0d26) = DS_I16(0x8c2e);
 }
 
-/* 1dd5:0a44 – untere Bildhälfte (DS:8eb2) mit Einblendeffekt anzeigen, Mauszeiger erhalten */
+/* 1dd5:0a44 – untere Bildhälfte (DS:8eb2) mit Einblendeffekt anzeigen.
+ * PORT: Das Original malte den Zeiger vorher in die Leiste und sicherte danach seinen Hintergrund;
+ * den Zeiger zeichnet hier die Darstellungsschicht. */
 void lower_screen_present(void)
 {
-    if (g_cursor_y > 0x6d && g_cursor_visible == 1) {
-        clip_set_small();
-        blit_rect(g_lower_panel, g_cursor_bg_new, 0, 0, (int16_t)(g_cursor_x & 0xfff8), (int16_t)(g_cursor_y - 0x78),
-                  0x18, 0xb);
-        clip_set_upper();
-        draw_sprite(g_cursor_bitmaps[g_cursor_shape], g_cursor_x, (int16_t)(g_cursor_y - 0x78));
-    }
     screen_wipe_in(g_lower_panel, 0, 0x78, 0x140, 0x50, 0, 1);
     scr_blit(g_lower_panel, 0, 0x78);
-    if (g_cursor_y > 0x6d && g_cursor_visible == 1) {
-        clip_set_upper();
-        bmp_copy_at(g_cursor_bg_new, g_lower_panel, (int16_t)(g_cursor_x & 0xfff8), (int16_t)(g_cursor_y - 0x78));
-        int16_t h = 0xb;
-        if (g_cursor_y < 0x78)
-            h = (int16_t)(0x78 - g_cursor_y);
-        clip_set_small();
-        blit_rect(g_upper_screen, g_cursor_bg_old, 0, h, (int16_t)(g_cursor_x & 0xfff8),
-                  (int16_t)(g_cursor_y - 0x78 - h), 0x18, h);
-    }
 }
 
 /* 1dd5:0b74 – Mauszeiger auf den ganzen Bildschirm begrenzen */

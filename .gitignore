@@ -10,6 +10,7 @@
 
 # Build-Ausgaben und Testbilder
 /port/build/
+/port/build2/
 
 # aus dem Originalspiel erzeugte Analysedaten (Ghidra-Projekt, Disassembler-Ausgaben)
 /re/out/

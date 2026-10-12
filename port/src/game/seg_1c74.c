@@ -136,8 +136,20 @@ SpriteBank *hes_load_unpack(int16_t hes_no)
 /* 1c74:020d – Zufallszahl 1..n; neu gesät aus Ticks, seed und einem globalen Salz */
 int16_t rand_range(int16_t n, int16_t seed)
 {
+    /* PORT: Das Spiel zieht oft in Wiederholschleifen ("bis ein freier Eintrag kommt"). Innerhalb
+     * desselben 50-Hz-Takts liefert derselbe seed aber dieselbe Zahl; das Original drehte daher,
+     * bis der nächste Takt kam (beim Start eines neuen Spiels fast 2 Sekunden). Hier wird bei
+     * einer Wiederholung mit gleichem Takt und seed sofort der Takt verwendet, den das Original
+     * nach dem Warten gehabt hätte; die Folge der gezogenen Werte entspricht dem Original. */
+    static uint16_t last_t, last_seed, skip;
     uint16_t t = ticks_peek();
-    tc_srand((uint16_t)(t + seed + (uint16_t)g_rand_salt)); /* srand nimmt nur das Low-Word */
+    if (t == last_t && (uint16_t)seed == last_seed)
+        skip++; /* Wiederholung: so, als wäre schon ein weiterer Takt vergangen */
+    else
+        skip = 0;
+    last_t = t;
+    last_seed = (uint16_t)seed;
+    tc_srand((uint16_t)(t + skip + seed + (uint16_t)g_rand_salt)); /* srand nimmt nur das Low-Word */
     return (int16_t)(tc_rand() % n + 1);
 }
 

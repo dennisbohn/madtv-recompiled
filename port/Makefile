@@ -61,6 +61,8 @@ clean:
 V1_EXE   ?= ../Gamefiles/MTV.EXE
 V2_DIR   ?= ../Gamefiles2
 RELEASE  := $(BUILD)/release
+VERSION  := $(shell python -I tools/version.py)
+RELEASE_EXE := $(RELEASE)/MadTV-Recompiled-$(VERSION).exe
 SDL_STATIC_LIBS := $(shell pkg-config --static --libs sdl2) -static -static-libgcc
 
 $(RELEASE)/bundle.rc: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOURCE1.RSC $(V2_DIR)/SOURCE2.RSC
@@ -69,8 +71,8 @@ $(RELEASE)/bundle.rc: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOU
 $(RELEASE)/bundle_res.o: $(RELEASE)/bundle.rc res/version.rc
 	windres -I $(RELEASE) -I res $(RELEASE)/bundle.rc -O coff -o $@
 
-$(RELEASE)/MadTV.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(RELEASE)/bundle_res.o
+$(RELEASE_EXE): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(RELEASE)/bundle_res.o
 	$(CC) $(CFLAGS) -g0 $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(RELEASE)/bundle_res.o $(SDL_STATIC_LIBS)
 	strip $@
 
-release: $(RELEASE)/MadTV.exe
+release: $(RELEASE_EXE)

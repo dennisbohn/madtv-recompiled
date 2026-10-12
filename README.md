@@ -9,12 +9,12 @@ services (graphics, input, timer, file access, AdLib sound driver) are reimpleme
 SDL2; music is synthesized with the Nuked-OPL3 emulator. Game logic, AI behaviour and the
 savegame format are intended to be identical to the original.
 
-The source code in this repository contains no game data. A self-contained `MadTV.exe` with the
+The source code in this repository contains no game data. A self-contained `MadTV-Recompiled-<version>.exe` with the
 game data of the revised release of Mad TV embedded is provided separately under *Releases*.
 
 ## Running
 
-**Release build:** `MadTV.exe` from *Releases*. Single file, no installation. The executable is
+**Release build:** `MadTV-Recompiled-<version>.exe` from *Releases*. Single file, no installation. The executable is
 not code-signed; Windows SmartScreen may show a warning on first start.
 
 **Repository build** (`bin/madtv.exe`, `bin/SDL2.dll`) reads the game data from folders next to
@@ -62,7 +62,7 @@ Python 3:
 cd port
 mingw32-make build/madtv.exe   # development build, reads ../Gamefiles and ../Gamefiles2
 mingw32-make test              # unit tests
-mingw32-make release           # self-contained build/release/MadTV.exe
+mingw32-make release           # self-contained build/release/MadTV-Recompiled-<version>.exe
 ```
 
 `release` embeds the data segment (from `V1_EXE`, default `../Gamefiles/MTV.EXE`) and the

@@ -16,7 +16,7 @@ BEGIN
             VALUE "FileDescription", "Mad TV Recompiled"
             VALUE "ProductVersion", MADTV_VERSION_STR
             VALUE "FileVersion", MADTV_VERSION_STR
-            VALUE "OriginalFilename", "MadTV.exe"
+            VALUE "OriginalFilename", "MadTV-Recompiled-" MADTV_VERSION_STR ".exe"
             VALUE "LegalCopyright", "Mad TV (c) 1991 Rainbow Arts. Portierung: Dennis Bohn"
         END
     END

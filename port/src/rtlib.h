@@ -90,6 +90,8 @@ uint16_t ticks_get(void);
 uint32_t ticks_fine(void);
 /* PORT: Anzahl angezeigter Bilder */
 uint32_t display_frame_count(void);
+/* PORT: Anzeige während eines Spielschritts anhalten (1) bzw. freigeben (0) */
+void display_hold(int on);
 /* PORT: Zeitpunkt des nächsten angezeigten Bilds und aktuelle Zeit (µs), Dauer von n Takten (µs) */
 uint64_t display_next_frame_us(void);
 /* PORT: Bereich des nächsten Bilds um frac256/256 Spielpixel nach unten versetzt darstellen;

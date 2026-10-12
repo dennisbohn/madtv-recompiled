@@ -399,6 +399,11 @@ uint32_t ticks_fine(void)
 
 /* PORT: Anzahl angezeigter Bilder – Spielcode, der zwischen seinen Takten flüssig nachzeichnet,
  * erkennt daran, dass ein neues Bild fällig war */
+void display_hold(int on)
+{
+    platform_present_hold(on);
+}
+
 uint32_t display_frame_count(void)
 {
     return platform_frame_count();

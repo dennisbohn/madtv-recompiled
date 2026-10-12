@@ -12,6 +12,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
+#include <dwmapi.h>
 #else
 #include <sys/stat.h>
 #endif
@@ -80,17 +81,38 @@ static void present(void)
         const uint8_t *px = g_cursor_fn(&w, &h, &stride, &x, &y, g_abs_seen && !scripted_mouse());
         video_set_cursor(px, w, h, stride, x, y);
     }
+    uint64_t t0 = now_us();
     video_present();
+#ifdef _WIN32
+    /* Unter dem Desktop-Compositor kehrt SDL_RenderPresent sofort zurück (das Bild wird nur
+     * eingereiht). DwmFlush wartet auf den nächsten Compositor-Takt (= V-Sync des Monitors): so
+     * fällt jedes Bild auf genau einen Monitortakt, und der Zeitpunkt danach ist der echte
+     * Anzeigetakt, an dem sich die Zwischenschritte ausrichten. */
+    DwmFlush();
+#endif
     g_last_present_us = now_us();
     g_present_count++;
+    if (getenv("MADTV_FRAMELOG"))
+        platform_debug_log("P %llu %llu", (unsigned long long)t0, (unsigned long long)g_last_present_us);
 }
 
 /* Ist ein neues Bild fällig? Einmal pro Bildwiederholung des Monitors (Rate jede Sekunde neu
- * abfragen, falls das Fenster auf einen anderen Monitor wandert); 1 ms Reserve für VSync. */
+ * abfragen, falls das Fenster auf einen anderen Monitor wandert). Abgeschickt wird schon nach
+ * einer halben Bilddauer, damit das Bild sicher vor dem nächsten Takt eingereiht ist; das Warten
+ * auf den Takt übernimmt present(). */
 static uint64_t g_frame_us = 16666;
+
+static int g_present_hold; /* Anzeige kurz anhalten (platform_present_hold) */
+
+void platform_present_hold(int on)
+{
+    g_present_hold = on;
+}
 
 static int present_due(void)
 {
+    if (g_present_hold)
+        return 0;
     static uint64_t checked_us;
     uint64_t frame_us = g_frame_us;
     uint64_t now = now_us();
@@ -98,7 +120,7 @@ static int present_due(void)
         checked_us = now;
         frame_us = g_frame_us = 1000000ull / (uint64_t)video_refresh_rate();
     }
-    return now - g_last_present_us + 1000 >= frame_us;
+    return now - g_last_present_us >= frame_us / 2;
 }
 
 /* Ordner für Spielstände: Windows-Ordner "Gespeicherte Spiele" (FOLDERID_SavedGames, auch wenn

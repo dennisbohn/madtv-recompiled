@@ -51,6 +51,9 @@ void platform_wait_retrace(void);
 void platform_wait_frame(void);
 /* Anzahl bisher angezeigter Bilder (ändert sich einmal pro Bildwiederholung) */
 uint32_t platform_frame_count(void);
+/* Anzeige vorübergehend anhalten (1) bzw. freigeben (0): während das Spiel einen Schritt rechnet,
+ * soll kein Bild mit halbfertigem bzw. veraltetem Stand hinausgehen */
+void platform_present_hold(int on);
 /* Zeit in Mikrosekunden (hochauflösend) und voraussichtlicher Zeitpunkt, zu dem das nächste Bild
  * erscheint (letzter V-Sync + Bilddauer) – für gleichmäßig verteilte Zwischenschritte */
 uint64_t platform_time_us(void);

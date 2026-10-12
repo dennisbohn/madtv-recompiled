@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "game.h"
+#include "platform.h"
 
 #define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
 #define g_building        DS_PTR(Bitmap, 0x8eba)
@@ -319,11 +320,17 @@ static void building_markers_draw(void)
 typedef struct {
     int16_t scroll;
     int16_t elev_pos; /* Kabinenhöhe stetig: Etage * 30 - Versatz */
+    uint64_t t;       /* Soll-Zeitpunkt des Schritts (µs) auf gleichmäßigem Raster */
 } BuildingSnap;
 
-static BuildingSnap g_snap_prev, g_snap_cur;
+/* Die letzten Schritte mit Zeitpunkt. Dargestellt wird die Position zum Anzeigezeitpunkt minus
+ * (ein Schritt + Reserve): so liegen auch Schritte, die etwas zu spät eintreffen (die Spielschleife
+ * bemerkt sie erst beim nächsten Abfragen und wartet zwischendurch auf den V-Sync), immer schon
+ * vor, und die Bewegung bleibt gleichmäßig statt einen Frame stehenzubleiben. */
+enum { SNAP_RING = 4 };
+static BuildingSnap g_snap[SNAP_RING]; /* g_snap[0] = neuester */
 static int g_snap_count;
-static uint64_t g_snap_time; /* Zeitpunkt des letzten Schritts (µs), auf gleichmäßigem Raster */
+#define SNAP_RESERVE_US 16000
 
 /* Dauer eines Gebäudeschritts in µs (50/Spieltempo Takte) */
 static uint32_t building_step_us(void)
@@ -333,19 +340,21 @@ static uint32_t building_step_us(void)
 
 static void building_snapshot_take(void)
 {
-    /* Die Spielschleife bemerkt einen fälligen Schritt erst beim nächsten Abfragen (bis zu einer
-     * Bilddauer später). Die Schritte liegen aber im festen Abstand der Spieltakte; daher wird
-     * der Schrittzeitpunkt auf ein gleichmäßiges Raster gelegt und nur sanft nachgeführt. */
-    uint64_t now = time_us(), step = building_step_us();
-    uint64_t expected = g_snap_time + step;
-    if (g_snap_count > 0 && now + step / 2 >= expected && now <= expected + step / 2)
-        g_snap_time = (uint64_t)((int64_t)expected + ((int64_t)now - (int64_t)expected) / 8);
-    else
-        g_snap_time = now;
-    g_snap_prev = g_snap_cur;
-    g_snap_cur.scroll = g_scroll;
-    g_snap_cur.elev_pos = (int16_t)(g_elev_floor * 0x1e - g_elev_offset);
-    if (g_snap_count < 2)
+    /* Schrittzeitpunkt auf das feste Raster der Spieltakte legen und nur sanft nachführen */
+    uint64_t now = time_us(), step = building_step_us(), t = now;
+    if (g_snap_count > 0) {
+        uint64_t expected = g_snap[0].t + step;
+        if (platform_debug_env("MADTV_FRAMELOG"))
+            platform_debug_log("S %lld", (long long)now - (long long)expected);
+        if (now + step / 2 >= expected && now <= expected + step / 2)
+            t = (uint64_t)((int64_t)expected + ((int64_t)now - (int64_t)expected) / 8);
+    }
+    for (int k = SNAP_RING - 1; k > 0; k--)
+        g_snap[k] = g_snap[k - 1];
+    g_snap[0].scroll = g_scroll;
+    g_snap[0].elev_pos = (int16_t)(g_elev_floor * 0x1e - g_elev_offset);
+    g_snap[0].t = t;
+    if (g_snap_count < SNAP_RING)
         g_snap_count++;
 }
 
@@ -406,12 +415,21 @@ static void building_sides_layers(int32_t scroll_fine)
 
 void building_render_smooth(void)
 {
-    if (g_snap_count < 2 || g_cur_room != 0 || DS_I16(0x012c) == 2)
+    if (g_snap_count < 3 || g_cur_room != 0 || DS_I16(0x012c) == 2)
         return;
-    /* Fortschritt für den Zeitpunkt, zu dem dieses Bild erscheint (nächster V-Sync) */
-    uint32_t den = building_step_us();
-    uint64_t show = display_next_frame_us();
-    uint32_t num = show <= g_snap_time ? 0 : show - g_snap_time >= den ? den : (uint32_t)(show - g_snap_time);
+    /* Darstellungszeitpunkt: nächster V-Sync minus ein Schritt minus Reserve; dazu die beiden
+     * Schritte, zwischen denen er liegt (sa älter, sb neuer) */
+    uint32_t step = building_step_us();
+    uint64_t when = display_next_frame_us() - step - SNAP_RESERVE_US;
+    const BuildingSnap *sa = &g_snap[1], *sb = &g_snap[0];
+    for (int k = 1; k < g_snap_count; k++) {
+        sa = &g_snap[k];
+        sb = &g_snap[k - 1];
+        if (sa->t <= when)
+            break;
+    }
+    uint32_t den = sb->t > sa->t ? (uint32_t)(sb->t - sa->t) : 1;
+    uint32_t num = when <= sa->t ? 0 : when - sa->t >= den ? den : (uint32_t)(when - sa->t);
 
     /* Logikwerte sichern und Zwischenwerte einsetzen */
     int16_t scroll = g_scroll, elev_floor = g_elev_floor, elev_offset = g_elev_offset;
@@ -422,14 +440,20 @@ void building_render_smooth(void)
     }
     /* Scroll mit Nachkommaanteil (1/256): gezeichnet wird beim ganzzahligen Teil, den Rest
      * verschiebt die Darstellung fein (display_subpixel_shift) */
-    int32_t scroll_fine = (int32_t)g_snap_cur.scroll * 256;
-    int16_t ds = (int16_t)(g_snap_cur.scroll - g_snap_prev.scroll);
+    int32_t scroll_fine = (int32_t)sb->scroll * 256;
+    int16_t ds = (int16_t)(sb->scroll - sa->scroll);
     if (ds >= -8 && ds <= 8)
-        scroll_fine = (int32_t)g_snap_prev.scroll * 256 + (int32_t)((int64_t)ds * 256 * num / den);
+        scroll_fine = (int32_t)sa->scroll * 256 + (int32_t)((int64_t)ds * 256 * num / den);
     g_scroll = (int16_t)(scroll_fine >> 8);
-    int16_t pos = snap_lerp(g_snap_prev.elev_pos, g_snap_cur.elev_pos, num, den);
-    if (pos != g_snap_cur.elev_pos) {
-        if (g_snap_cur.elev_pos > g_snap_prev.elev_pos) { /* aufwärts: Versatz <= 0 */
+    if (platform_debug_env("MADTV_FRAMELOG"))
+        platform_debug_log("R %llu %ld %llu", (unsigned long long)when, (long)scroll_fine, (unsigned long long)time_us());
+    int16_t pos = snap_lerp(sa->elev_pos, sb->elev_pos, num, den);
+    int16_t logic_pos = (int16_t)(elev_floor * 0x1e - elev_offset);
+    if (pos != logic_pos) {
+        /* Richtung aus dem dargestellten Abschnitt; steht die Kabine dort noch (Logik ist schon
+         * weiter), aus der Richtung, in die die Logik fährt */
+        int up = sb->elev_pos != sa->elev_pos ? sb->elev_pos > sa->elev_pos : logic_pos > pos;
+        if (up) { /* aufwärts: Versatz <= 0 */
             g_elev_floor = (int16_t)(pos / 0x1e);
             g_elev_offset = (int16_t)(g_elev_floor * 0x1e - pos);
         } else { /* abwärts: Versatz >= 0 */

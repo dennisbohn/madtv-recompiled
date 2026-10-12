@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "game.h"
+#include "platform.h"
 
 #define g_cursor_visible DS_I16(0x8aac)
 #define g_cursor_shape   DS_I16(0x79b2)
@@ -49,6 +50,7 @@
 #define g_clip_bottom    DS_I16(0x038e)
 
 #define BANK_BMP(bank, ofs) ((Bitmap *)((uint8_t *)(bank) + (ofs)))
+static void tv_shutter_note(Bitmap *open); /* PORT, siehe tv_picture_update */
 
 /* 1f51:0003 – Mauszeiger einblenden (Zähler: 1 = Zeiger sichtbar, 0 mit gezogenem Objekt =
  * Objekt am Zeiger sichtbar). PORT: Das Original sicherte hier den Hintergrund und zeichnete
@@ -1227,6 +1229,109 @@ void popup_box_present(int16_t xcol, int16_t yrow)
 }
 
 /* 1f51:3099 – kleinen Fernseher der unteren Leiste neu zeichnen */
+/* ---- PORT: Rollladen des Fernsehbilds flüssig ----
+ * Das Original öffnet/schließt den Rollladen (Bänder zu 5 Pixeln von oben und unten, Zähler
+ * DS:79d4) um eine Stufe je Aufruf von tv_picture_compose, also je Spielschritt. Hier wird das
+ * Bild zusätzlich ohne Rollladen aufbewahrt und bei jedem angezeigten Bild der Rollladen
+ * pixelgenau mit einem Zwischenstand zwischen vorletzter und letzter Stufe darübergelegt
+ * (gleiche Grafik, gleiche Dauer). */
+static Bitmap *g_tv_open; /* letztes Fernsehbild ohne Rollladen und Rahmen */
+/* letzte Stufen (Anzahl Bänder) mit Zeitpunkt, [0] = neueste; dargestellt wird eine Stufe plus
+ * Reserve in der Vergangenheit, damit etwas zu spät kommende Spielschritte nicht stocken */
+static int16_t g_sh_level[3];
+static uint64_t g_sh_time[3];
+static int g_sh_count, g_shutter_active;
+#define SHUTTER_STEP_US 80000
+#define SHUTTER_RESERVE_US 16000
+
+static void tv_frame_draw(Bitmap *b, int coverage)
+{
+    /* Rollladen: coverage Pixel von oben und von unten, aus 5-Pixel-Bändern (Sprite 0x3a) */
+    int16_t clip_on = g_clip_on, clip_top = g_clip_top, clip_bottom = g_clip_bottom;
+    g_draw_target = b;
+    g_draw_bank = DS_PTR(uint8_t, 0x79a2);
+    g_clip_on = 1;
+    g_clip_top = 0;
+    g_clip_bottom = 0x3a;
+    for (int y = coverage - 5; y > -5; y -= 5)
+        bank_draw(0x3a, 0, (int16_t)y);
+    for (int y = 0x3a - coverage; y < 0x3a && coverage > 0; y += 5)
+        bank_draw(0x3a, 0, (int16_t)y);
+    g_clip_on = clip_on;
+    g_clip_top = clip_top;
+    g_clip_bottom = clip_bottom;
+    bank_draw(0x42, 0, 0);
+    bank_draw(0x4a, 0x5e, 0);
+    bank_draw(0x52, 0, 0x33);
+}
+
+/* Nach tv_picture_compose: Bild ohne Rollladen merken, neue Stufe mit Zeitpunkt festhalten */
+static void tv_shutter_note(Bitmap *open)
+{
+    if (!g_tv_open)
+        g_tv_open = bitmap_alloc(0x68, 0x3a);
+    bmp_copy(open, g_tv_open);
+    int16_t level = DS_I16(0x79d4);
+    uint64_t now = time_us();
+    if (g_sh_count == 0 || level != g_sh_level[0]) {
+        int jump = g_sh_count == 0 || (level - g_sh_level[0] != 1 && g_sh_level[0] - level != 1);
+        if (jump) /* neue Sendung oder Abschalten: ohne Übergang übernehmen */
+            g_sh_count = 0;
+        else if (now > g_sh_time[0] + SHUTTER_STEP_US * 3 / 2) {
+            /* die bisherige Stufe stand länger: sie gilt bis einen Spielschritt vor der neuen */
+            g_sh_time[0] = now - SHUTTER_STEP_US;
+            g_sh_count = 1;
+        }
+        for (int k = 2; k > 0; k--) {
+            g_sh_level[k] = g_sh_level[k - 1];
+            g_sh_time[k] = g_sh_time[k - 1];
+        }
+        /* Zeitpunkt auf das Raster der Spielschritte legen und sanft nachführen */
+        uint64_t t = now;
+        if (!jump && now >= g_sh_time[1] + SHUTTER_STEP_US / 2 && now <= g_sh_time[1] + SHUTTER_STEP_US * 3 / 2)
+            t = g_sh_time[1] + SHUTTER_STEP_US + ((int64_t)now - (int64_t)(g_sh_time[1] + SHUTTER_STEP_US)) / 8;
+        g_sh_level[0] = level;
+        g_sh_time[0] = t;
+        if (jump) { /* Ausgangsstand gilt schon eine Stufe vorher */
+            g_sh_level[1] = level;
+            g_sh_time[1] = t - SHUTTER_STEP_US;
+            g_sh_count = 2;
+        } else if (g_sh_count < 3) {
+            g_sh_count++;
+        }
+        g_shutter_active = 1;
+        if (platform_debug_env("MADTV_FRAMELOG"))
+            platform_debug_log("SHUTTER %d bei %u ms", level, platform_ms());
+    }
+}
+
+/* Zwischenstand des Rollladens für das nächste angezeigte Bild zeichnen */
+void tv_shutter_render_smooth(void)
+{
+    /* läuft weiter, bis der Endstand dargestellt ist – auch wenn das Spiel den Rollladen schon
+     * für fertig erklärt hat (DS:79d6 = 0), denn die Darstellung liegt eine Stufe zurück */
+    if (!g_shutter_active || !g_tv_open || g_sh_count < 2 || DS_I16(0x7a4c) != 0)
+        return;
+    uint64_t when = display_next_frame_us() - SHUTTER_STEP_US - SHUTTER_RESERVE_US;
+    int a = 1, b = 0;
+    for (int k = 1; k < g_sh_count; k++) {
+        a = k;
+        b = k - 1;
+        if (g_sh_time[a] <= when)
+            break;
+    }
+    uint32_t den = g_sh_time[b] > g_sh_time[a] ? (uint32_t)(g_sh_time[b] - g_sh_time[a]) : 1;
+    uint32_t num = when <= g_sh_time[a] ? 0 : when - g_sh_time[a] >= den ? den : (uint32_t)(when - g_sh_time[a]);
+    int coverage = (g_sh_level[a] * 5 * 256 + (g_sh_level[b] - g_sh_level[a]) * 5 * 256 * (int)num / (int)den + 128) >> 8;
+    if (b == 0 && num >= den && (g_sh_level[0] == 0 || g_sh_level[0] >= 6))
+        g_shutter_active = 0; /* Endstand erreicht */
+    Bitmap *bm = bitmap_alloc(0x68, 0x3a);
+    bmp_copy(g_tv_open, bm);
+    tv_frame_draw(bm, coverage);
+    scr_blit(bm, 0x1a, 0x7f);
+    far_free(bm);
+}
+
 void tv_picture_update(void)
 {
     int16_t hidden = 0;
@@ -1239,6 +1344,7 @@ void tv_picture_update(void)
         Bitmap *b = tv_picture_compose();
         scr_blit(b, 0x1a, 0x7f);
         far_free(b);
+        tv_shutter_render_smooth(); /* PORT: sofort Zwischenstand statt der neuen Stufe */
     }
     if (hidden)
         mouse_show();
@@ -1377,12 +1483,19 @@ Bitmap *tv_picture_compose(void)
     }
     use_bank(DS_PTR(uint8_t, 0x79a2)); /* Rahmen und Rollladen */
     bank_draw(10, 0x54, 4);
+    Bitmap *open = b; /* PORT: Stand ohne Rollladen merken (nach der Stufenänderung unten) */
     if (DS_I16(0x79d6) == 1) {
         if (++DS_I16(0x79d4) == 6)
             DS_I16(0x79d6) = 0;
     } else if (DS_I16(0x79d6) == 2 && --DS_I16(0x79d4) == 0) {
         DS_I16(0x79d6) = 3;
     }
+    Bitmap *snap = bitmap_alloc(0x68, 0x3a);
+    bmp_copy(open, snap);
+    tv_shutter_note(snap);
+    far_free(snap);
+    g_draw_target = b;
+    use_bank(DS_PTR(uint8_t, 0x79a2));
     for (int16_t i = 0; i < DS_I16(0x79d4); i++) {
         bank_draw(0x3a, 0, (int16_t)(i * 5));
         bank_draw(0x3a, 0, (int16_t)(i * -5 + 0x35));

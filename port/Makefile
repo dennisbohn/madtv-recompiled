@@ -3,7 +3,7 @@
 CC      ?= gcc
 CFLAGS  ?= -O2 -g -std=c11 -Wall -Wextra -Wno-unused-parameter
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
-SDL_LIBS   := $(shell pkg-config --libs sdl2) -lole32
+SDL_LIBS   := $(shell pkg-config --libs sdl2) -lole32 -ldwmapi
 
 BUILD := build
 GAME_DIR := ../Gamefiles
@@ -63,7 +63,7 @@ V2_DIR   ?= ../Gamefiles2
 RELEASE  := $(BUILD)/release
 VERSION  := $(shell python -I tools/version.py)
 RELEASE_EXE := $(RELEASE)/MadTV-Recompiled-$(VERSION).exe
-SDL_STATIC_LIBS := $(shell pkg-config --static --libs sdl2) -static -static-libgcc
+SDL_STATIC_LIBS := $(shell pkg-config --static --libs sdl2) -ldwmapi -static -static-libgcc
 
 $(RELEASE)/bundle.rc: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOURCE1.RSC $(V2_DIR)/SOURCE2.RSC
 	python -I tools/make_bundle.py $(V1_EXE) $(V2_DIR) $(RELEASE)

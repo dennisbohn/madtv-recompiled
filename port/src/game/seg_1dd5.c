@@ -66,6 +66,8 @@ static Bitmap *bank_sprite(SpriteBank *bank, int16_t idx)
 }
 
 void building_render_smooth(void); /* PORT, seg_27bb.c */
+void tv_shutter_render_smooth(void); /* PORT, seg_1f51.c */
+static int g_screen_update_no_wait; /* PORT: siehe Gebäudeschritt in game_tick */
 
 /* 1dd5:000f – ein Takt der Spielschleife; liefert die Tür-ID unter der Spielfigur oder 0 */
 int16_t game_tick(void)
@@ -90,6 +92,11 @@ int16_t game_tick(void)
     }
 
     if (g_cur_room != -5) {
+        static uint32_t shutter_frame; /* PORT: Rollladen des Fernsehbilds flüssig */
+        if (display_frame_count() != shutter_frame) {
+            shutter_frame = display_frame_count();
+            tv_shutter_render_smooth();
+        }
         if (g_intro_mode == 0)
             ai_tick();
         uint16_t interval = (uint16_t)(50 / (int32_t)g_game_speed_setting);
@@ -102,15 +109,23 @@ int16_t game_tick(void)
             }
             if ((uint16_t)(interval + g_clock_offset) <= ticks_get()) {
                 g_clock_offset = (int16_t)ticks_get();
+                /* PORT: Während des Schritts kein Bild anzeigen (es zeigte den alten Stand und
+                 * das nächste müsste zwei Schritte nachholen); auch das Warten auf den Strahl-
+                 * rücklauf in screen_update entfällt, weil building_render_smooth das Bild gleich
+                 * danach ohnehin neu zeichnet. */
+                display_hold(1);
                 if (DS_I16(0x7a3c) != 0)
                     random_events();
                 DS_I16(0x7a24) = 0;
                 building_animate();
                 if (DS_I16(0x7a24) != 9999)
                     DS_I16(0x7a24) = 1;
+                g_screen_update_no_wait = 1;
                 screen_update();
+                g_screen_update_no_wait = 0;
                 DS_I16(0x7a24) = 0;
                 building_render_smooth(); /* PORT: sofort Zwischenstand statt des neuen Schritts */
+                display_hold(0);
                 smooth_frame = display_frame_count();
                 tv_picture_tick();
                 if (DS_ADDR(int16_t, 0x7b32)[g_player_idx * 15] == 0)
@@ -157,7 +172,8 @@ void screen_update(void)
 {
     /* PORT: Das Original malte den Zeiger vor der Übertragung in die Szene bzw. blendete ihn
      * aus und danach wieder ein; den Zeiger zeichnet hier die Darstellungsschicht darüber. */
-    vga_wait_vsync();
+    if (!g_screen_update_no_wait)
+        vga_wait_vsync();
 
     if (DS_I16(0x7a24) == 1) {
         /* nur den Gebäudeausschnitt (ggf. ohne Aufzugschacht) übertragen */

@@ -1,0 +1,1 @@
+tinf 1.2.1 (tinf.h, tinflate.c unverändert), https://github.com/jibsen/tinf, Lizenz zlib (siehe LICENSE)

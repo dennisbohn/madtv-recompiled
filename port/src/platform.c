@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "video.h"
+#include "../third_party/tinf/tinf.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -228,15 +229,46 @@ int platform_language_request(void)
     return video_language_request();
 }
 
+/* Eingebettete Ressourcen sind gepackt ("MTVZ", Länge entpackt als u32, Deflate-Rohdaten; siehe
+ * tools/make_bundle.py). Entpackt wird beim ersten Zugriff; der Speicher bleibt bis zum Ende. */
 const uint8_t *platform_resource(const char *name, size_t *len)
 {
 #ifdef _WIN32
+    static struct {
+        char name[16];
+        uint8_t *data;
+        size_t len;
+    } cache[4];
+    for (int i = 0; i < 4; i++)
+        if (cache[i].data && strcmp(cache[i].name, name) == 0) {
+            *len = cache[i].len;
+            return cache[i].data;
+        }
     HRSRC r = FindResourceA(NULL, name, MAKEINTRESOURCEA(10)); /* RT_RCDATA */
     HGLOBAL g = r ? LoadResource(NULL, r) : NULL;
     const uint8_t *p = g ? LockResource(g) : NULL;
     if (p) {
-        *len = SizeofResource(NULL, r);
-        return p;
+        size_t n = SizeofResource(NULL, r);
+        if (n < 8 || memcmp(p, "MTVZ", 4) != 0) { /* ungepackt */
+            *len = n;
+            return p;
+        }
+        unsigned int raw = (unsigned int)p[4] | (unsigned int)p[5] << 8 | (unsigned int)p[6] << 16 |
+                           (unsigned int)p[7] << 24;
+        uint8_t *out = malloc(raw ? raw : 1);
+        unsigned int got = raw;
+        if (out && tinf_uncompress(out, &got, p + 8, (unsigned int)(n - 8)) == TINF_OK && got == raw) {
+            for (int i = 0; i < 4; i++)
+                if (!cache[i].data) {
+                    snprintf(cache[i].name, sizeof cache[i].name, "%s", name);
+                    cache[i].data = out;
+                    cache[i].len = raw;
+                    break;
+                }
+            *len = raw;
+            return out;
+        }
+        free(out); /* beschädigt: wie nicht vorhanden behandeln */
     }
 #else
     (void)name;

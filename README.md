@@ -80,9 +80,14 @@ mingw32-make test              # unit tests
 mingw32-make release           # self-contained build/release/MadTV-Recompiled-<version>.exe
 ```
 
-`release` embeds the data segment (from `V1_EXE`, default `../Gamefiles/MTV.EXE`) and the
-archives from `V2_DIR` (default `../Gamefiles2`) as Windows resources, removes all savegame
-entries from the archives (`tools/make_bundle.py`) and links SDL statically.
+`release` embeds the data segment (from `V1_EXE`, default `../Gamefiles/MTV.EXE`) and the archives
+from `V2_DIR` (default `../Gamefiles2`) as Windows resources, removes all savegame entries from
+the archives (`tools/make_bundle.py`), compresses them with Deflate (unpacked at startup with
+tinf) and links a reduced, static SDL. That SDL is built once by `tools/build_sdl.sh` (downloads
+the SDL 2.32.10 source; needs `mingw-w64-i686-cmake` and `mingw-w64-i686-ninja`) with only the
+parts the port uses: video, Direct3D 11 and software renderer, audio and timers. Joystick, game
+controller, haptics, sensors, OpenGL/Vulkan and Direct3D 9/12 are left out, which roughly halves
+the size of the executable.
 
 ## Source layout
 
@@ -103,5 +108,6 @@ Source comments are in German.
 
 - Nuked-OPL3 © Nuke.YKT – LGPL-2.1 (`port/third_party/nuked-opl3/LICENSE`)
 - SDL2 – zlib license
+- tinf © Joergen Ibsen – zlib license (`port/third_party/tinf/LICENSE`)
 
 Mad TV is © 1991 Rainbow Arts. The source code of this project contains no game data.

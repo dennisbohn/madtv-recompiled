@@ -8,12 +8,15 @@ Erzeugt in OUT_DIR:
   SOURCE1.RSC  Spieldaten-Archiv der überarbeiteten Fassung OHNE Spielstände (Einträge 209–219
                werden aus dem Verzeichnis entfernt und ihre Daten mit Nullen überschrieben)
   SOURCE2.RSC  zweites Archiv (Grafik, Intro); wird ebenso geprüft
-  bundle.rc    Ressourcenskript (Icon + RCDATA DGROUP/SOURCE1/SOURCE2)
+  *.z          dieselben Dateien gepackt: "MTVZ", Länge entpackt (u32), Deflate-Rohdaten;
+               platform_resource entpackt sie beim ersten Zugriff (third_party/tinf)
+  bundle.rc    Ressourcenskript (Icon + RCDATA DGROUP/SOURCE1/SOURCE2, gepackt)
 Bricht ab, wenn danach noch ein Spielstand-Eintrag enthalten ist.
 """
 import os
 import struct
 import sys
+import zlib
 
 DGROUP_PARA = 0x35d4       # Lage von DGROUP im Ladeabbild (siehe src/dgroup.c)
 RSC_ENTRIES = 600
@@ -48,6 +51,15 @@ def strip_saves(rsc, name):
     return bytes(rsc), removed
 
 
+def pack(path):
+    """Datei als path + '.z' gepackt ablegen (Deflate ohne zlib-Kopf, höchste Stufe)"""
+    raw = open(path, 'rb').read()
+    c = zlib.compressobj(9, zlib.DEFLATED, -15, 9)
+    data = c.compress(raw) + c.flush()
+    open(path + '.z', 'wb').write(b'MTVZ' + struct.pack('<I', len(raw)) + data)
+    return len(raw), len(data) + 8
+
+
 def main():
     exe_path, v2_dir, out = sys.argv[1:4]
     os.makedirs(out, exist_ok=True)
@@ -65,7 +77,9 @@ def main():
         f.write('1 ICON "%s"\n' % ico)
         f.write('#include "version.rc"\n')
         for res in ('DGROUP.bin', 'SOURCE1.RSC', 'SOURCE2.RSC'):
-            f.write('%s RCDATA "%s"\n' % (res.split('.')[0], res))
+            raw, packed = pack(os.path.join(out, res))
+            print('%s: %d -> %d Byte gepackt' % (res, raw, packed))
+            f.write('%s RCDATA "%s.z"\n' % (res.split('.')[0], res))
 
 
 if __name__ == '__main__':

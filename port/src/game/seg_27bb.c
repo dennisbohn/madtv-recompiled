@@ -455,7 +455,11 @@ void building_render_smooth(void)
         /* Richtung aus dem dargestellten Abschnitt; steht die Kabine dort noch (Logik ist schon
          * weiter), aus der Richtung, in die die Logik fährt */
         int up = sb->elev_pos != sa->elev_pos ? sb->elev_pos > sa->elev_pos : logic_pos > pos;
-        if (up) { /* aufwärts: Versatz <= 0 */
+        if (g_elev_door != 0) {
+            /* Tür öffnet schon (Logik steht): Etage der Logik behalten, nur den Restweg glätten –
+             * sonst erschiene die offene Tür kurz in der Etage, aus der die Kabine kommt */
+            g_elev_offset = (int16_t)(g_elev_floor * 0x1e - pos);
+        } else if (up) { /* aufwärts: Versatz <= 0 */
             g_elev_floor = (int16_t)(pos / 0x1e);
             g_elev_offset = (int16_t)(g_elev_floor * 0x1e - pos);
         } else { /* abwärts: Versatz >= 0 */

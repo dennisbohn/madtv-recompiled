@@ -444,6 +444,8 @@ void building_render_smooth(void)
     int16_t ds = (int16_t)(sb->scroll - sa->scroll);
     if (ds >= -8 && ds <= 8)
         scroll_fine = (int32_t)sa->scroll * 256 + (int32_t)((int64_t)ds * 256 * num / den);
+    if (platform_debug_env("MADTV_FAKEFRAC")) /* Testhilfe: Feinverschiebung im Stand erzwingen */
+        scroll_fine = (scroll_fine & ~0xff) | (platform_debug_env("MADTV_FAKEFRAC") & 0xff);
     g_scroll = (int16_t)(scroll_fine >> 8);
     if (platform_debug_env("MADTV_FRAMELOG"))
         platform_debug_log("R %llu %ld %llu", (unsigned long long)when, (long)scroll_fine, (unsigned long long)time_us());
@@ -482,18 +484,24 @@ void building_render_smooth(void)
 
     /* Hinweise (Türschilder, Grüße, Meldungen, Tooltips) und Absperrung sind Bedienoberfläche bzw.
      * stehen fest auf dem Bildschirm: sie dürfen nicht mit Gebäude oder Kulisse fein verschoben
-     * werden. Was sie zeichnen, wird als oberste, unverschobene Ebene herausgelöst (Vergleich mit
-     * dem Bild davor, so bleiben alle Farben erhalten) und im Grundbild wieder entfernt. */
+     * werden. Was sie zeichnen, wird als oberste, unverschobene Ebene herausgelöst und im Grundbild
+     * wieder entfernt. Um gezeichnete Pixel sicher zu erkennen – auch solche in der Farbe des
+     * Untergrunds –, wird zweimal gezeichnet: auf das Bild und auf eine farblich vertauschte Kopie.
+     * Was danach in beiden gleich ist, stammt von den Hinweisen. */
     enum { SCENE_W = 0x140 }; /* Breite der Spielszene DS:8e62 */
     static uint8_t before[SCENE_W * 0x6e], over[SCENE_W * 0x6e], mask[SCENE_W * 0x6e];
     uint8_t *up = g_upper_screen->pixels + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
     memcpy(before, up, sizeof before);
     building_hover_draw();
     building_markers_draw();
+    memcpy(over, up, sizeof over);
+    for (int i = 0; i < SCENE_W * 0x6e; i++)
+        up[i] = (uint8_t)(before[i] ^ 0x80);
+    building_hover_draw();
+    building_markers_draw();
     int any = 0;
     for (int i = 0; i < SCENE_W * 0x6e; i++) {
-        mask[i] = up[i] != before[i];
-        over[i] = up[i];
+        mask[i] = up[i] == over[i];
         any |= mask[i];
     }
     memcpy(up, before, sizeof before);

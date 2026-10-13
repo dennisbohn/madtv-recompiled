@@ -23,7 +23,7 @@ $(BUILD)/madtv_res.o: res/madtv.rc res/version.rc res/madtv.ico | $(BUILD)
 
 # Das Spiel. game.h und stubs.c werden aus re/notes/sigs erzeugt (re/tools/gen_game_h.py).
 $(BUILD)/madtv.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(BUILD)/madtv_res.o | $(BUILD)
-	$(CC) $(CFLAGS) $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(BUILD)/madtv_res.o $(SDL_LIBS)
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(BUILD)/madtv_res.o $(SDL_LIBS)
 
 $(BUILD)/hesview.exe: tools/hesview.c $(PLATFORM) $(HEADERS) | $(BUILD)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) -Isrc -o $@ tools/hesview.c $(PLATFORM) $(SDL_LIBS)
@@ -72,7 +72,7 @@ $(RELEASE)/bundle_res.o: $(RELEASE)/bundle.rc res/version.rc
 	windres -I $(RELEASE) -I res $(RELEASE)/bundle.rc -O coff -o $@
 
 $(RELEASE_EXE): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(RELEASE)/bundle_res.o
-	$(CC) $(CFLAGS) -g0 $(SDL_CFLAGS) -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(RELEASE)/bundle_res.o $(SDL_STATIC_LIBS)
+	$(CC) $(CFLAGS) -g0 $(SDL_CFLAGS) -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(RELEASE)/bundle_res.o $(SDL_STATIC_LIBS)
 	strip $@
 
 release: $(RELEASE_EXE)

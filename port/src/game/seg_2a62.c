@@ -18,11 +18,6 @@
 /* 2a62:000c – Datenbanken laden und Texte der gewählten Sprache zuordnen */
 void db_load_all(void)
 {
-    int16_t ad_texts = g_lang_files[g_language * 8 + 5];   /* 46/249: Werbekunden */
-    int16_t news_texts = g_lang_files[g_language * 8 + 7]; /* 44/247: Nachrichten */
-    uint16_t pool = (uint16_t)(hes_filesize(news_texts) + hes_filesize(ad_texts));
-    g_text_pool = far_calloc(pool, 1);
-
     timer_pause();
     hes_load(0xc9, DS_PTR(uint8_t, 0x2489));
     /* PORT: ORIGINAL-BUG in den Spieldaten – alle produzierbaren Shows (Genre 8) haben Länge 0.
@@ -39,6 +34,21 @@ void db_load_all(void)
     hes_load(0xcd, DS_ADDR(uint8_t, 0x2711));
     hes_load(0xce, DS_ADDR(uint8_t, 0x5573));
     hes_load(0x30, DS_ADDR(uint8_t, 0x3a81));
+    db_texts_load();
+    timer_resume();
+    episodes_init_from_first();
+}
+
+/* Texte der Werbekunden und Nachrichtenthemen in der gewählten Sprache in einen neuen Textpool
+ * laden und die Zeiger in den Datenbanken setzen (Teil von db_load_all; PORT: eigene Funktion,
+ * damit ein Sprachwechsel sie erneut aufrufen kann) */
+void db_texts_load(void)
+{
+    int16_t ad_texts = g_lang_files[g_language * 8 + 5];   /* 46/249: Werbekunden */
+    int16_t news_texts = g_lang_files[g_language * 8 + 7]; /* 44/247: Nachrichten */
+    uint16_t pool = (uint16_t)(hes_filesize(news_texts) + hes_filesize(ad_texts));
+    g_text_pool = far_calloc(pool, 1);
+    g_text_pool_pos = 0;
 
     /* Werbekunden: zwei Längentabellen (je 51 Wörter), danach die Texte */
     g_load_pos = 0;
@@ -67,8 +77,6 @@ void db_load_all(void)
             if (lengths[i * 10 + j] != 0)
                 text_pool_take(lengths[i * 10 + j], (char **)DS_ADDR(uint8_t, i * 0x38 + 0x5573 + j * 4));
     far_free(g_load_buf);
-    timer_resume();
-    episodes_init_from_first();
 }
 
 /* 2a62:029e – len Bytes aus dem Ladepuffer in den Textpool übernehmen (NUL-terminiert) */

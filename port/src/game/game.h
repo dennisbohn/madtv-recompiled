@@ -46,6 +46,7 @@ SpriteBank *sprite_pool_load(int16_t hes_no); /* 1054:3b34, med */
 void schedule_room_refresh(void); /* 1054:3bb6, med */
 void movie_agency_reload_texts(void); /* 1054:3c59, med */
 void language_select(void); /* 1054:3ca4 */
+void language_poll(void); /* PORT: Sprachwechsel aus Fenstermenü/F10 */
 
 /* ---- Segment 1433 ---- */
 void text_cache_news(int16_t player); /* 1433:0002, med */
@@ -299,6 +300,8 @@ void facade_draw(void); /* 27bb:2951, med */
 
 /* ---- Segment 2a62 ---- */
 void db_load_all(void); /* 2a62:000c */
+void db_texts_load(void); /* PORT: Textteil von db_load_all */
+void text_cache_reload(void); /* PORT: Text-Caches in neuer Sprache */
 void text_pool_take(int16_t len, char **out); /* 2a62:029e, med */
 void episodes_init_from_first(void); /* 2a62:02eb, med */
 void money_add(int16_t category, int32_t amount); /* 2a62:036d */

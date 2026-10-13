@@ -429,97 +429,12 @@ void blit_rect(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_t sx, int
     }
 }
 
-/* ---- PORT: Spiel beenden per ESC ----
- * Das Original hat im laufenden Spiel keinen Weg zum Beenden. ESC wirkt im Spiel wie ein
- * Rechtsklick (Raum verlassen); in der Gebäudeansicht und auf dem Startbildschirm hatte es keine
- * Wirkung. Dort fragt der Port jetzt in einem Dialog im Stil des Spiels nach. */
-/* Dialog in Pixeln, Aufbau wie der Startbildschirm (Rahmen, Titelkasten, Knöpfe) */
-#define QUIT_X0 0x50
-#define QUIT_Y0 0x20
-#define QUIT_X1 0xf0
-#define QUIT_Y1 0x58
-#define QUIT_BTN_Y0 0x3e
-#define QUIT_BTN_Y1 0x4c
-#define QUIT_YES_X0 0x60
-#define QUIT_YES_X1 0x98
-#define QUIT_NO_X0 0xa8
-#define QUIT_NO_X1 0xe0
-
-/* Mausbewegung anwenden (wie in game_tick), während der Dialog die Spielschleife anhält */
-static void quit_dialog_cursor(void)
-{
-    mouse_update();
-    if (DS_I16(0x7a28) != 0 || DS_I16(0x7a2a) != 0) {
-        int x = g_cursor_x + DS_I16(0x7a28), y = g_cursor_y + DS_I16(0x7a2a);
-        g_cursor_x = (int16_t)(x > DS_I16(0x79d0) ? DS_I16(0x79d0) : x < DS_I16(0x79cc) ? DS_I16(0x79cc) : x);
-        g_cursor_y = (int16_t)(y > DS_I16(0x79d2) ? DS_I16(0x79d2) : y < DS_I16(0x79ce) ? DS_I16(0x79ce) : y);
-        DS_I16(0x7a28) = 0;
-        DS_I16(0x7a2a) = 0;
-    }
-}
-
-static int16_t quit_dialog(void)
-{
-    int de = g_language == 0;
-    clock_stop();
-    /* Hintergrund sichern; Kacheln der Knöpfe aus der Grafikbank des Startbildschirms (HES 0x96)
-     * vorübergehend in den Raum-Slot DS:0100 legen, den frame_draw benutzt */
-    int16_t win = window_open(QUIT_X0 >> 3, QUIT_Y0 >> 3, QUIT_X1 >> 3, QUIT_Y1 >> 3, NULL, 3);
-    SpriteBank *room_bank = DS_PTR(SpriteBank, 0x0100);
-    DS_PTR(SpriteBank, 0x0100) = hes_load_unpack(0x96);
-    frame_draw(QUIT_X0, QUIT_Y0, QUIT_X1, QUIT_Y1, 0);
-    frame_draw(QUIT_X0 + 8, QUIT_Y0 + 6, QUIT_X1 - 8, QUIT_Y0 + 0x14, 1);
-    text_draw_centered((QUIT_X0 + QUIT_X1) / 2, QUIT_Y0, de ? "Spiel beenden?" : "Quit game?");
-    frame_draw(QUIT_YES_X0, QUIT_BTN_Y0, QUIT_YES_X1, QUIT_BTN_Y1, 4); /* rot wie "Neues Spiel" */
-    frame_draw(QUIT_NO_X0, QUIT_BTN_Y0, QUIT_NO_X1, QUIT_BTN_Y1, 5);   /* blau wie "Ende" */
-    text_draw_centered((QUIT_YES_X0 + QUIT_YES_X1) / 2, QUIT_BTN_Y0 - 5, de ? "Ja" : "Yes");
-    text_draw_centered((QUIT_NO_X0 + QUIT_NO_X1) / 2, QUIT_BTN_Y0 - 5, de ? "Nein" : "No");
-    far_free(DS_PTR(SpriteBank, 0x0100));
-    DS_PTR(SpriteBank, 0x0100) = room_bank;
-    screen_update();
-
-    int16_t yes_j = DS_U8(0x16ac + 'j'), yes_y = DS_U8(0x16ac + 'y'), no_key = DS_U8(0x16ac + 'n');
-    int16_t answer = -1;
-    DS_I16(0x7a2c) = 0;
-    while (answer < 0) {
-        vga_wait_vsync(); /* Ereignisse holen, Bild zeigen, nicht durchdrehen */
-        quit_dialog_cursor();
-        int16_t key = kbd_getkey(), click = DS_I16(0x7a2c);
-        DS_I16(0x7a2c) = 0;
-        if (key == 0x1f || key == yes_j || key == yes_y) /* Enter, J(a) oder Y(es) */
-            answer = 1;
-        else if (key == 0x14 || key == no_key || click == 2)
-            answer = 0;
-        else if (click == 1 && g_cursor_y >= QUIT_BTN_Y0 && g_cursor_y <= QUIT_BTN_Y1) {
-            if (g_cursor_x >= QUIT_YES_X0 && g_cursor_x <= QUIT_YES_X1)
-                answer = 1;
-            else if (g_cursor_x >= QUIT_NO_X0 && g_cursor_x <= QUIT_NO_X1)
-                answer = 0;
-        }
-    }
-    if (answer == 1)
-        exit(0); /* wie "End" auf dem Startbildschirm; atexit-Handler schalten Musik usw. ab */
-    while (mouse_poll() != 0) /* Klick nicht ans Spiel weitergeben */
-        vga_wait_vsync();
-    DS_I16(0x7a2c) = 0;
-    window_close(win);
-    screen_update();
-    clock_start();
-    return answer;
-}
-
 /* 1f51:1628 – Eingabe abfragen: Maus, Enter/Esc als Klick, Pfeiltasten bewegen den Zeiger
  * mit Beschleunigung, übrige Tasten an hotkey_handle. Rückgabe: Klick (1 links, 2 rechts) */
 int16_t input_poll(void)
 {
     mouse_update();
     int16_t key = kbd_getkey();
-    /* PORT: ESC im Gebäude bzw. auf dem Startbildschirm -> Spiel beenden? */
-    if (key == 0x14 && (g_cur_room == 0 || g_cur_room == 0x41) && DS_I16(0x012c) == 0 && DS_I16(0x8aac) == 1 &&
-        DS_PTR(Bitmap, 0x0390) == NULL) {
-        quit_dialog();
-        key = -1;
-    }
     if (key != -1 && DS_I16(0x7a2c) == 0) {
         if (key == 0x1f)
             DS_I16(0x7a2c) = 1;

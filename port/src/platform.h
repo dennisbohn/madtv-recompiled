@@ -68,6 +68,15 @@ const uint8_t *platform_resource(const char *name, size_t *len);
 /* Ordner für Spielstände (Windows: "Gespeicherte Spiele\Mad TV Recompiled"; MADTV_SAVEDIR ersetzt ihn) */
 const char *platform_save_dir(void);
 void platform_set_game_dir(const char *dir);
+/* PORT: Einstellungen als Zeilen "name=zahl" in settings.ini im Spielstandordner */
+int platform_setting_get(const char *name, int def);
+void platform_setting_set(const char *name, int value);
+/* 1, wenn die Anzeigesprache des Systems Deutsch ist */
+int platform_system_language_german(void);
+/* Sprache (0 Deutsch, 1 Englisch) im Fenstermenü anzeigen; Wunsch aus Menü oder F10 abholen
+ * (-1 = keiner) */
+void platform_language_show(int lang);
+int platform_language_request(void);
 
 /* Testhilfe: idx-ter Raum aus MADTV_ROOM, sobald fällig (-1 = nicht/noch nicht) */
 int platform_debug_room(int idx);

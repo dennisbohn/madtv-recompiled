@@ -12,6 +12,14 @@ savegame format are intended to be identical to the original.
 The source code in this repository contains no game data. A self-contained `MadTV-Recompiled-<version>.exe` with the
 game data of the revised release of Mad TV embedded is provided separately under *Releases*.
 
+## How this port was made
+
+This is an AI-assisted port. The analysis of the original machine code, the translation of its
+functions into C, the platform layer and most of the debugging were done by an AI model (Claude
+by Anthropic). Goals, design decisions, testing and acceptance were done by a human. Deviations
+from the original are marked with `PORT` comments, so the translation can be checked against
+the original code.
+
 ## Running
 
 **Release build:** `MadTV-Recompiled-<version>.exe` from *Releases*. Single file, no installation. The executable is
@@ -25,8 +33,14 @@ the executable:
 | `Gamefiles2/` | `SOURCE1.RSC`, `SOURCE2.RSC` of the revised release – all game data |
 | `Gamefiles/` | `MTV.EXE` of the original release – only its data segment is used, since the port is translated from this build's code |
 
-The game starts in fullscreen; `-window` starts windowed, Alt+Enter or F11 toggles. ESC leaves
-rooms as in the original; in the building view it opens a quit confirmation.
+The game starts windowed on first launch and afterwards in the last used mode; `-window` forces
+windowed mode. Alt+Enter, F11 or the menu toggle fullscreen. The menu bar offers *Game > Quit*,
+*Settings > Language / Fullscreen* and *Help > About*; in fullscreen it is hidden and shown by
+pressing Alt. As in the original, there is no quit option inside the game itself.
+
+The language (German/English) follows the system language on first start and is stored in
+`settings.ini` in the savegame folder. It can be changed at any time via the menu or F10; the
+current screen is redrawn in the new language.
 
 Savegames are stored in `%USERPROFILE%\Saved Games\Mad TV Recompiled`. The file format is
 unchanged from the original.
@@ -51,7 +65,8 @@ marked with a `PORT` comment in the source.
   tick (faster new-game setup, same sequence of drawn values).
 - Out-of-bounds reads in the original (news variant check, AI programme swap) are replaced by
   bounded equivalents.
-- Additions: quit dialog (ESC in the building view), savegame folder, window icon and title.
+- Additions: menu bar with quit, language, fullscreen and about (replaces the language prompt at start),
+  savegame folder, window icon and title.
 
 ## Building
 

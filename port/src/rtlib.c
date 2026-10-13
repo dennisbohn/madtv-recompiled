@@ -182,13 +182,24 @@ void bmp_blit_rect_trans_shift(const BlitRectShiftArgs *a)
 void bmp_glyph_trans(const BlitShiftArgs *a)
 {
     int ds = a->dst->wcols * 8;
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->y * ds) + a->xcol * 8 + a->xpix;
     const uint8_t *s = a->src->pixels;
     int rows = (uint8_t)a->src->h; /* Original zählt nur das Low-Byte */
     if (rows == 0)
         rows = 256;
-    for (int r = 0; r < rows; r++, s += 8, d += ds)
-        copy_trans(d, s, 8);
+    /* PORT: auf das Zielbild begrenzen. Das Original prüft nicht; ein Text, der breiter ist als
+     * sein Kasten (z. B. ein sehr großer Geldbetrag im Tooltip), schrieb über das Zeilenende in
+     * die nächste Zeile und am Ende hinter den Puffer – unter Windows zerstört das die
+     * Speicherverwaltung (Hänger beim nächsten Freigeben). Pixel im Bild bleiben unverändert. */
+    int x0 = a->xcol * 8 + a->xpix;
+    for (int r = 0; r < rows; r++, s += 8) {
+        int y = a->y + r;
+        if (y < 0 || y >= a->dst->h)
+            continue;
+        uint8_t *d = a->dst->pixels + y * ds;
+        for (int c = 0; c < 8; c++)
+            if (s[c] && x0 + c >= 0 && x0 + c < ds)
+                d[x0 + c] = s[c];
+    }
 }
 
 void bmp_blit_rect_trans(const BlitRectArgs *a)

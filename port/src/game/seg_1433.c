@@ -403,3 +403,31 @@ void text_cache_show_free_slot(int16_t slot)
         if (t[k] != NULL)
             far_free_ptr((void **)&t[k]);
 }
+
+/* PORT: nach einem Sprachwechsel alle Einträge der Text-Caches aus den Dateien der neuen Sprache
+ * neu laden. Die bisherigen Texte werden nicht freigegeben, weil gerade angezeigte Listen noch
+ * Zeiger darauf halten können (siehe language_switch). */
+void text_cache_reload(void)
+{
+    int16_t i;
+    open_text_index(0, 0x192, 0x192, 1);
+    for (i = 0; i < 0x31; i++)
+        if (*(int16_t *)FILM_CACHE(i) > 0)
+            load_entry(*(int16_t *)FILM_CACHE(i), (char **)(FILM_CACHE(i) + 2), 2);
+    close_text_index();
+    open_text_index(1, 0x66, 0x66, 1);
+    for (i = 0; i < 0xf; i++)
+        if (*(int16_t *)SERIES_CACHE(i) > 0)
+            load_entry(*(int16_t *)SERIES_CACHE(i), (char **)(SERIES_CACHE(i) + 2), 0x16);
+    close_text_index();
+    open_text_index(2, 0x66, 0x33, 2);
+    for (i = 0; i < 10; i++)
+        if (*(int16_t *)SHOW_CACHE(i) > 0)
+            load_entry(*(int16_t *)SHOW_CACHE(i), (char **)(SHOW_CACHE(i) + 2), 0x10);
+    close_text_index();
+    open_text_index(4, 0x322, 0x322, 1);
+    for (i = 0; i < 0x18; i++)
+        if (*(char **)(NEWS_SLOT(i) + 2) != NULL && *(int16_t *)NEWS_SLOT(i) > 0)
+            text_cache_load_news(i, *(int16_t *)NEWS_SLOT(i));
+    close_text_index();
+}

@@ -4,7 +4,8 @@
  * MTV.EXE laden, Fenster öffnen und die übersetzte Original-main (1054:0005) aufrufen.
  *
  *   madtv.exe [-window] [Gamefiles-Ordner]
- * Startet im Vollbild; -window (oder MADTV_WINDOWED=1) im Fenster. Alt+Enter/F11 schaltet um.
+ * Startet beim ersten Mal im Fenster, danach im zuletzt gewählten Modus; -window (oder
+ * MADTV_WINDOWED=1) erzwingt das Fenster. Alt+Enter/F11 oder das Menü schaltet um.
  * Ohne Angabe wird "Gamefiles" neben der EXE bzw. im aktuellen Verzeichnis gesucht. */
 #include <SDL.h>
 #include <stdio.h>

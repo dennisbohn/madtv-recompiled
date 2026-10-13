@@ -774,6 +774,28 @@ static void hover_rating(void)
 /* 239a:1568 – Tooltip/Infokarte für Objekt id zeigen (0 = ausblenden). Tausenderstelle = Art:
  * 0 Film, 1 Serie, 2 Senderkarte, 3/4 Werbung, 5 fertiger Text, 6 Drehbuch, 7 Fernseher,
  * 9 Studio, 10 Serienfolge, 11/12 Rolle, 13 Darsteller, 14/15 Statistik, 16 Geschenk, 17 Geld, 18 Quote */
+/* PORT: Text des Geld-Kastens (englisch "Money:~ $#_9l ~Credit:~ $#_9l", deutsch
+ * "Geld:~ #_9l $~Kredit:~ #_9l $", 8 Spalten breit). Das Original setzt ihn unverändert ein; bei
+ * mehr als 9 Stellen passt eine Zeile samt Leerzeichen nicht mehr, wird umbrochen, und die
+ * zusätzliche Zeile schiebt "Credit" unter den Kasten (im Flur auch über den Rahmen hinaus, wo sie
+ * stehen bleibt). Dann werden schrittweise, bis der Text wieder 4 Zeilen ergibt, die Leerzeichen
+ * vor einem Umbruch, nach einem Umbruch und vor dem '$' entfernt. Normale Beträge bleiben
+ * unverändert. */
+static char *money_text(void)
+{
+    char *t = fmt(g_text(0x18e), money_available(g_local_player), DS_I32(0x7abe));
+    for (int pass = 0; pass < 3 && text_line_count(t, 8, 1) > 4; pass++) {
+        char *w = t;
+        for (const char *r = t; *r; r++)
+            if (!(*r == ' ' && (pass == 0   ? r[1] == '~'
+                                : pass == 1 ? r > t && r[-1] == '~'
+                                            : r[1] == '$')))
+                *w++ = *r;
+        *w = '\0';
+    }
+    return t;
+}
+
 void hover_dispatch(int16_t id)
 {
     clip_reset();
@@ -923,7 +945,7 @@ void hover_dispatch(int16_t id)
         break;
     }
     case 17:
-        tooltip_show_text(fmt(g_text(0x18e), money_available(g_local_player), DS_I32(0x7abe)));
+        tooltip_show_text(money_text());
         break;
     case 18:
         hover_rating();
@@ -955,7 +977,7 @@ void channel_info_show(void)
 /* 239a:31b2 */
 void money_tooltip_show(void)
 {
-    text_window_draw(0x11, 9, 0x19, 0xd, fmt(g_text(0x18e), money_available(g_local_player), DS_I32(0x7abe)), 1);
+    text_window_draw(0x11, 9, 0x19, 0xd, money_text(), 1);
 }
 
 /* 239a:31f5 */

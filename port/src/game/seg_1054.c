@@ -193,6 +193,7 @@ void game_main(void)
         if (DS_I16(0x7c58) == 3 && DS_I16(0x012c) == 0 && g_cur_room >= 0)
             debug_room_jump();
 
+        language_poll(); /* PORT: Sprachwechsel aus Fenstermenü/F10 */
         int16_t door = game_tick();
         if (door == 0) {
             /* Figur steht vor der Aufzugtafel -> Raum 0x3d */
@@ -286,6 +287,85 @@ void hotkey_handle(int16_t key)
     screen_update();
 }
 
+/* Oberflächentexte der gewählten Sprache: 430 nullterminierte Strings hintereinander
+ * (Teil von init_tables; PORT: eigene Funktion für den Sprachwechsel) */
+static void ui_texts_load(void)
+{
+    int16_t text_hes = DS_ADDR(int16_t, 0x055e)[g_language * 8];
+    DS_PTR(char, 0x8b8e) = far_calloc((uint16_t)hes_filesize(text_hes), 1);
+    hes_load(text_hes, DS_PTR(char, 0x8b8e));
+    int16_t ofs = 0;
+    for (int16_t i = 0; i < 0x1ae; i++) {
+        char *t = DS_PTR(char, 0x8b8e) + ofs;
+        DS_ADDR(char *, 0x8370)[i] = t;
+        ofs = (int16_t)(ofs + strlen(t) + 1);
+    }
+}
+
+/* ---- PORT: Sprache während des Spiels wechseln (Fenstermenü oder F10) ----
+ * Lädt alle sprachabhängigen Texte neu: Oberflächentexte, Werbekunden und Nachrichtenthemen,
+ * die Text-Caches der Filme/Serien/Shows/Nachrichten und den Text-Datensatz des Raums
+ * "Produktionen". Die alten Texte bleiben absichtlich im Speicher (wenige KB je Wechsel): gerade
+ * angezeigte Kästen und Listen können noch Zeiger darauf halten und zeigen bis zum nächsten
+ * Neuzeichnen die alte Sprache. Zeiger auf Oberflächentexte im Datensegment (z. B. in den
+ * Spielerdaten) werden auf die neuen Texte umgestellt. Spielstände enthalten die Sprache nicht. */
+static void language_switch(int16_t lang)
+{
+    static char *old[0x1ae];
+    memcpy(old, DS_ADDR(char *, 0x8370), sizeof old);
+    g_language = lang;
+    timer_pause();
+    ui_texts_load();
+    timer_resume();
+    /* Zeiger auf alte Oberflächentexte im Datensegment umstellen (außer der Tabelle selbst) */
+    for (uint32_t o = 0; o + sizeof(char *) <= DGROUP_SIZE; o++) {
+        if (o >= 0x8370 && o < 0x8370 + sizeof old)
+            continue;
+        char *p;
+        memcpy(&p, g_ds + o, sizeof p);
+        if (p == NULL || p < old[0] || p > old[0x1ad])
+            continue;
+        for (int16_t i = 0; i < 0x1ae; i++)
+            if (p == old[i]) {
+                memcpy(g_ds + o, &DS_ADDR(char *, 0x8370)[i], sizeof p);
+                break;
+            }
+    }
+    if (DS_PTR(char, 0x8aa8) != NULL) { /* Datenbanken geladen (nach dem Intro) */
+        timer_pause();
+        db_texts_load();
+        timer_resume();
+        text_cache_reload();
+    }
+    if (g_cur_room == 0xc && DS_PTR(uint8_t, 0x110) != NULL)
+        DS_PTR(uint8_t, 0x110) = hes_load_raw(g_language == 0 ? 0x2a : 0xf6);
+    DS_I16(0x79ae) = 1; /* offenen Hinweiskasten bzw. Infokarte neu aufbauen (wie room_enter) */
+    /* Raum ohne offenen Unterdialog neu aufbauen wie beim Betreten (ohne Raumwechsel, Musik und
+     * Überblendung), damit fest gezeichnete Texte sofort in der neuen Sprache erscheinen.
+     * Die Gebäudeansicht zeichnet sich ohnehin laufend neu. */
+    if (g_cur_room > 0 && g_cur_dialog == 0) {
+        mouse_hide();
+        room_free_resources();
+        room_load(g_cur_room);
+        screen_update();
+        mouse_show();
+    }
+}
+
+/* Wunsch aus Fenstermenü/F10 übernehmen und als Einstellung speichern */
+void language_poll(void)
+{
+    int lang = platform_language_request();
+    if (lang < 0 || lang == g_language)
+        return;
+    platform_setting_set("language", lang);
+    platform_language_show(lang);
+    if (DS_PTR(char, 0x8b8e) == NULL) /* Texte noch nicht geladen (Spielstart) */
+        g_language = (int16_t)lang;
+    else
+        language_switch((int16_t)lang);
+}
+
 /* 1054:0927 – Grunddaten aus 208.HES auf die Tabellen verteilen, Oberflächentexte der
  * gewählten Sprache laden und Textzeiger aufbauen, Zähler nullen */
 void init_tables(void)
@@ -307,16 +387,7 @@ void init_tables(void)
     config_read(DS_ADDR(void, 0x7140), 0x80);
     far_free(DS_PTR(uint8_t, 0x8f90));
 
-    /* Oberflächentexte: 430 nullterminierte Strings hintereinander */
-    int16_t text_hes = DS_ADDR(int16_t, 0x055e)[g_language * 8];
-    DS_PTR(char, 0x8b8e) = far_calloc((uint16_t)hes_filesize(text_hes), 1);
-    hes_load(text_hes, DS_PTR(char, 0x8b8e));
-    int16_t ofs = 0;
-    for (int16_t i = 0; i < 0x1ae; i++) {
-        char *t = DS_PTR(char, 0x8b8e) + ofs;
-        DS_ADDR(char *, 0x8370)[i] = t;
-        ofs = (int16_t)(ofs + strlen(t) + 1);
-    }
+    ui_texts_load();
     timer_resume();
 
     /* Namenspuffer mit Vorgaben aus den Texten */
@@ -1875,8 +1946,34 @@ void movie_agency_reload_texts(void)
     }
 }
 
-/* 1054:3ca4 – Sprachauswahl "(D)eutsch / (E)nglish" aus 041.HES, per Taste oder Mausklick */
+/* PORT: Statt bei jedem Start zu fragen, gilt die gespeicherte Sprache (settings.ini im
+ * Spielstandordner); beim ersten Start die des Systems (Deutsch, sonst Englisch). Gewechselt wird
+ * im Fenstermenü oder mit F10 (language_poll). MADTV_LANGSELECT=1 zeigt die Originalauswahl. */
+static void language_select_menu(void);
+
 void language_select(void)
+{
+    int lang = platform_setting_get("language", -1);
+    if (platform_debug_env("MADTV_LANGSELECT")) {
+        language_select_menu();
+        lang = g_language;
+    } else if (lang != 0 && lang != 1) {
+        lang = platform_system_language_german() ? 0 : 1;
+    }
+    platform_setting_set("language", lang);
+    g_language = (int16_t)lang;
+    platform_language_show(lang);
+    g_cur_room = -5; /* Zustand wie nach der Originalauswahl */
+    DS_I16(0x8aac) = 0;
+    DS_I16(0x79b2) = 1;
+    g_cursor_x = 0xa0;
+    g_cursor_y = 100;
+    cursor_reset();
+    g_mouse_buttons = 0;
+}
+
+/* 1054:3ca4 – Sprachauswahl "(D)eutsch / (E)nglish" aus 041.HES, per Taste oder Mausklick */
+static void language_select_menu(void)
 {
     /* zwei Einträge à 20 Byte: Spiel-Tastencode, danach der anzuzeigende Text */
     char choices[40];

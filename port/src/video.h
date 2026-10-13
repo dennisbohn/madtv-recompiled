@@ -16,6 +16,17 @@ void video_set_palette(const uint8_t rgb[768]);
 void video_set_title(const char *title);
 void video_toggle_fullscreen(void);
 int video_is_fullscreen(void);
+/* PORT: Sprachwahl im Systemmenü des Fensters ("Deutsch"/"English", Häkchen auf lang) und F10
+ * (wechselt). video_language_request liefert einmalig den Wunsch (0 Deutsch, 1 Englisch) oder -1. */
+void video_language_show(int lang);
+int video_language_request(void);
+/* PORT: Menüeintrag "Vollbild" gewählt (einmalig 1, sonst 0) */
+int video_fullscreen_request(void);
+/* PORT: Menüeintrag "Beenden" gewählt */
+int video_quit_request(void);
+/* PORT: Menüleiste im Vollbild per Alt eingeblendet? / seit der letzten Abfrage geändert? */
+int video_menu_overlay(void);
+int video_menu_overlay_changed(void);
 uint32_t video_window_id(void);
 /* Logische Ausgabegröße, in der SDL Mausbewegungen meldet (320x200 werden darauf gestreckt). */
 void video_logical_size(int *w, int *h);

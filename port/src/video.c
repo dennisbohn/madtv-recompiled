@@ -140,9 +140,191 @@ static void cursor_overlay(uint8_t *img)
  * Größe vor dem Übernehmen (WM_SIZING); das Rechteck wird hier angepasst. SDL bietet dafür keine
  * Einstellung, daher wird die Fensterprozedur von SDL umschlossen. */
 static WNDPROC g_sdl_wndproc;
+static HWND g_hwnd;
+
+/* PORT: Menüleiste "Spiel" (Beenden), "Einstellungen" (Sprache Deutsch/English, Vollbild) und
+ * "Hilfe" (Über Mad TV Recompiled). Im Vollbild ist sie ausgeblendet; Alt blendet sie dort ein (wie
+ * in Windows-Programmen üblich), eine Menüauswahl, erneutes Alt oder ein Klick ins Spielbild wieder
+ * aus. Beim Ein- und Ausblenden im Fenster wird das Fenster um die Höhe der Leiste angepasst, damit
+ * die Spielfläche gleich groß bleibt. */
+#define MENU_LANG_DE 0x1100
+#define MENU_LANG_EN 0x1110
+#define MENU_FULLSCREEN 0x1120
+#define MENU_QUIT 0x1130
+#define MENU_ABOUT 0x1140
+#ifndef MADTV_VERSION
+#define MADTV_VERSION "?" /* setzt das Makefile aus res/version.rc */
+#endif
+static int g_lang_shown = -1, g_lang_request = -1, g_fullscreen_request, g_quit_request;
+static HMENU g_menubar, g_menu_game, g_menu_settings, g_menu_lang, g_menu_help;
+static int g_menu_overlay;      /* Leiste im Vollbild per Alt eingeblendet */
+static int g_menu_mode_changed; /* Einblenden/Ausblenden seit der letzten Abfrage */
+static int g_alt_alone;         /* Alt gedrückt, ohne weitere Taste */
+
+/* Menütexte je Sprache */
+static void menu_texts(int lang)
+{
+    int de = lang != 1;
+    ModifyMenuW(g_menubar, 0, MF_BYPOSITION | MF_POPUP | MF_STRING, (UINT_PTR)g_menu_game, de ? L"Spiel" : L"Game");
+    ModifyMenuW(g_menu_game, MENU_QUIT, MF_BYCOMMAND | MF_STRING, MENU_QUIT,
+                de ? L"Beenden\tAlt+F4" : L"Quit\tAlt+F4");
+    ModifyMenuW(g_menubar, 1, MF_BYPOSITION | MF_POPUP | MF_STRING, (UINT_PTR)g_menu_settings,
+                de ? L"Einstellungen" : L"Settings");
+    ModifyMenuW(g_menu_settings, 0, MF_BYPOSITION | MF_POPUP | MF_STRING, (UINT_PTR)g_menu_lang,
+                de ? L"Sprache" : L"Language");
+    ModifyMenuW(g_menu_settings, MENU_FULLSCREEN, MF_BYCOMMAND | MF_STRING, MENU_FULLSCREEN,
+                de ? L"Vollbild\tF11" : L"Fullscreen\tF11");
+    ModifyMenuW(g_menubar, 2, MF_BYPOSITION | MF_POPUP | MF_STRING, (UINT_PTR)g_menu_help, de ? L"Hilfe" : L"Help");
+    ModifyMenuW(g_menu_help, MENU_ABOUT, MF_BYCOMMAND | MF_STRING, MENU_ABOUT,
+                de ? L"Über Mad TV Recompiled" : L"About Mad TV Recompiled");
+    if (GetMenuState(g_menu_settings, MENU_FULLSCREEN, MF_BYCOMMAND) != (UINT)-1)
+        CheckMenuItem(g_menu_settings, MENU_FULLSCREEN, MF_BYCOMMAND | (video_is_fullscreen() ? MF_CHECKED : MF_UNCHECKED));
+}
+
+/* Fenster "Über Mad TV Recompiled" (modal; das Spiel steht so lange) */
+static void about_show(void)
+{
+    int de = g_lang_shown != 1;
+    wchar_t text[1024];
+    swprintf(text, sizeof text / sizeof *text,
+             de ? L"Mad TV Recompiled %hs\n\n"
+                  L"Native Windows-Portierung von Mad TV (1991, Rainbow Arts). Der Code des "
+                  L"Originalspiels wurde mit KI-Unterstützung (Claude von Anthropic) analysiert und "
+                  L"nach C übersetzt.\n\n"
+                  L"Entwicklung: Dennis Bohn\n"
+                  L"https://github.com/dennisbohn/madtv-recompiled\n\n"
+                  L"Tasten:\n"
+                  L"F10\tSprache wechseln\n"
+                  L"F11\tVollbild ein/aus (auch Alt+Enter)\n"
+                  L"Alt\tMenüleiste im Vollbild\n\n"
+                  L"Mad TV © 1991 Rainbow Arts."
+                : L"Mad TV Recompiled %hs\n\n"
+                  L"Native Windows port of Mad TV (1991, Rainbow Arts). The code of the original "
+                  L"game was analysed and translated to C with AI assistance (Claude by "
+                  L"Anthropic).\n\n"
+                  L"Development: Dennis Bohn\n"
+                  L"https://github.com/dennisbohn/madtv-recompiled\n\n"
+                  L"Keys:\n"
+                  L"F10\tSwitch language\n"
+                  L"F11\tToggle fullscreen (also Alt+Enter)\n"
+                  L"Alt\tMenu bar in fullscreen\n\n"
+                  L"Mad TV © 1991 Rainbow Arts.",
+             MADTV_VERSION);
+    MessageBoxW(g_hwnd, text, de ? L"Über Mad TV Recompiled" : L"About Mad TV Recompiled",
+                MB_OK | MB_ICONINFORMATION);
+}
+
+int video_fullscreen_request(void)
+{
+    int r = g_fullscreen_request;
+    g_fullscreen_request = 0;
+    return r;
+}
+
+int video_quit_request(void)
+{
+    return g_quit_request;
+}
+
+void video_language_show(int lang)
+{
+    g_lang_shown = lang;
+    if (!g_menubar)
+        return;
+    menu_texts(lang);
+    CheckMenuRadioItem(g_menu_lang, MENU_LANG_DE, MENU_LANG_EN, lang == 0 ? MENU_LANG_DE : MENU_LANG_EN,
+                       MF_BYCOMMAND);
+    if (GetMenu(g_hwnd))
+        DrawMenuBar(g_hwnd);
+}
+
+static void menubar_show(int on)
+{
+    if (!g_menubar || on == (GetMenu(g_hwnd) != NULL))
+        return;
+    RECT win, cli;
+    GetWindowRect(g_hwnd, &win);
+    GetClientRect(g_hwnd, &cli);
+    SetMenu(g_hwnd, on ? g_menubar : NULL);
+    if (IsZoomed(g_hwnd) || (SDL_GetWindowFlags(g_win) & SDL_WINDOW_FULLSCREEN))
+        return;
+    RECT cli2; /* Spielfläche gleich groß halten: Fenster um die Höhe der Leiste ändern */
+    GetClientRect(g_hwnd, &cli2);
+    SetWindowPos(g_hwnd, NULL, 0, 0, win.right - win.left, (win.bottom - win.top) + (cli.bottom - cli2.bottom),
+                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+/* Leiste im Vollbild ein-/ausblenden (Spielfläche wird dabei kurz etwas kleiner) */
+static void menu_overlay(int on)
+{
+    if (!g_menubar || on == g_menu_overlay)
+        return;
+    g_menu_overlay = on;
+    g_menu_mode_changed = 1; /* Maus: solange die Leiste sichtbar ist, Windows-Zeiger statt relativ */
+    SetMenu(g_hwnd, on ? g_menubar : NULL);
+}
+
+int video_menu_overlay(void)
+{
+    return g_menu_overlay;
+}
+
+int video_menu_overlay_changed(void)
+{
+    int r = g_menu_mode_changed;
+    g_menu_mode_changed = 0;
+    return r;
+}
+
+int video_language_request(void)
+{
+    int r = g_lang_request;
+    g_lang_request = -1;
+    return r;
+}
 
 static LRESULT CALLBACK aspect_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
+    if (msg == WM_COMMAND && HIWORD(wp) == 0 && (LOWORD(wp) == MENU_LANG_DE || LOWORD(wp) == MENU_LANG_EN)) {
+        g_lang_request = LOWORD(wp) == MENU_LANG_DE ? 0 : 1;
+        return 0;
+    }
+    if (msg == WM_COMMAND && HIWORD(wp) == 0 && LOWORD(wp) == MENU_ABOUT) {
+        about_show(); /* direkt hier: die Maus ist nach der Menüauswahl noch frei */
+        return 0;
+    }
+    if (msg == WM_COMMAND && HIWORD(wp) == 0 && LOWORD(wp) == MENU_QUIT) {
+        g_quit_request = 1; /* beendet wird in platform_pump wie beim Schließen des Fensters */
+        return 0;
+    }
+    if (msg == WM_COMMAND && HIWORD(wp) == 0 && LOWORD(wp) == MENU_FULLSCREEN) {
+        g_fullscreen_request = 1; /* umgeschaltet wird in platform_pump, nicht hier im Fensterereignis */
+        return 0;
+    }
+    /* F10 wechselt die Sprache; Windows würde damit sonst die Menüauswahl des Fensters starten */
+    if ((msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN || msg == WM_SYSKEYUP || msg == WM_KEYUP) && wp == VK_F10) {
+        if ((msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN) && !(lp & (1 << 30)))
+            g_lang_request = g_lang_shown == 0 ? 1 : 0;
+        return 0;
+    }
+    /* Alt allein (drücken und loslassen) blendet die Leiste im Vollbild ein bzw. aus */
+    if (msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN) {
+        if (wp == VK_MENU) {
+            if (!(lp & (1 << 30)))
+                g_alt_alone = 1;
+        } else {
+            g_alt_alone = 0;
+        }
+    } else if (msg == WM_SYSKEYUP && wp == VK_MENU) {
+        if (g_alt_alone && video_is_fullscreen())
+            menu_overlay(!g_menu_overlay);
+        g_alt_alone = 0;
+    } else if (msg == WM_EXITMENULOOP && g_menu_overlay) {
+        menu_overlay(0);
+    } else if ((msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN) && g_menu_overlay) {
+        menu_overlay(0); /* Klick ins Spielbild schließt nur die Leiste */
+        return 0;
+    }
     if (msg == WM_SIZING) {
         RECT *r = (RECT *)lp, win, cli;
         GetWindowRect(hwnd, &win);
@@ -170,7 +352,56 @@ static void aspect_lock_install(void)
     if (SDL_GetWindowWMInfo(g_win, &info) && info.subsystem == SDL_SYSWM_WINDOWS) {
         HWND hwnd = info.info.win.window;
         g_sdl_wndproc = (WNDPROC)SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)aspect_wndproc);
+        g_hwnd = hwnd;
+        g_menu_lang = CreatePopupMenu();
+        AppendMenuW(g_menu_lang, MF_STRING, MENU_LANG_DE, L"Deutsch\tF10");
+        AppendMenuW(g_menu_lang, MF_STRING, MENU_LANG_EN, L"English\tF10");
+        g_menu_settings = CreatePopupMenu();
+        AppendMenuW(g_menu_settings, MF_POPUP | MF_STRING, (UINT_PTR)g_menu_lang, L"Sprache");
+        AppendMenuW(g_menu_settings, MF_STRING, MENU_FULLSCREEN, L"Vollbild\tF11");
+        g_menu_game = CreatePopupMenu();
+        AppendMenuW(g_menu_game, MF_STRING, MENU_QUIT, L"Beenden\tAlt+F4");
+        g_menubar = CreateMenu();
+        AppendMenuW(g_menubar, MF_POPUP | MF_STRING, (UINT_PTR)g_menu_game, L"Spiel");
+        AppendMenuW(g_menubar, MF_POPUP | MF_STRING, (UINT_PTR)g_menu_settings, L"Einstellungen");
+        g_menu_help = CreatePopupMenu();
+        AppendMenuW(g_menu_help, MF_STRING, MENU_ABOUT, L"Über Mad TV Recompiled");
+        AppendMenuW(g_menubar, MF_POPUP | MF_STRING, (UINT_PTR)g_menu_help, L"Hilfe");
+        menu_texts(g_lang_shown);
+        menubar_show(1);
+        if (g_lang_shown >= 0)
+            video_language_show(g_lang_shown);
     }
+}
+#else
+void video_language_show(int lang)
+{
+    (void)lang;
+}
+
+int video_language_request(void)
+{
+    return -1;
+}
+
+int video_fullscreen_request(void)
+{
+    return 0;
+}
+
+int video_quit_request(void)
+{
+    return 0;
+}
+
+int video_menu_overlay(void)
+{
+    return 0;
+}
+
+int video_menu_overlay_changed(void)
+{
+    return 0;
 }
 #endif
 
@@ -184,7 +415,16 @@ int video_init(const char *title, int scale)
                              320 * scale, 240 * scale, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!g_win)
         return -1;
-    g_ren = SDL_CreateRenderer(g_win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    /* Direct3D 11 bevorzugen (SDL nähme sonst Direct3D 9); fehlt es, wählt SDL selbst. Die
+     * Umgebungsvariable SDL_RENDER_DRIVER hat Vorrang (Ausweichmöglichkeit bei Treiberproblemen). */
+    const char *forced = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
+    for (int i = 0; !g_ren && !(forced && *forced) && i < SDL_GetNumRenderDrivers(); i++) {
+        SDL_RendererInfo ri;
+        if (SDL_GetRenderDriverInfo(i, &ri) == 0 && strcmp(ri.name, "direct3d11") == 0)
+            g_ren = SDL_CreateRenderer(g_win, i, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    }
+    if (!g_ren)
+        g_ren = SDL_CreateRenderer(g_win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!g_ren)
         return -1;
     SDL_RenderSetLogicalSize(g_ren, 320 * 4, 240 * 4);
@@ -244,7 +484,19 @@ void video_set_title(const char *title)
 void video_toggle_fullscreen(void)
 {
     Uint32 fs = SDL_GetWindowFlags(g_win) & SDL_WINDOW_FULLSCREEN_DESKTOP;
+#ifdef _WIN32
+    if (!fs)
+        menubar_show(0); /* Menüleiste im Vollbild nur per Alt */
+    else
+        menu_overlay(0);
+#endif
     SDL_SetWindowFullscreen(g_win, fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+#ifdef _WIN32
+    if (fs)
+        menubar_show(1);
+    if (g_menu_settings)
+        CheckMenuItem(g_menu_settings, MENU_FULLSCREEN, MF_BYCOMMAND | (fs ? MF_UNCHECKED : MF_CHECKED));
+#endif
 }
 
 uint32_t video_window_id(void)

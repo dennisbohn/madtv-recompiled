@@ -44,7 +44,8 @@ static float g_rel_x, g_rel_y, g_rel_pend_x, g_rel_pend_y;
 
 static void mouse_mode_update(void)
 {
-    int rel = video_is_fullscreen();
+    /* relativ nur im Vollbild und nicht, während die Menüleiste eingeblendet ist */
+    int rel = video_is_fullscreen() && !video_menu_overlay();
     if (rel != g_rel_mode) {
         g_rel_mode = rel;
         g_rel_synced = 0;
@@ -166,6 +167,67 @@ const char *platform_save_dir(void)
     return dir;
 }
 
+static void settings_path(char *path, size_t n)
+{
+    snprintf(path, n, "%s/settings.ini", platform_save_dir());
+}
+
+int platform_setting_get(const char *name, int def)
+{
+    char path[700], line[200];
+    size_t len = strlen(name);
+    int value = def;
+    settings_path(path, sizeof path);
+    FILE *f = fopen(path, "r");
+    if (!f)
+        return def;
+    while (fgets(line, sizeof line, f))
+        if (strncmp(line, name, len) == 0 && line[len] == '=')
+            value = atoi(line + len + 1);
+    fclose(f);
+    return value;
+}
+
+void platform_setting_set(const char *name, int value)
+{
+    char path[700], line[200], out[4096];
+    size_t len = strlen(name), used = 0;
+    settings_path(path, sizeof path);
+    FILE *f = fopen(path, "r");
+    if (f) { /* übrige Einträge übernehmen */
+        while (fgets(line, sizeof line, f))
+            if (!(strncmp(line, name, len) == 0 && line[len] == '=') && used + strlen(line) < sizeof out - 100)
+                used += (size_t)snprintf(out + used, sizeof out - used, "%s", line);
+        fclose(f);
+    }
+    snprintf(out + used, sizeof out - used, "%s=%d\n", name, value);
+    f = fopen(path, "w");
+    if (f) {
+        fputs(out, f);
+        fclose(f);
+    }
+}
+
+int platform_system_language_german(void)
+{
+#ifdef _WIN32
+    return PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_GERMAN;
+#else
+    const char *l = getenv("LANG");
+    return l && strncmp(l, "de", 2) == 0;
+#endif
+}
+
+void platform_language_show(int lang)
+{
+    video_language_show(lang);
+}
+
+int platform_language_request(void)
+{
+    return video_language_request();
+}
+
 const uint8_t *platform_resource(const char *name, size_t *len)
 {
 #ifdef _WIN32
@@ -280,13 +342,20 @@ static uint8_t pc_scancode(SDL_Scancode s)
     return 0;
 }
 
+/* Vollbild umschalten; der Modus gilt auch beim nächsten Start (settings.ini) */
+static void fullscreen_toggle(void)
+{
+    video_toggle_fullscreen();
+    mouse_mode_update();
+    platform_setting_set("fullscreen", video_is_fullscreen());
+}
+
 static void on_key(const SDL_KeyboardEvent *k)
 {
     SDL_Scancode s = k->keysym.scancode;
     SDL_Keycode sym = k->keysym.sym;
     if ((s == SDL_SCANCODE_RETURN && (k->keysym.mod & KMOD_ALT)) || s == SDL_SCANCODE_F11) {
-        video_toggle_fullscreen();
-        mouse_mode_update();
+        fullscreen_toggle();
         return;
     }
     uint8_t sc = pc_scancode(s);
@@ -372,6 +441,14 @@ static void pump_events(void)
         default: break;
         }
     }
+    if (video_quit_request()) { /* Menü "Spiel > Beenden": wie Fenster schließen */
+        g_quit = 1;
+        exit(0);
+    }
+    if (video_fullscreen_request()) /* Menü "Einstellungen > Vollbild" (wie F11) */
+        fullscreen_toggle();
+    if (video_menu_overlay_changed()) /* Menüleiste im Vollbild ein-/ausgeblendet */
+        mouse_mode_update();
 }
 
 void platform_present_now(void)
@@ -765,7 +842,8 @@ int platform_init(const char *game_dir, int windowed)
         return -1;
     if (video_init("Mad TV Recompiled", 3) != 0)
         return -1;
-    if (!windowed)
+    /* PORT: erster Start im Fenster; danach der zuletzt gewählte Modus (settings.ini) */
+    if (!windowed && platform_setting_get("fullscreen", 0) == 1)
         video_toggle_fullscreen(); /* Vollbild in Desktop-Auflösung, Bild im Seitenverhältnis 4:3 */
     mouse_mode_update();
     SDL_ShowCursor(SDL_DISABLE); /* nur über dem Fenster; das Spiel zeichnet seinen eigenen Zeiger */

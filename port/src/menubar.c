@@ -227,7 +227,7 @@ static void text_draw(const char *s, float x, float baseline, SDL_Color c)
 
 /* ---- Zustand und Aufbau ---- */
 
-static MenuState g_state = {-1, 0, MENU_GAME_NONE, 0}; /* zuletzt gezeichneter Zustand */
+static MenuState g_state = {-1, 0, MENU_GAME_NONE, 0, 0, 0}; /* zuletzt gezeichneter Zustand */
 static int g_open = -1;     /* aufgeklapptes Menü der Leiste */
 static int g_item = -1;     /* markierter Eintrag im Menü */
 static int g_sub = -1;      /* Eintrag, dessen Untermenü offen ist */

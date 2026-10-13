@@ -108,7 +108,7 @@ the size of the executable.
 The port must be built as a 32-bit program. On Fedora:
 
 ```sh
-sudo dnf install glibc-devel.i686 cmake ninja-build wayland-devel wayland-protocols-devel \
+sudo dnf install glibc-devel.i686 libatomic.i686 cmake ninja-build wayland-devel wayland-protocols-devel \
   libX11-devel.i686 libXext-devel.i686 libXcursor-devel.i686 libXi-devel.i686 libXrandr-devel.i686 \
   libXfixes-devel.i686 libXScrnSaver-devel.i686 libxkbcommon-devel.i686 wayland-devel.i686 \
   libdecor-devel.i686 mesa-libGL-devel.i686 mesa-libEGL-devel.i686 mesa-dri-drivers.i686 \

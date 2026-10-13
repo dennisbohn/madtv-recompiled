@@ -47,6 +47,7 @@ void schedule_room_refresh(void); /* 1054:3bb6, med */
 void movie_agency_reload_texts(void); /* 1054:3c59, med */
 void language_select(void); /* 1054:3ca4 */
 void language_poll(void); /* PORT: Sprachwechsel aus Fenstermenü/F10 */
+void game_menu_poll(void); /* PORT: Menü "Spiel" und Schalter des Control-Centers */
 
 /* ---- Segment 1433 ---- */
 void text_cache_news(int16_t player); /* 1433:0002, med */
@@ -68,6 +69,12 @@ void text_cache_series_free(void); /* 1433:148c */
 void text_cache_show_free_slot(int16_t slot); /* 1433:14a0 */
 
 /* ---- Segment 1581 ---- */
+void pause_begin(void);       /* PORT: Pause (aus room_click) */
+void pause_end(void);
+int16_t pause_allowed(void);
+void options_speed_set(int16_t speed); /* PORT: Knöpfe Spieltempo im Optionen-Monitor */
+void options_switch_set(int16_t which, int16_t on); /* PORT: Schalter Fernsehfamilie/-bild/Musik */
+int16_t options_switch_on(int16_t which);
 void room_click(void); /* 1581:0009 */
 void room_click_auction(void); /* 1581:0345, med */
 void room_click_movie_agency(void); /* 1581:088c */
@@ -610,6 +617,7 @@ void music_stop(void); /* 42a5:02a8 */
 void snd_shutdown(void); /* 42a5:02c0 */
 void music_on_enter(int16_t room, int16_t owner_player); /* 42a5:02c6 */
 void music_on_leave(int16_t room, int16_t owner_player); /* 42a5:04dd */
+void music_switch_apply(void); /* PORT: Schalter Musik sofort anwenden */
 void *para_align(void *p); /* 42a5:0582 */
 
 /* ---- Segment 4301 ---- */

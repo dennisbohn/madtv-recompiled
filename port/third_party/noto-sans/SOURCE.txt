@@ -1,0 +1,8 @@
+Noto Sans Regular, Version 2.015 (Fedora-Paket google-noto-sans-fonts)
+https://github.com/notofonts/latin-greek-cyrillic
+Lizenz: SIL Open Font License 1.1 (OFL.txt)
+
+NotoSans-Regular-subset.ttf ist eine Teilmenge (Latin-1 und einige Satzzeichen, ohne Hinting),
+erzeugt mit fonttools:
+  pyftsubset NotoSans-Regular.ttf --unicodes="U+0020-007E,U+00A0-00FF,U+2013,U+2014,U+2018,U+2019,U+201C,U+201D,U+2022,U+2026,U+203A,U+20AC" --no-hinting --layout-features='' --name-IDs='*'
+Verwendet für die Menüleiste unter Linux (src/menubar.c).

@@ -2,13 +2,13 @@
 #   PATH=/c/msys64/mingw32/bin:$PATH mingw32-make
 CC      ?= gcc
 CFLAGS  ?= -O2 -g -std=c11 -Wall -Wextra -Wno-unused-parameter
-SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
-SDL_LIBS   := $(shell pkg-config --libs sdl2) -lole32 -ldwmapi
+SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
+SDL_LIBS   := $(shell pkg-config --libs sdl2 2>/dev/null) -lole32 -ldwmapi
 
 BUILD := build
 GAME_DIR := ../Gamefiles
 
-PLATFORM := src/hes.c src/video.c src/unpack.c src/platform.c src/inflate.c
+PLATFORM := src/hes.c src/video.c src/menu.c src/unpack.c src/platform.c src/inflate.c
 RUNTIME  := src/dgroup.c src/rtlib.c
 OPL      := third_party/nuked-opl3/opl3.c
 HEADERS  := $(wildcard src/*.h)
@@ -83,3 +83,31 @@ $(RELEASE_EXE): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC)
 	strip $@
 
 release: $(RELEASE_EXE)
+
+# ---- Linux: Einzeldatei (32 Bit, Spieldaten eingebettet, SDL statisch) ----
+# Gleiche Daten wie die Windows-Release-EXE, eingebunden per .incbin (bundle.S aus make_bundle.py).
+# V1_EXE darf statt der MTV.EXE der Originalfassung auch eine Release-EXE dieses Ports sein (das
+# Datensegment wird dann aus deren Ressourcen gelesen), z. B.:
+#   make linux V1_EXE=MadTV-Recompiled-0.2.0.exe V2_DIR=../madtv
+# Die fertige Datei braucht zur Laufzeit 32-Bit-Bibliotheken (glibc, X11 oder Wayland, Mesa,
+# PipeWire/PulseAudio/ALSA); SDL lädt sie per dlopen, siehe tools/build_sdl_linux.sh.
+LINUX     := $(BUILD)/linux
+LINUX_BIN := $(LINUX)/MadTV-Recompiled-$(VERSION)-linux
+SDL_LINUX := $(BUILD)/sdl-linux/install
+# selbst gezeichnete Menüleiste (Schrift per .incbin, Pfad relativ zu port/)
+MENUBAR   := src/menubar.c src/menufont.S
+MENUBAR_DEPS := $(MENUBAR) third_party/stb/stb_truetype.h third_party/noto-sans/NotoSans-Regular-subset.ttf
+
+$(SDL_LINUX)/lib/libSDL2.a: tools/build_sdl_linux.sh
+	sh tools/build_sdl_linux.sh
+
+$(LINUX)/bundle.S: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOURCE1.RSC $(V2_DIR)/SOURCE2.RSC
+	python3 -I tools/make_bundle.py $(V1_EXE) $(V2_DIR) $(LINUX)
+
+$(LINUX_BIN): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(MENUBAR_DEPS) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a
+	$(CC) -m32 $(CFLAGS) -g0 -ffunction-sections -fdata-sections -I$(SDL_LINUX)/include/SDL2 -D_REENTRANT -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(MENUBAR) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a -pthread -lm -ldl -Wl,--gc-sections
+	strip $@
+
+linux: $(LINUX_BIN)
+
+.PHONY: linux

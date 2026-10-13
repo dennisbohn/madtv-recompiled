@@ -5,6 +5,7 @@
 #include "platform.h"
 
 static void debug_room_jump(void);
+static int g_pause_key; /* PORT: Taste P seit dem letzten game_menu_poll */
 static void debug_autoplan(void);
 void save_menu_load(int16_t slot); /* seg_1581.c */
 
@@ -154,6 +155,7 @@ void game_main(void)
 
     /* Hauptschleife bis Raum 1000 (Spielende) */
     while (g_cur_room != 1000) {
+        game_menu_poll(); /* PORT: vor dem Aufbau des Bildschirms "Neues Spiel" (nach Neues Spiel) */
         if (DS_I16(0x7c58) == 0) {
             /* erster Durchlauf: Bildschirm "Neues Spiel" */
             DS_I16(0x012c) = 2;
@@ -264,6 +266,10 @@ void hotkey_handle(int16_t key)
             DS_I16(0x7a62) = 5;
             return;
         }
+        if (key == 0x35) { /* PORT: 'P' Pause ein/aus (ausgeführt in game_menu_poll) */
+            g_pause_key = 1;
+            return;
+        }
         if (key == 0x2f) { /* 'J': Spielfigur umschalten */
             DS_ADDR(int16_t, 0x7b3c)[g_player_idx * 15] = DS_I16(0x7a14) != 0 ? 4 : 2;
             DS_I16(0x7a14) = DS_I16(0x7a14) == 0;
@@ -364,6 +370,76 @@ void language_poll(void)
         g_language = (int16_t)lang;
     else
         language_switch((int16_t)lang);
+}
+
+/* PORT: "Neues Spiel" aus der Menüleiste: zurück in den Bildschirm "Neues Spiel" (Spielerwahl, Namen,
+ * Schwierigkeit) wie nach dem Ausscheiden (player_eliminated_sequence). Offene Räume und Dialoge
+ * werden nicht einzeln geschlossen: der Startzustand (43.HES) ersetzt die Spieldaten, room_enter
+ * gibt die Raumressourcen frei, die Hauptschleife baut den Bildschirm auf. */
+static void new_game_restart(void)
+{
+    if (DS_I16(0x79d6) != 0) { /* laufende Fernsehanimation beenden (wie beim Laden) */
+        DS_I16(0x79d6) = 1;
+        while (DS_I16(0x79d6) != 0)
+            game_tick();
+    }
+    clock_stop();
+    music_on_leave(1000, 0);
+    text_cache_titles_free(0); /* Textpuffer der Räume (sonst beim Verlassen freigegeben) */
+    text_cache_descr_free(0);
+    text_cache_news_free();
+    savegame_load(0x2b);
+    /* wie vor der Hauptschleife in game_main */
+    g_cur_room = 0;
+    g_cur_dialog = 0;
+    DS_I16(0x8e6e) = 0; /* Raumstapel */
+    DS_I16(0x8c2e) = 0;
+    DS_I16(0x8bba) = 1;
+    DS_I16(0x8e5c) = 2;
+    DS_I16(0x8b86) = 0;
+    DS_I16(0x79b2) = 1; /* nichts am Zeiger */
+    DS_I16(0x8aac) = 0; /* Zeiger-Zähler */
+    g_player_idx = (int16_t)(g_local_player - 1);
+    cursor_reset();
+    set_cursor_shape(0);
+    DS_I16(0x7c58) = 0;
+    /* untere Leiste neu aufbauen wie beim Programmstart (Geld- und Quotenanzeige leer) */
+    DS_PTR(SpriteBank, 0x8c58) = hes_load_unpack0(9);
+    DS_PTR(SpriteBank, 0x799e) = hes_load_unpack(10);
+    DS_PTR(Bitmap, 0x8eb2) = bitmap_alloc(0x140, 0x50);
+    panel_build();
+    far_free(DS_PTR(SpriteBank, 0x799e));
+    far_free(DS_PTR(SpriteBank, 0x8c58));
+    lower_screen_present();
+    far_free(DS_PTR(Bitmap, 0x8eb2));
+    status_bar_draw();
+    status_show_start();
+}
+
+/* PORT: Menüleiste: Zustand für Häkchen und gesperrte Einträge melden, Wünsche ausführen
+ * ("Neues Spiel" nur bei laufendem Spiel, Spieltempo und Schalter wie im Control-Center) */
+void game_menu_poll(void)
+{
+    int running = DS_I16(0x7c58) == 3 && DS_I16(0x012c) == 0;
+    int paused = g_cur_room == -5;
+    int switches = 0;
+    for (int16_t i = 0; i < 3; i++)
+        switches |= options_switch_on(i) << i;
+    platform_game_show(running ? 2 : 1, DS_I16(0x7282), switches, paused);
+    int pause = platform_pause_request() | g_pause_key; /* Pause umschalten wie Klick auf Start */
+    g_pause_key = 0;
+    if (pause && paused)
+        pause_end();
+    else if (pause && running && pause_allowed())
+        pause_begin();
+    int speed = platform_speed_request();
+    if (speed > 0)
+        options_speed_set((int16_t)speed);
+    int sw = platform_switch_request();
+    if (sw >= 0 && (running || sw >> 1 == 2)) /* Fernseher erst im laufenden Spiel */
+        options_switch_set((int16_t)(sw >> 1), (int16_t)(sw & 1));
+    if (platform_new_game_request() && running)
+        new_game_restart();
 }
 
 /* 1054:0927 – Grunddaten aus 208.HES auf die Tabellen verteilen, Oberflächentexte der

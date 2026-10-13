@@ -20,16 +20,35 @@ int video_is_fullscreen(void);
  * (wechselt). video_language_request liefert einmalig den Wunsch (0 Deutsch, 1 Englisch) oder -1. */
 void video_language_show(int lang);
 int video_language_request(void);
+#ifndef _WIN32
+/* PORT: F10 ohne Menüleiste (Linux): Sprache wechseln */
+void video_language_toggle(void);
+/* PORT: Fenstersymbol (Linux; unter Windows aus der Programmressource) */
+void video_set_icon(const uint8_t *rgba, int w, int h);
+#endif
 /* PORT: Menüeintrag "Vollbild" gewählt (einmalig 1, sonst 0) */
 int video_fullscreen_request(void);
 /* PORT: Menüeintrag "Beenden" gewählt */
 int video_quit_request(void);
+/* PORT: Spielzustand fürs Menü (wie platform_game_show) und Wünsche aus dem Menü: neues Spiel
+ * (einmalig 1), Spieltempo (20/30/60, sonst 0), Schalter (i * 2 + an, sonst -1) */
+void video_game_show(int game, int speed, int switches, int paused);
+int video_pause_request(void);
+int video_new_game_request(void);
+int video_speed_request(void);
+int video_switch_request(void);
 /* PORT: Menüleiste im Vollbild per Alt eingeblendet? / seit der letzten Abfrage geändert? */
 int video_menu_overlay(void);
 int video_menu_overlay_changed(void);
 uint32_t video_window_id(void);
-/* Logische Ausgabegröße, in der SDL Mausbewegungen meldet (320x200 werden darauf gestreckt). */
-void video_logical_size(int *w, int *h);
+/* Mausposition aus SDL-Ereignissen (Fensterkoordinaten) in Spielpixel umrechnen; Werte außerhalb
+ * von 0..319/0..199 liegen neben dem Spielbild */
+void video_mouse_to_game(int x, int y, float *gx, float *gy);
+/* Spielpixel je Einheit einer relativen Mausbewegung (Vollbild) */
+void video_mouse_rel_scale(float *sx, float *sy);
+/* PORT: Ereignis zuerst der Menüleiste geben (Linux, selbst gezeichnet); 1 = dort verbraucht */
+union SDL_Event;
+int video_menu_event(const union SDL_Event *e);
 /* Framebuffer anzeigen (ersetzt das Warten auf den vertikalen Strahlrücklauf). */
 void video_present(void);
 /* Mauszeiger als Overlay: w x h Palettenindizes (0 = transparent, Zeilenabstand stride), oben

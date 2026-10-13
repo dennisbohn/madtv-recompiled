@@ -1,0 +1,4 @@
+stb_truetype.h v1.26 (unverändert)
+https://github.com/nothings/stb, Commit 6e9f34d5429cf16790ec43c9bac3f1ee4ad1f760
+Lizenz: gemeinfrei bzw. MIT (siehe Ende der Datei)
+Verwendet für die Schrift der Menüleiste unter Linux (src/menubar.c).

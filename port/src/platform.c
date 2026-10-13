@@ -229,11 +229,66 @@ int platform_language_request(void)
     return video_language_request();
 }
 
+void platform_game_show(int game, int speed, int switches, int paused)
+{
+    video_game_show(game, speed, switches, paused);
+}
+
+int platform_pause_request(void)
+{
+    return video_pause_request();
+}
+
+int platform_new_game_request(void)
+{
+    return video_new_game_request();
+}
+
+int platform_speed_request(void)
+{
+    return video_speed_request();
+}
+
+int platform_switch_request(void)
+{
+    return video_switch_request();
+}
+
+/* Eingebettete Ressource name, noch gepackt: unter Windows aus den Programmressourcen (RCDATA),
+ * unter Linux aus der Tabelle mtv_bundle (build/linux/bundle.S, per .incbin eingebunden). Ohne
+ * Bündel (Entwicklungs-Build) fehlt die Tabelle; sie ist daher nur schwach referenziert. */
+#ifndef _WIN32
+struct BundleEntry {
+    const char *name;
+    const uint8_t *data;
+    uint32_t len;
+};
+extern const struct BundleEntry mtv_bundle[] __attribute__((weak));
+#endif
+
+static const uint8_t *resource_raw(const char *name, size_t *len)
+{
+#ifdef _WIN32
+    HRSRC r = FindResourceA(NULL, name, MAKEINTRESOURCEA(10)); /* RT_RCDATA */
+    HGLOBAL g = r ? LoadResource(NULL, r) : NULL;
+    const uint8_t *p = g ? LockResource(g) : NULL;
+    if (p)
+        *len = SizeofResource(NULL, r);
+    return p;
+#else
+    for (const struct BundleEntry *e = mtv_bundle; e && e->name; e++)
+        if (strcmp(e->name, name) == 0) {
+            *len = e->len;
+            return e->data;
+        }
+    return NULL;
+#endif
+}
+
 /* Eingebettete Ressourcen sind gepackt ("MTVZ", Länge entpackt als u32, Deflate-Rohdaten; siehe
  * tools/make_bundle.py). Entpackt wird beim ersten Zugriff; der Speicher bleibt bis zum Ende. */
 const uint8_t *platform_resource(const char *name, size_t *len)
 {
-#ifdef _WIN32
     static struct {
         char name[16];
         uint8_t *data;
@@ -244,11 +299,9 @@ const uint8_t *platform_resource(const char *name, size_t *len)
             *len = cache[i].len;
             return cache[i].data;
         }
-    HRSRC r = FindResourceA(NULL, name, MAKEINTRESOURCEA(10)); /* RT_RCDATA */
-    HGLOBAL g = r ? LoadResource(NULL, r) : NULL;
-    const uint8_t *p = g ? LockResource(g) : NULL;
+    size_t n = 0;
+    const uint8_t *p = resource_raw(name, &n);
     if (p) {
-        size_t n = SizeofResource(NULL, r);
         if (n < 8 || memcmp(p, "MTVZ", 4) != 0) { /* ungepackt */
             *len = n;
             return p;
@@ -270,9 +323,6 @@ const uint8_t *platform_resource(const char *name, size_t *len)
         }
         free(out); /* beschädigt: wie nicht vorhanden behandeln */
     }
-#else
-    (void)name;
-#endif
     *len = 0;
     return NULL;
 }
@@ -390,6 +440,13 @@ static void on_key(const SDL_KeyboardEvent *k)
         fullscreen_toggle();
         return;
     }
+#ifndef _WIN32
+    /* unter Windows fängt die Fensterprozedur F10 ab (video.c); das Spiel bekommt die Taste nie */
+    if (s == SDL_SCANCODE_F10) {
+        video_language_toggle();
+        return;
+    }
+#endif
     uint8_t sc = pc_scancode(s);
     uint8_t ascii = 0;
     int shift = (k->keysym.mod & KMOD_SHIFT) != 0;
@@ -428,6 +485,8 @@ static void pump_events(void)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+        if (video_menu_event(&e)) /* von der Menüleiste verbraucht (Linux) */
+            continue;
         switch (e.type) {
         case SDL_QUIT:
             /* Fenster geschlossen: beenden wie das Original (atexit-Handler schalten Musik ab) */
@@ -435,13 +494,12 @@ static void pump_events(void)
             exit(0);
         case SDL_KEYDOWN: on_key(&e.key); break;
         case SDL_MOUSEMOTION: {
-            int w, h;
-            video_logical_size(&w, &h);
-            /* logische Renderpixel (SDL rechnet Fensterskalierung und Ränder heraus) -> Spielpixel.
-             * Nicht begrenzen: Werte außerhalb (schwarze Ränder) erkennt mouse_poll und holt den
-             * Zeiger zurück. */
+            /* Fensterkoordinaten -> Spielpixel (video_mouse_to_game). Nicht begrenzen: Werte außerhalb
+             * (schwarze Ränder) erkennt mouse_poll und holt den Zeiger zurück. */
             if (g_rel_mode) { /* Vollbild: nur die Bewegung zählt */
-                float dx = (float)e.motion.xrel * SCREEN_W / (float)w, dy = (float)e.motion.yrel * SCREEN_H / (float)h;
+                float sx, sy;
+                video_mouse_rel_scale(&sx, &sy);
+                float dx = (float)e.motion.xrel * sx, dy = (float)e.motion.yrel * sy;
                 if (!g_rel_synced) { /* Startpunkt noch unbekannt: Bewegung sammeln */
                     g_rel_pend_x += dx;
                     g_rel_pend_y += dy;
@@ -452,8 +510,7 @@ static void pump_events(void)
                 g_abs_fx = g_rel_x;
                 g_abs_fy = g_rel_y;
             } else {
-                g_abs_fx = (float)e.motion.x * SCREEN_W / (float)w;
-                g_abs_fy = (float)e.motion.y * SCREEN_H / (float)h;
+                video_mouse_to_game(e.motion.x, e.motion.y, &g_abs_fx, &g_abs_fy);
             }
             g_abs_x = (int)floorf(g_abs_fx);
             g_abs_y = (int)floorf(g_abs_fy);
@@ -637,8 +694,21 @@ static int32_t debug_next_key(void)
     return -1;
 }
 
+static void debug_sdlclicks(void);
+static void debug_sdlkeys(void);
+
+/* Testhilfen auch während modaler Dialoge der Menüleiste (video.c), die selbst Ereignisse holen */
+void platform_modal_poll(void)
+{
+    debug_sdlclicks();
+    debug_sdlkeys();
+    debug_hooks();
+}
+
 void platform_pump(void)
 {
+    debug_sdlclicks();
+    debug_sdlkeys();
     pump_events();
     debug_hooks();
     if (present_due())
@@ -746,6 +816,102 @@ static void debug_moves(void)
 
 /* Testhilfe MADTV_ABSMOVES=ms:x:y[,...]: Windows-Zeiger zum Zeitpunkt ms auf Spielpixel x/y setzen
  * (wie ein echtes Bewegungsereignis) */
+/* Testhilfe MADTV_SDLCLICKS=ms:wx:wy[,...]: Linksklick als echte SDL-Ereignisse in
+ * Fensterkoordinaten (Bewegung und Drücken, 100 ms später Loslassen); läuft wie die echte Maus
+ * zuerst durch die Menüleiste */
+static void debug_sdlclicks(void)
+{
+    static unsigned done, released;
+    const char *clicks = getenv("MADTV_SDLCLICKS");
+    if (!clicks)
+        return;
+    uint32_t now = platform_ms();
+    int idx = 0;
+    for (const char *p = clicks; *p; idx++) {
+        char *end;
+        unsigned ms = (unsigned)strtoul(p, &end, 10);
+        long x = 0, y = 0;
+        if (*end == ':')
+            x = strtol(end + 1, &end, 10);
+        if (*end == ':')
+            y = strtol(end + 1, &end, 10);
+        for (int k = 0; k < 2; k++) {
+            unsigned *flags = k == 0 ? &done : &released;
+            if ((*flags & (1u << idx)) || now < ms + (k == 0 ? 0u : 100u) || (k == 1 && !(done & (1u << idx))))
+                continue;
+            *flags |= 1u << idx;
+            SDL_Event ev;
+            if (k == 0) {
+                memset(&ev, 0, sizeof ev);
+                ev.type = SDL_MOUSEMOTION;
+                ev.motion.windowID = video_window_id();
+                ev.motion.x = (int)x;
+                ev.motion.y = (int)y;
+                SDL_PushEvent(&ev);
+            }
+            memset(&ev, 0, sizeof ev);
+            ev.type = k == 0 ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+            ev.button.windowID = video_window_id();
+            ev.button.button = SDL_BUTTON_LEFT;
+            ev.button.state = k == 0 ? SDL_PRESSED : SDL_RELEASED;
+            ev.button.clicks = 1;
+            ev.button.x = (int)x;
+            ev.button.y = (int)y;
+            SDL_PushEvent(&ev);
+        }
+        if (*end != ',')
+            break;
+        p = end + 1;
+    }
+}
+
+/* Testhilfe MADTV_SDLKEYS=ms:TASTE[,...]: Taste als echte SDL-Ereignisse (Drücken, Loslassen);
+ * TASTE: ALT, ESC, ENTER, UP, DOWN, LEFT, RIGHT, F10, F11 oder ein Buchstabe A..Z */
+static void debug_sdlkeys(void)
+{
+    static unsigned done;
+    const char *keys = getenv("MADTV_SDLKEYS");
+    if (!keys)
+        return;
+    static const struct {
+        const char *n;
+        SDL_Scancode sc;
+    } named[] = {{"ALT", SDL_SCANCODE_LALT},   {"ESC", SDL_SCANCODE_ESCAPE}, {"ENTER", SDL_SCANCODE_RETURN},
+                 {"UP", SDL_SCANCODE_UP},      {"DOWN", SDL_SCANCODE_DOWN},  {"LEFT", SDL_SCANCODE_LEFT},
+                 {"RIGHT", SDL_SCANCODE_RIGHT}, {"F10", SDL_SCANCODE_F10},    {"F11", SDL_SCANCODE_F11}};
+    uint32_t now = platform_ms();
+    int idx = 0;
+    for (const char *p = keys; *p; idx++) {
+        char *end;
+        unsigned ms = (unsigned)strtoul(p, &end, 10);
+        const char *name = *end == ':' ? end + 1 : end;
+        const char *comma = strchr(name, ',');
+        size_t len = comma ? (size_t)(comma - name) : strlen(name);
+        if (!(done & (1u << idx)) && now >= ms) {
+            done |= 1u << idx;
+            SDL_Scancode sc = SDL_SCANCODE_UNKNOWN;
+            if (len == 1 && name[0] >= 'A' && name[0] <= 'Z')
+                sc = (SDL_Scancode)(SDL_SCANCODE_A + (name[0] - 'A'));
+            for (size_t i = 0; i < sizeof named / sizeof *named; i++)
+                if (strlen(named[i].n) == len && strncmp(name, named[i].n, len) == 0)
+                    sc = named[i].sc;
+            for (int k = 0; k < 2 && sc != SDL_SCANCODE_UNKNOWN; k++) {
+                SDL_Event ev;
+                memset(&ev, 0, sizeof ev);
+                ev.type = k == 0 ? SDL_KEYDOWN : SDL_KEYUP;
+                ev.key.windowID = video_window_id();
+                ev.key.state = k == 0 ? SDL_PRESSED : SDL_RELEASED;
+                ev.key.keysym.scancode = sc;
+                ev.key.keysym.sym = SDL_GetKeyFromScancode(sc);
+                SDL_PushEvent(&ev);
+            }
+        }
+        if (!comma)
+            break;
+        p = comma + 1;
+    }
+}
+
 /* Testhilfe MADTV_SDLMOVES=ms:wx:wy[,...]: echtes SDL-Bewegungsereignis in Fensterkoordinaten
  * einspeisen (läuft wie die echte Maus durch die Umrechnung des Renderers) */
 static void debug_sdlmoves(void)
@@ -870,10 +1036,22 @@ int platform_init(const char *game_dir, int windowed)
      * noch einmal unscharf hoch); Fenstergröße und Mauskoordinaten bleiben in Punkten */
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
+#ifndef _WIN32
+    /* relative Maus im Vollbild aus den normalen Zeigerbewegungen (Zeiger wird in die Mitte
+     * zurückgesetzt) statt aus den rohen Gerätedaten: so gelten Zeigergeschwindigkeit und
+     * -beschleunigung des Desktops wie außerhalb des Spiels */
+    SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "1");
+#endif
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
         return -1;
     if (video_init("Mad TV Recompiled", 3) != 0)
         return -1;
+#ifndef _WIN32
+    size_t icon_len = 0;
+    const uint8_t *icon = platform_resource("ICON", &icon_len);
+    if (icon && icon_len == 64 * 64 * 4)
+        video_set_icon(icon, 64, 64);
+#endif
     /* PORT: erster Start im Fenster; danach der zuletzt gewählte Modus (settings.ini) */
     if (!windowed && platform_setting_get("fullscreen", 0) == 1)
         video_toggle_fullscreen(); /* Vollbild in Desktop-Auflösung, Bild im Seitenverhältnis 4:3 */

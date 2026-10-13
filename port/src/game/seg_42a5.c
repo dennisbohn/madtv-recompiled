@@ -12,6 +12,10 @@
 #define g_song_data      DS_PTR(uint8_t, 0x8ff8) /* paragraph-ausgerichtet für den Treiber */
 #define g_music_off      DS_I16(0x79f2) /* Option: Musik nicht wechseln */
 
+/* PORT: für music_switch_apply */
+static int16_t g_music_owner;   /* Besitzer des Raums g_music_room */
+static int16_t g_music_pending; /* Musik eingeschaltet, im Raum aber kein eigenes Stück */
+
 /* 42a5:0002 – Soundtreiber initialisieren.
  * Original: lädt 099.HES (Hardware-Erkennung) und führt den Code aus, lädt dann 098.HES
  * (AdLib) bzw. 095.HES (PC-Lautsprecher) und installiert ihn mit Parametern aus dem
@@ -117,6 +121,11 @@ void music_on_enter(int16_t room, int16_t owner_player)
         (owner_player != 0 && owner_player != g_local_player && room != 0 && g_music_room != 0) ||
         room == 0x3e || room == 0x3d || room == 0xd || room == 0x40 ||
         (room == 0 && (g_music_room == 0x3d || g_music_room == 0xd || g_music_room == 0x40));
+    /* PORT: Musik wurde eingeschaltet, als im Raum kein eigenes Stück lief (z. B. auf der
+     * Aufzugtafel): dann hier das Stück dieses Raums starten statt die Stille weiterzuführen */
+    if (keep && g_music_pending && g_music_off == 0 && g_song_no == 0)
+        keep = 0;
+    g_music_owner = owner_player;
     if (keep) {
         g_music_room = room;
         return;
@@ -128,7 +137,34 @@ void music_on_enter(int16_t room, int16_t owner_player)
         if (g_song_no != 0) {
             music_load_play(g_song_no);
             music_start();
+            g_music_pending = 0;
         }
+    }
+}
+
+/* PORT: Schalter Musik (DS:79f2) sofort anwenden statt erst beim nächsten Raumwechsel: aus = das
+ * laufende Stück stoppen (wie music_on_leave), an = das Stück des Raums starten (wie
+ * music_on_enter). Räume, die sonst die Musik des vorigen Raums übernehmen (Aufzugtafel, Karten,
+ * Laden/Speichern ...), haben kein eigenes Stück; dort setzt die Musik im nächsten Raum ein. */
+void music_switch_apply(void)
+{
+    if (g_music_off != 0) {
+        g_music_pending = 0;
+        if (g_song_no != 0) {
+            music_stop();
+            music_free();
+            g_song_no = 0;
+        }
+        return;
+    }
+    if (g_song_no != 0 || g_sound_is_adlib != 1)
+        return;
+    g_song_no = song_for_room(g_music_room, g_music_owner);
+    if (g_song_no != 0) {
+        music_load_play(g_song_no);
+        music_start();
+    } else {
+        g_music_pending = 1;
     }
 }
 

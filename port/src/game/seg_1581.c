@@ -7,6 +7,41 @@
 #define g_tv_player     DS_I16(0x79de) /* Spieler, dessen Programm der Fernseher zeigt */
 #define g_tv_mode       DS_I16(0x79f0)
 
+/* Pause (Raum -5) beginnen bzw. beenden; PORT: aus room_click herausgezogen, damit auch die Taste P
+ * und die Menüleiste sie nutzen (game_menu_poll) */
+void pause_begin(void)
+{
+    g_click_lock = 0;
+    room_enter(-5);
+    clock_suspend();
+    DS_I32(0x728e) = DS_I32(0x6123); /* Uhrzeit merken */
+    clock_resume();
+    mouse_hide();
+    bmp_copy(DS_PTR(Bitmap, 0x8e66), DS_PTR(Bitmap, 0x8e88));
+    text_draw_centered_to(0x15, -6, g_text(0x121), DS_PTR(Bitmap, 0x8e88));
+    scr_blit(DS_PTR(Bitmap, 0x8e88), 0x13, 0xb4);
+    mouse_show();
+}
+
+void pause_end(void)
+{
+    /* Uhrzeit von vor der Pause wiederherstellen */
+    g_click_lock = 0;
+    clock_suspend();
+    DS_I32(0x6123) = DS_I32(0x728e);
+    clock_resume();
+    room_reload();
+    clock_update(1);
+    DS_I16(0x79ae) = 1;
+}
+
+/* PORT: Pause möglich? Wie beim Klick auf den Start-Knopf: nicht in Pause und nicht während
+ * DS:012c (Bildschirm "Neues Spiel", Weg zum Chef) */
+int16_t pause_allowed(void)
+{
+    return g_cur_room != -5 && DS_I16(0x012c) == 0;
+}
+
 /* 1581:0009 – Linksklick auswerten */
 void room_click(void)
 {
@@ -14,14 +49,7 @@ void room_click(void)
     g_click_hotspot = hotspot_at_mouse(0);
 
     if (g_cur_room == -5) {
-        /* Pause beenden: Uhrzeit von vor der Pause wiederherstellen */
-        g_click_lock = 0;
-        clock_suspend();
-        DS_I32(0x6123) = DS_I32(0x728e);
-        clock_resume();
-        room_reload();
-        clock_update(1);
-        DS_I16(0x79ae) = 1;
+        pause_end();
         return;
     }
     if (g_cur_room == 0x42 && g_click_lock == 0) {
@@ -88,18 +116,9 @@ void room_click(void)
     /* Start-Knopf: Pause */
     if (!mouse_in_rect(0x99, 0xb5, 0xc1, 0xbd) && g_click_lock == 0)
         return;
-    if (g_cur_room == -5 || DS_I16(0x012c) != 0)
+    if (!pause_allowed())
         return;
-    g_click_lock = 0;
-    room_enter(-5);
-    clock_suspend();
-    DS_I32(0x728e) = DS_I32(0x6123); /* Uhrzeit merken */
-    clock_resume();
-    mouse_hide();
-    bmp_copy(DS_PTR(Bitmap, 0x8e66), DS_PTR(Bitmap, 0x8e88));
-    text_draw_centered_to(0x15, -6, g_text(0x121), DS_PTR(Bitmap, 0x8e88));
-    scr_blit(DS_PTR(Bitmap, 0x8e88), 0x13, 0xb4);
-    mouse_show();
+    pause_begin();
 }
 
 #define RBANK(ofs)      DS_PTR(uint8_t, ofs)
@@ -873,29 +892,12 @@ void room_click_schedule(void)
         case 0x3f:
         case 0x40:
         case 0x41: /* Spieltempo */
-            clock_suspend();
-            DS_I16(0x7282) = g_click_hotspot == 0x3f ? 0x14 : g_click_hotspot == 0x40 ? 0x1e : 0x3c;
-            clock_resume();
-            options_panel();
-            screen_update();
+            options_speed_set(g_click_hotspot == 0x3f ? 0x14 : g_click_hotspot == 0x40 ? 0x1e : 0x3c);
             return;
         case 0x46:
-            panel_slide_toggle(DS_ADDR(int16_t, 0x7a10), 0x80, 0x24);
-            if (DS_I16(0x7a10) != 0) {
-                if (DS_I16(0x79d6) > 0)
-                    DS_I16(0x79d6) = 1;
-            } else if (DS_I16(0x71cc) >= 5 && DS_I16(0x71cc) <= 0x36 && hour_index() > 0) {
-                tv_anim_setup(1);
-                DS_I16(0x79d6) = 2;
-            }
-            return;
         case 0x47:
-            panel_slide_toggle(DS_ADDR(int16_t, 0x79f0), 0x80, 0x3c);
-            tv_refresh();
-            status_bar_draw();
-            return;
-        case 0x48:
-            panel_slide_toggle(DS_ADDR(int16_t, 0x79f2), 0x80, 0x54);
+        case 0x48: /* Schalter Fernsehfamilie, Fernsehbild, Musik */
+            options_switch_set((int16_t)(g_click_hotspot - 0x46), options_switch_on((int16_t)(g_click_hotspot - 0x46)) == 0);
             return;
         default:
             return;
@@ -1612,6 +1614,55 @@ void save_menu_refresh(void)
 static int16_t save_slot_hit(int16_t c, int16_t r)
 {
     return mouse_in_rect((int16_t)(c * 0x76 + 0x40), (int16_t)(r * 0x11 + 8), (int16_t)(c * 0x76 + 0x8e), (int16_t)(r * 0x11 + 0xf));
+}
+
+/* PORT: Spieltempo setzen wie die drei Knöpfe im Optionen-Monitor (Programmplaner, Dialog 10);
+ * auch aus der Menüleiste. Ist der Monitor offen, wird er neu gezeichnet. */
+void options_speed_set(int16_t speed)
+{
+    clock_suspend();
+    DS_I16(0x7282) = speed;
+    clock_resume();
+    if (g_cur_room == 0x1f && g_dialog == 10) {
+        options_panel();
+        screen_update();
+    }
+}
+
+/* Schalter des Control-Centers: 0 Fernsehfamilie (DS:7a10), 1 Fernsehbild (DS:79f0), 2 Musik
+ * (DS:79f2); Wert 0 = an, 0x1e = aus (Stellung des Schiebers) */
+static const uint16_t g_switch_var[3] = {0x7a10, 0x79f0, 0x79f2};
+
+int16_t options_switch_on(int16_t which)
+{
+    return DS_I16(g_switch_var[which]) == 0;
+}
+
+/* PORT: Schalter which wie im Control-Center umlegen (Klick dort oder Menüleiste). Bei offenem
+ * Control-Center gleitet der Schieber wie beim Anklicken, sonst springt er um. */
+void options_switch_set(int16_t which, int16_t on)
+{
+    int16_t *var = DS_ADDR(int16_t, g_switch_var[which]);
+    if ((*var == 0) == (on != 0))
+        return;
+    if (g_cur_room == 0x1f && g_dialog == 10)
+        panel_slide_toggle(var, 0x80, (int16_t)(0x24 + which * 0x18));
+    else
+        *var = (int16_t)(on ? 0 : 0x1e);
+    if (which == 0) { /* Fernsehfamilie: Animation beenden bzw. starten */
+        if (DS_I16(0x7a10) != 0) {
+            if (DS_I16(0x79d6) > 0)
+                DS_I16(0x79d6) = 1;
+        } else if (DS_I16(0x71cc) >= 5 && DS_I16(0x71cc) <= 0x36 && hour_index() > 0) {
+            tv_anim_setup(1);
+            DS_I16(0x79d6) = 2;
+        }
+    } else if (which == 1) { /* Fernsehbild: Fernseher und Lämpchen neu zeichnen */
+        tv_refresh();
+        status_bar_draw();
+    } else { /* Musik: sofort (Original: erst beim nächsten Raumwechsel) */
+        music_switch_apply();
+    }
 }
 
 /* Spielstand slot (1..10) laden, wie ein Klick im Ladedialog (auch für die Testhilfe MADTV_LOAD) */

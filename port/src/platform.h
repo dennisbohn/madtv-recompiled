@@ -77,11 +77,23 @@ int platform_system_language_german(void);
  * (-1 = keiner) */
 void platform_language_show(int lang);
 int platform_language_request(void);
+/* PORT: Menü "Spiel" und Schalter des Control-Centers: Zustand anzeigen (game 1 = Bildschirm
+ * "Neues Spiel", 2 = Spiel läuft; Spieltempo 20/30/60; switches Bit i = Schalter i an: 0
+ * Fernsehfamilie, 1 Fernsehbild, 2 Musik) und Wünsche abholen: neues Spiel (einmalig 1), Spieltempo
+ * (sonst 0), Schalter (i * 2 + an, sonst -1) */
+void platform_game_show(int game, int speed, int switches, int paused);
+/* PORT: Menü "Pause" gewählt (einmalig 1: umschalten) */
+int platform_pause_request(void);
+int platform_new_game_request(void);
+int platform_speed_request(void);
+int platform_switch_request(void);
 
 /* Testhilfe: idx-ter Raum aus MADTV_ROOM, sobald fällig (-1 = nicht/noch nicht) */
 int platform_debug_room(int idx);
 /* Testhilfe: Programm für 18:00 aus MADTV_PROG (-1 = nicht gesetzt) */
 int platform_debug_prog(void);
+/* Testhilfen (MADTV_SDLKEYS, MADTV_OUTSHOT ...) während modaler Dialoge weiterlaufen lassen */
+void platform_modal_poll(void);
 /* Testhilfe: Zeile nach stderr */
 void platform_debug_log(const char *fmt, ...);
 /* Testhilfe: Zahlenwert einer Umgebungsvariable (0 = nicht gesetzt) */

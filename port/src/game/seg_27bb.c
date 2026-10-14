@@ -727,7 +727,11 @@ void npc_update(void)
                 FIG_DOOR(i) = door;
                 FIG_TFLOOR(i) = floor;
             }
-            if (FIG_TFLOOR(i) == FIG_FLOOR(i))
+            /* PORT: ohne Zieltür (-1, z. B. Tagesende beim Portier) las das Original die Türlage vor
+             * der Tabelle (0) und schickte die Figur nach x=4 links auf die Straße; sie bleibt stehen */
+            if (FIG_TFLOOR(i) == FIG_FLOOR(i) && FIG_DOOR(i) == -1)
+                FIG_TX(i) = FIG_X(i);
+            else if (FIG_TFLOOR(i) == FIG_FLOOR(i))
                 FIG_TX(i) = (int16_t)(DOOR_X(FIG_TFLOOR(i), FIG_DOOR(i)) + 4);
             else
                 FIG_TX(i) = 0x99; /* zum Aufzug */

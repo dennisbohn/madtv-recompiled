@@ -9,7 +9,7 @@ void banner_two_lines(int16_t mode, char *rec)
 {
     if (mode == 0) {
         Bitmap *tmp = bitmap_alloc(0xa0, 0x28);
-        g_banner_save = bitmap_alloc(0xa0, 0x28);
+        DS_SET_PTR(0x8fe4, bitmap_alloc(0xa0, 0x28));
         scr_grab(tmp, 10, 0x50);
         bmp_copy_at(tmp, g_banner_save, 0, 0);
         draw_frame_cells(0, 0, 0x13, 4, tmp, 2);
@@ -44,7 +44,7 @@ void status_bar_draw(void)
     mouse_show();
 }
 
-#define g_text(id) (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id) PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 
 /* 38b6:1269 – Bildschirm "Neues Spiel": drei Spalten (Name, Sender, Farbe, Steuerung) und
  * drei Schaltflächen; skip_player bekommt kein Namensfeld (wird gerade bearbeitet) */
@@ -75,7 +75,7 @@ void player_setup_screen(int16_t skip_player)
     text_draw_centered(0x100, 0x59, g_text(0x16f));
 }
 
-#define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)        PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define g_upper_screen    DS_PTR(Bitmap, 0x8e62)
 #define RBANK(ofs)        DS_PTR(uint8_t, ofs)
 #define BANK_BMP(bank, ofs) ((Bitmap *)((uint8_t *)(bank) + (ofs)))
@@ -261,7 +261,7 @@ void savegame_slots_draw(void)
     for (int16_t col = 0; col < 2; col++) {
         for (int16_t r = 1; r < 6; r++) {
             rsprite(0x104, 0x22, (int16_t)(col * 0x76 + 0x40), (int16_t)(r * 0x11 + 8));
-            text_draw((int16_t)(col * 0x76 + 0x40), (int16_t)(r * 0x11), DS_ADDR(char *, 0x8b92)[col * 5 + r - 1]);
+            text_draw((int16_t)(col * 0x76 + 0x40), (int16_t)(r * 0x11), PTR32(char, DS_ADDR(ptr32, 0x8b92)[col * 5 + r - 1]));
         }
     }
     screen_update();
@@ -282,8 +282,8 @@ void disk_request_dialog(int16_t mode, int16_t text_id)
 {
     if (mode == 0) {
         Bitmap *box = bitmap_alloc(0xa0, 0x28);
-        DS_PTR(Bitmap, 0x8fdc) = box;
-        DS_PTR(Bitmap, 0x8fe0) = bitmap_alloc(0xa0, 0x28);
+        DS_SET_PTR(0x8fdc, box);
+        DS_SET_PTR(0x8fe0, bitmap_alloc(0xa0, 0x28));
         scr_grab(box, 10, 0x28);
         bmp_copy_at(box, DS_PTR(Bitmap, 0x8fe0), 0, 0);
         draw_frame_cells(0, 0, 0x13, 4, box, 2);
@@ -346,8 +346,8 @@ void options_panel(void)
     frame_draw(0x60, 0x1a, 0xc0, 0x30, 1);
     frame_draw(0x60, 0x32, 0xc0, 0x48, 1);
     frame_draw(0x60, 0x4a, 0xc0, 0x60, 1);
-    DS_PTR(uint8_t, 0x8f2e) = RBANK(0x10c);
-    DS_PTR(Bitmap, 0x8f2a) = g_upper_screen;
+    DS_SET_PTR(0x8f2e, RBANK(0x10c));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     bank_draw(sprite_ofs(DS_I16(0x7282) == 0x14 ? 0x18 : 0x19), 0x60, 0x62);
     bank_draw(sprite_ofs(DS_I16(0x7282) == 0x1e ? 0x18 : 0x19), 0x82, 0x62);
     bank_draw(sprite_ofs(DS_I16(0x7282) == 0x3c ? 0x18 : 0x19), 0xa4, 0x62);
@@ -466,7 +466,7 @@ void player_message_dialog(uint16_t player)
         msg = fmt(g_text(0x10e), a1, s, *(int16_t *)(m + 0xe));
         far_free(s);
     } else if (id == 0x10f || id == 0x110) {
-        msg = fmt(g_text(id), *(char **)DS_ADDR(uint8_t, 0x3f2f + a1 * 0x18), *(int32_t *)(m + 6));
+        msg = fmt(g_text(id), MEM_PTR(char, DS_ADDR(uint8_t, 0x3f2f + a1 * 0x18)), *(int32_t *)(m + 6));
     } else if (id == 0x133 || id == 0x136) {
         msg = fmt(g_text(id), a1);
     } else if (id == 0x152) {

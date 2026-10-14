@@ -18,7 +18,7 @@
 #define g_cursor_max_y   DS_I16(0x79d2)
 #define g_cursor_visible DS_I16(0x8aac)
 #define g_cursor_shape   DS_I16(0x79b2) /* 2 = gezogenes Objekt, 3 = beschäftigt */
-#define g_cursor_bitmaps DS_ADDR(Bitmap *, 0x8e74)
+#define g_cursor_bitmaps DS_ADDR(ptr32, 0x8e74)
 #define g_drag_bitmap    DS_PTR(Bitmap, 0x0390) /* am Zeiger hängendes Objekt (Ziehen) */
 #define g_drag_w         DS_I16(0x0394)
 #define g_drag_h         DS_I16(0x0396)
@@ -178,7 +178,7 @@ void screen_update(void)
     if (DS_I16(0x7a24) == 1) {
         /* nur den Gebäudeausschnitt (ggf. ohne Aufzugschacht) übertragen */
         ScrRectArgs a;
-        a.src = g_upper_screen;
+        a.src = P32(g_upper_screen);
         a.sy = 4;
         a.h = 0x6d;
         a.dy = 4;

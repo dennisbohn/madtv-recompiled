@@ -14,7 +14,7 @@
 #define g_cursor_shape   DS_I16(0x79b2)
 #define g_cursor_old_x   DS_I16(0x7b06)
 #define g_cursor_old_y   DS_I16(0x7b16)
-#define g_cursor_bitmaps DS_ADDR(Bitmap *, 0x8e74)
+#define g_cursor_bitmaps DS_ADDR(ptr32, 0x8e74)
 #define g_cursor_grab    DS_PTR(Bitmap, 0x8e70)
 #define g_cursor_bg_old  DS_PTR(Bitmap, 0x8ebe)
 #define g_drag_bitmap    DS_PTR(Bitmap, 0x0390)
@@ -37,7 +37,8 @@
 #define g_frame_args     DS_ADDR(BlitShiftArgs, 0x8f16)
 
 /* Fenster-Slots */
-#define g_win_bitmap     DS_ADDR(Bitmap *, 0x8ec2)
+#define g_win_bitmap     DS_ADDR(ptr32, 0x8ec2)
+#define WIN_BMP(i)       PTR32(Bitmap, g_win_bitmap[i])
 #define g_win_x          DS_ADDR(int16_t, 0x7b08)
 #define g_win_y          DS_ADDR(int16_t, 0x7b18)
 #define g_win_w          DS_ADDR(int16_t, 0x8c1a)
@@ -104,7 +105,7 @@ void draw_string(int16_t x, int16_t y, const char *str, Bitmap *dst, int16_t fix
                 }
             }
             uint8_t *font = DS_I16(0x8b86) == 0 ? (uint8_t *)DS_PTR(SpriteBank, 0x8366) : DS_PTR(uint8_t, 0x0108);
-            BlitShiftArgs a = {BANK_BMP(font, DS_U8(0x12e + ch) * 8 - 6), xpix, dst, col, y};
+            BlitShiftArgs a = {P32(BANK_BMP(font, DS_U8(0x12e + ch) * 8 - 6)), xpix, P32(dst), col, y};
             bmp_glyph_trans(&a);
             if (fixed_digits == 0 || ch < '0' || ch > '9' || width < 5)
                 xpix = (int16_t)(xpix + width + 1);
@@ -127,8 +128,8 @@ void draw_frame_cells(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Bitmap *ds
 /* 1f51:03c1 – gefülltes Rechteck mit Rand aus 8x8-Kacheln (Stil 1 oder 2) */
 void draw_frame(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Bitmap *dst, int16_t style)
 {
-    g_frame_dst = dst;
-    g_frame_tiles = style == 1 ? DS_PTR(uint8_t, 0x7aea) : DS_PTR(uint8_t, 0x7aee);
+    DS_SET_PTR(0x8f32, dst);
+    DS_SET_PTR(0x8f36, style == 1 ? DS_PTR(uint8_t, 0x7aea) : DS_PTR(uint8_t, 0x7aee));
     for (int16_t x = (int16_t)(x0 + 8); x < x1; x += 8)
         for (int16_t y = (int16_t)(y0 + 8); y < y1; y += 8)
             frame_piece_draw(0, x, y); /* Füllung */
@@ -149,9 +150,9 @@ void draw_frame(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Bitmap *dst, int
 /* 1f51:04cb – eine Rahmenkachel transparent zeichnen (Parameterblock im Datensegment) */
 void frame_piece_draw(int16_t piece_ofs, int16_t x, int16_t y)
 {
-    g_frame_args->src = BANK_BMP(g_frame_tiles, piece_ofs);
+    g_frame_args->src = P32(BANK_BMP(g_frame_tiles, piece_ofs));
     g_frame_args->xpix = (int16_t)(x % 8);
-    g_frame_args->dst = g_frame_dst;
+    g_frame_args->dst = P32(g_frame_dst);
     g_frame_args->xcol = (int16_t)(x / 8);
     g_frame_args->y = y;
     bmp_glyph_trans(g_frame_args);
@@ -173,20 +174,20 @@ int16_t window_open(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text, 
 {
     int16_t slot = 1;
     if (mode == 1 || mode == 3) {
-        while (g_win_bitmap[slot] != NULL)
+        while (g_win_bitmap[slot] != 0)
             slot++;
         DS_I32(0x7aae) = slot;
     } else if (mode == 2) {
         slot = 0;
     }
-    g_win_bitmap[slot] = bitmap_alloc((int16_t)((x1 - x0 + 1) * 8), (int16_t)((y1 - y0 + 1) * 8));
+    g_win_bitmap[slot] = P32(bitmap_alloc((int16_t)((x1 - x0 + 1) * 8), (int16_t)((y1 - y0 + 1) * 8)));
     if (mode == 1 || mode == 3) {
         g_win_x[slot] = x0;
         g_win_y[slot] = y0;
         g_win_w[slot] = (int16_t)(x1 - x0 + 1);
         g_win_h[slot] = (int16_t)(y1 - y0 + 1);
         g_win_used[slot] = 1;
-        screen_grab(g_win_bitmap[slot], (int16_t)(x0 << 3), (int16_t)(y0 << 3));
+        screen_grab(WIN_BMP(slot), (int16_t)(x0 << 3), (int16_t)(y0 << 3));
         if (mode == 1) {
             text_window_draw(x0, y0, x1, y1, text, 1);
             screen_update();
@@ -199,34 +200,34 @@ int16_t window_open(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text, 
 void popup_box_show(int16_t x0, int16_t y0, int16_t x1, int16_t y1, char *text)
 {
     popup_box_create(x0, y0, x1, y1);
-    text_box_to_free(4, -4, text, (int16_t)(x1 - x0), 1, g_win_bitmap[0]);
+    text_box_to_free(4, -4, text, (int16_t)(x1 - x0), 1, WIN_BMP(0));
     popup_box_present(x0, y0);
 }
 
 /* 1f51:06d5 – Fenster schließen: Hintergrund zurück, anzeigen, Slot freigeben */
 void window_close(int16_t slot)
 {
-    if (g_win_used[slot] == 1 && g_win_bitmap[slot] != NULL) {
-        bmp_draw(g_win_bitmap[slot], g_upper_screen, (int16_t)(g_win_x[slot] << 3), (int16_t)(g_win_y[slot] << 3));
+    if (g_win_used[slot] == 1 && g_win_bitmap[slot] != 0) {
+        bmp_draw(WIN_BMP(slot), g_upper_screen, (int16_t)(g_win_x[slot] << 3), (int16_t)(g_win_y[slot] << 3));
         screen_update();
-        far_free(g_win_bitmap[slot]);
-        g_win_bitmap[slot] = NULL;
+        far_free(WIN_BMP(slot));
+        g_win_bitmap[slot] = 0;
     }
 }
 
 /* 1f51:0762 – Hintergrund eines Fensters wiederherstellen, ohne es zu schließen */
 void window_restore(int16_t slot)
 {
-    if (g_win_used[slot] == 1 && g_win_bitmap[slot] != NULL)
-        bmp_draw(g_win_bitmap[slot], g_upper_screen, (int16_t)(g_win_x[slot] << 3), (int16_t)(g_win_y[slot] << 3));
+    if (g_win_used[slot] == 1 && g_win_bitmap[slot] != 0)
+        bmp_draw(WIN_BMP(slot), g_upper_screen, (int16_t)(g_win_x[slot] << 3), (int16_t)(g_win_y[slot] << 3));
 }
 
 /* 1f51:07c3 – Rahmen um die Raumansicht (Kacheln aus Bank 4) */
 void room_frame_draw(void)
 {
     g_clip_on = 0;
-    g_draw_bank = (uint8_t *)DS_PTR(SpriteBank, 0x8b7c);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, (uint8_t *)DS_PTR(SpriteBank, 0x8b7c));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     for (int16_t x = 8; x < 0x131; x += 8) {
         bank_draw_opaque(0x52, x, 0);
         bank_draw_opaque(10, x, 0x72);
@@ -249,8 +250,8 @@ void room_frame_draw(void)
 void room_frame_draw_alt(void)
 {
     bmp_fill(g_upper_screen, 0, 0, 0x28, 0x78, 0);
-    g_draw_bank = DS_PTR(uint8_t, 0x0104);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, DS_PTR(uint8_t, 0x0104));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     for (int16_t i = 1; i < 0x27; i++) {
         bank_draw_opaque(0x52, (int16_t)(i << 3), 0);
         bank_draw_opaque(10, (int16_t)(i << 3), 0x75);
@@ -361,7 +362,7 @@ void draw_sprite(Bitmap *src, int16_t x, int16_t y)
 /* 1f51:0d14 – ganze Bitmap deckend in die Spielszene, x auf 8 Pixel abgerundet */
 void draw_bitmap_fast(Bitmap *src, int16_t x, int16_t y)
 {
-    BlitArgs a = {src, g_upper_screen, (int16_t)(x >> 3), y};
+    BlitArgs a = {P32(src), P32(g_upper_screen), (int16_t)(x >> 3), y};
     bmp_blit(&a);
 }
 
@@ -391,11 +392,11 @@ void blit_sprite_masked(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_
     if (h <= 0 || w <= 0)
         return;
     if ((dx & 7) == 0) {
-        BlitRectArgs a = {src, (int16_t)(sx >> 3), sy, (int16_t)((w + 7) >> 3), h, dst, (int16_t)(dx >> 3), dy};
+        BlitRectArgs a = {P32(src), (int16_t)(sx >> 3), sy, (int16_t)((w + 7) >> 3), h, P32(dst), (int16_t)(dx >> 3), dy};
         bmp_blit_rect_trans(&a);
     } else {
-        BlitRectShiftArgs a = {src, (int16_t)(dx & 7), (int16_t)(sx >> 3), sy, (int16_t)((w + 7) >> 3), h,
-                               dst, (int16_t)(dx >> 3), dy};
+        BlitRectShiftArgs a = {P32(src), (int16_t)(dx & 7), (int16_t)(sx >> 3), sy, (int16_t)((w + 7) >> 3), h,
+                               P32(dst), (int16_t)(dx >> 3), dy};
         bmp_blit_rect_trans_shift(&a);
     }
 }
@@ -403,7 +404,7 @@ void blit_sprite_masked(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_
 /* 1f51:0e6f – ganze Bitmap deckend nach dst, x auf 8 Pixel abgerundet */
 void bmp_copy_at(Bitmap *src, Bitmap *dst, int16_t x, int16_t y)
 {
-    BlitArgs a = {src, dst, (int16_t)(x >> 3), y};
+    BlitArgs a = {P32(src), P32(dst), (int16_t)(x >> 3), y};
     bmp_blit(&a);
 }
 
@@ -420,11 +421,11 @@ void blit_rect(Bitmap *src, Bitmap *dst, int16_t dx, int16_t dy, int16_t sx, int
     if (h <= 0 || w <= 0)
         return;
     if ((dx & 7) == 0) {
-        BlitRectArgs a = {src, (int16_t)(sx >> 3), sy, (int16_t)(w >> 3), h, dst, (int16_t)(dx >> 3), dy};
+        BlitRectArgs a = {P32(src), (int16_t)(sx >> 3), sy, (int16_t)(w >> 3), h, P32(dst), (int16_t)(dx >> 3), dy};
         bmp_blit_rect(&a);
     } else {
-        BlitRectShiftArgs a = {src, (int16_t)(dx & 7), (int16_t)(sx >> 3), sy, (int16_t)(w >> 3), h,
-                               dst, (int16_t)(dx >> 3), dy};
+        BlitRectShiftArgs a = {P32(src), (int16_t)(dx & 7), (int16_t)(sx >> 3), sy, (int16_t)(w >> 3), h,
+                               P32(dst), (int16_t)(dx >> 3), dy};
         bmp_blit_rect_shift(&a);
     }
 }
@@ -635,8 +636,8 @@ void panel_build(void)
     bmp_copy_at(BANK_BMP(bank9, 2), panel, 0, 2);
     bmp_draw_masked(BANK_BMP(DS_PTR(SpriteBank, 0x79a2), 2), panel, 0xd, 9);
     bmp_copy_at(BANK_BMP(bank9, 10), panel, 0x78, 2);
-    g_draw_target = panel;
-    g_draw_bank = (uint8_t *)DS_PTR(SpriteBank, 0x799e);
+    DS_SET_PTR(0x8f2a, panel);
+    DS_SET_PTR(0x8f2e, (uint8_t *)DS_PTR(SpriteBank, 0x799e));
     bank_draw(2, 0xc9, 2);
     bank_draw(10, 0xc9, 0x3a);
     bank_draw(0x12, 0xc9, 0xb);
@@ -706,19 +707,19 @@ void anim_step_every(int16_t period, int16_t *frame)
 static void room9_flyer(int16_t bmp_ofs, int16_t w, int16_t h, int16_t work_ofs, int16_t x, int16_t y,
                         int16_t sprite)
 {
-    Bitmap **save = DS_ADDR(Bitmap *, bmp_ofs);
+    ptr32 *save = DS_ADDR(ptr32, bmp_ofs);
     int16_t *sx = DS_ADDR(int16_t, bmp_ofs + 4), *sy = DS_ADDR(int16_t, bmp_ofs + 6);
     mouse_hide();
-    if (*save == NULL) {
-        *save = bitmap_alloc(w, h);
+    if (*save == 0) {
+        *save = P32(bitmap_alloc(w, h));
     } else {
-        draw_bitmap_fast(*save, (int16_t)(*sx & 0xfff8), *sy);
-        scr_blit(*save, (int16_t)(*sx >> 3), *sy);
+        draw_bitmap_fast(PTR32(Bitmap, *save), (int16_t)(*sx & 0xfff8), *sy);
+        scr_blit(PTR32(Bitmap, *save), (int16_t)(*sx >> 3), *sy);
     }
     *sx = x;
     *sy = y;
-    blit_rect(g_upper_screen, *save, 0, 0, x, y, w, h);
-    bmp_copy(*save, RBMP(work_ofs));
+    blit_rect(g_upper_screen, PTR32(Bitmap, *save), 0, 0, x, y, w, h);
+    bmp_copy(PTR32(Bitmap, *save), RBMP(work_ofs));
     room_sprite(0x10c, sprite, RBMP(work_ofs), (int16_t)((x + 2) % 8), 0);
     draw_bitmap_fast(RBMP(work_ofs), x, y);
     scr_blit(RBMP(work_ofs), (int16_t)((x + 2) >> 3), y);
@@ -726,12 +727,12 @@ static void room9_flyer(int16_t bmp_ofs, int16_t w, int16_t h, int16_t work_ofs,
 
 static void room9_flyer_end(int16_t bmp_ofs)
 {
-    Bitmap **save = DS_ADDR(Bitmap *, bmp_ofs);
+    ptr32 *save = DS_ADDR(ptr32, bmp_ofs);
     int16_t sx = DS_I16(bmp_ofs + 4), sy = DS_I16(bmp_ofs + 6);
     mouse_hide();
-    draw_bitmap_fast(*save, (int16_t)(sx & 0xfff8), sy);
-    scr_blit(*save, (int16_t)(sx >> 3), sy);
-    far_free_ptr((void **)save);
+    draw_bitmap_fast(PTR32(Bitmap, *save), (int16_t)(sx & 0xfff8), sy);
+    scr_blit(PTR32(Bitmap, *save), (int16_t)(sx >> 3), sy);
+    far_free_ptr(save);
 }
 
 /* 1f51:1703 – Raumanimation (mode 1/3 ein Schritt, 2 aufräumen) */
@@ -748,7 +749,7 @@ void room_animate(int16_t mode)
         /* ORIGINAL-BUG: prüft vorher den Eintrag [SI] mit zufälligem SI; hier alle freigeben */
         for (k = 0; k <= 2; k++)
             if (DS_PTR(void, 0xd42 + k * 8) != NULL)
-                far_free_ptr(DS_ADDR(void *, 0xd42 + k * 8));
+                far_free_ptr(DS_ADDR(ptr32, 0xd42 + k * 8));
         return;
     }
     if (DS_I16(0x79f8) != 0)
@@ -1107,15 +1108,15 @@ void popup_box_create(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
         box = (Bitmap *)stat;
         box->wcols = w;
         box->h = (int16_t)(h * 8);
-        box->pixels = stat + 8;
+        box->pixels = P32(stat + 8);
     }
-    DS_PTR(Bitmap, 0x8ec2) = box;
+    DS_SET_PTR(0x8ec2, box);
     int16_t n = w > y1 - y0 - 1 ? w : y1 - y0 - 1;
     uint8_t *mem = far_calloc((uint16_t)(n * 0x40 + 8), 1);
     Bitmap *tmp = (Bitmap *)mem;
     tmp->wcols = w;
     tmp->h = 8;
-    tmp->pixels = mem + 8;
+    tmp->pixels = P32(mem + 8);
     scr_grab(tmp, x0, (int16_t)(y0 << 3));
     bmp_copy(tmp, box);
     if (y0 < y1) {
@@ -1125,7 +1126,7 @@ void popup_box_create(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
     if (y1 - y0 > 1) {
         tmp->wcols = 1;
         tmp->h = (int16_t)((y1 - y0 - 1) * 8);
-        tmp->pixels = mem + 8;
+        tmp->pixels = P32(mem + 8);
         scr_grab(tmp, x0, (int16_t)((y0 + 1) * 8));
         bmp_copy_at(tmp, box, 0, 8);
         scr_grab(tmp, x1, (int16_t)((y0 + 1) * 8));
@@ -1163,8 +1164,8 @@ static void tv_frame_draw(Bitmap *b, int coverage)
 {
     /* Rollladen: coverage Pixel von oben und von unten, aus 5-Pixel-Bändern (Sprite 0x3a) */
     int16_t clip_on = g_clip_on, clip_top = g_clip_top, clip_bottom = g_clip_bottom;
-    g_draw_target = b;
-    g_draw_bank = DS_PTR(uint8_t, 0x79a2);
+    DS_SET_PTR(0x8f2a, b);
+    DS_SET_PTR(0x8f2e, DS_PTR(uint8_t, 0x79a2));
     g_clip_on = 1;
     g_clip_top = 0;
     g_clip_bottom = 0x3a;
@@ -1269,7 +1270,7 @@ void tv_picture_update(void)
 #define TVL_W(i, ofs)     (*(int16_t *)(TV_LAYER(i) + (ofs)))
 #define g_tv_bg           DS_PTR(Bitmap, 0x7bdc)
 
-static void use_bank(uint8_t *bank) { g_draw_bank = bank; }
+static void use_bank(uint8_t *bank) { DS_SET_PTR(0x8f2e, bank); }
 static void bank_draw_n(int16_t n, int16_t x, int16_t y) { bank_draw(sprite_ofs(n), x, y); }
 
 /* 1f51:3105 – Fernsehbild aus Hintergrund und bis zu fünf animierten Ebenen zusammensetzen */
@@ -1277,7 +1278,7 @@ Bitmap *tv_picture_compose(void)
 {
     Bitmap *b = bitmap_alloc(0x68, 0x3a);
     bmp_fill(b, 0, 0, 1, 0x3a, 0);
-    g_draw_target = b;
+    DS_SET_PTR(0x8f2a, b);
     bmp_copy(g_tv_bg, b);
     if (DS_I16(0x79d6) != 0) {
         int16_t x, k;
@@ -1409,7 +1410,7 @@ Bitmap *tv_picture_compose(void)
     bmp_copy(open, snap);
     tv_shutter_note(snap);
     far_free(snap);
-    g_draw_target = b;
+    DS_SET_PTR(0x8f2a, b);
     use_bank(DS_PTR(uint8_t, 0x79a2));
     for (int16_t i = 0; i < DS_I16(0x79d4); i++) {
         bank_draw(0x3a, 0, (int16_t)(i * 5));
@@ -1424,7 +1425,7 @@ Bitmap *tv_picture_compose(void)
 /* 1f51:38b1 – statischer Hintergrund des Fernsehbilds (Studio) */
 void tv_picture_bg_draw(void)
 {
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     use_bank(DS_PTR(uint8_t, 0x79a2));
     for (int16_t x = 0; x < 0x61; x += 8) {
         bank_draw(0x2a, x, 0);
@@ -1442,7 +1443,7 @@ void tv_layer0_draw(void)
 {
     int16_t x = TVL_W(0, 4), pose = TVL_W(0, 6), deco = TVL_W(0, 0xa);
     use_bank(DS_PTR(uint8_t, 0x830e));
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     bank_draw(2, x, 4);
     if (pose != 0) {
         int16_t k = pose == 4 ? 2 : pose;
@@ -1469,7 +1470,7 @@ void tv_layer1_draw(void)
 {
     int16_t x = TVL_W(1, 4);
     use_bank(DS_PTR(uint8_t, 0x831e));
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     bank_draw(2, x, 0x12);
     if (TVL_W(1, 8) == 1) {
         bank_draw(0x42, x + 8, 7);
@@ -1483,7 +1484,7 @@ void tv_layer2_draw(void)
 {
     int16_t x = TVL_W(2, 4), pose = TVL_W(2, 6);
     use_bank(DS_PTR(uint8_t, 0x832e));
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     bank_draw(2, x, 0xb);
     if (TVL_W(2, 8) == 1) {
         bank_draw(0x42, x + 6, 5);
@@ -1499,7 +1500,7 @@ void tv_layer3_draw(void)
 {
     int16_t x = TVL_W(3, 4), pose = TVL_W(3, 6);
     use_bank(DS_PTR(uint8_t, 0x833e));
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     bank_draw(2, x, 0);
     if (pose == 6 || pose == 7)
         pose = 5;
@@ -1513,7 +1514,7 @@ void tv_layer4_draw(void)
 {
     int16_t x = TVL_W(4, 4);
     use_bank(DS_PTR(uint8_t, 0x834e));
-    g_draw_target = g_tv_bg;
+    DS_SET_PTR(0x8f2a, g_tv_bg);
     bank_draw(2, x + 7, 0xb);
     if (TVL_W(4, 6) != 0)
         bank_draw_n(TVL_W(4, 6), x + 7, 0x13);
@@ -1624,7 +1625,7 @@ void anim_blink_draw(void *anim, int16_t state, int16_t sprite, int16_t dx, int1
             *blink = 10;
     } else {
         (*blink)--;
-        target_draw_sprite(BANK_BMP(*(uint8_t **)a, sprite_ofs(sprite)), (int16_t)(*(int16_t *)(a + 4) + dx), y);
+        target_draw_sprite(BANK_BMP(MEM_PTR(uint8_t, a), sprite_ofs(sprite)), (int16_t)(*(int16_t *)(a + 4) + dx), y);
     }
 }
 
@@ -1635,19 +1636,19 @@ void game_end_sequence(void)
     music_on_leave(0x42, 0);
     music_on_enter(0x42, 0);
     far_free(g_upper_screen);
-    g_upper_screen = bitmap_alloc(0x140, 200);
+    DS_SET_PTR(0x8e62, bitmap_alloc(0x140, 200));
     bmp_fill(g_upper_screen, 0, 0, 0x28, 200, 0);
-    RBANK(0x100) = (uint8_t *)hes_load_unpack0(0x7d);
+    DS_SET_PTR((0x100), (uint8_t *)hes_load_unpack0(0x7d));
     draw_bitmap_fast(BANK_BMP(RBANK(0x100), 2), 0, 1);
-    far_free_ptr(DS_ADDR(void *, 0x100));
-    RBANK(0x100) = (uint8_t *)hes_load_unpack0(0x4b);
+    far_free_ptr(DS_ADDR(ptr32, 0x100));
+    DS_SET_PTR((0x100), (uint8_t *)hes_load_unpack0(0x4b));
     draw_bitmap_fast(BANK_BMP(RBANK(0x100), 2), 0xd0, 1);
-    far_free_ptr(DS_ADDR(void *, 0x100));
-    RBANK(0x100) = (uint8_t *)hes_load_unpack0(0xef);
+    far_free_ptr(DS_ADDR(ptr32, 0x100));
+    DS_SET_PTR((0x100), (uint8_t *)hes_load_unpack0(0xef));
     draw_bitmap_fast(BANK_BMP(RBANK(0x100), 2), 0x70, 1);
-    far_free_ptr(DS_ADDR(void *, 0x100));
-    RBANK(0x100) = (uint8_t *)hes_load_unpack(0xf0);
-    RBMP(0x104) = bitmap_alloc(0x80, 0x8e);
+    far_free_ptr(DS_ADDR(ptr32, 0x100));
+    DS_SET_PTR((0x100), (uint8_t *)hes_load_unpack(0xf0));
+    DS_SET_PTR((0x104), bitmap_alloc(0x80, 0x8e));
     g_clip_on = 0;
     blit_rect(g_upper_screen, RBMP(0x104), 0, 0, 0x60, 0x23, 0x80, 0x8e);
     draw_sprite(BANK_BMP(RBANK(0x100), 2), 0x60, 0x23);
@@ -1667,7 +1668,7 @@ void game_end_sequence(void)
             draw_bitmap_fast(RBMP(0x104), 0x60, 0x23);
             if (spr != 0)
                 draw_sprite(BANK_BMP(RBANK(0x100), sprite_ofs(spr)), x, y);
-            ScrRectArgs a = {g_upper_screen, 0xc, 0x23, 0x10, 0x8e, 0xc, 0x23};
+            ScrRectArgs a = {P32(g_upper_screen), 0xc, 0x23, 0x10, 0x8e, 0xc, 0x23};
             scr_blit_rect(&a);
         }
         while (ticks_get() < 3)

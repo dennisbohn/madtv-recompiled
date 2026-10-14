@@ -36,17 +36,17 @@ void game_main(void)
     timer_resume();
 
     /* Grund-Sprites: Bank 3, Bank 2 mit einzelnen UI-Elementen */
-    DS_PTR(SpriteBank, 0x8366) = hes_load_unpack(3);
+    DS_SET_PTR(0x8366, hes_load_unpack(3));
     SpriteBank *ui = hes_load_unpack(2);
-    DS_PTR(SpriteBank, 0x8c3c) = ui;
-    DS_PTR(Bitmap, 0x8e78) = &ui->bmp[0];
-    DS_PTR(Bitmap, 0x8e7c) = &ui->bmp[1];
-    DS_PTR(Bitmap, 0x8e80) = &ui->bmp[2];
-    DS_PTR(Bitmap, 0x7aea) = &ui->bmp[3];
-    DS_PTR(Bitmap, 0x7aee) = &ui->bmp[12];
+    DS_SET_PTR(0x8c3c, ui);
+    DS_SET_PTR(0x8e78, &ui->bmp[0]);
+    DS_SET_PTR(0x8e7c, &ui->bmp[1]);
+    DS_SET_PTR(0x8e80, &ui->bmp[2]);
+    DS_SET_PTR(0x7aea, &ui->bmp[3]);
+    DS_SET_PTR(0x7aee, &ui->bmp[12]);
 
     /* Palette fürs Intro */
-    DS_PTR(uint8_t, 0x8ab0) = hes_load_raw(299);
+    DS_SET_PTR(0x8ab0, hes_load_raw(299));
     vga_set_palette(DS_PTR(uint8_t, 0x8ab0));
     far_free(DS_PTR(uint8_t, 0x8ab0));
 
@@ -58,24 +58,24 @@ void game_main(void)
     music_on_leave(500, 0);
 
     /* Datenbanken: Filme (201 x 23 Byte), Serien (51 x 57), Folgen (51 x 435) */
-    DS_PTR(uint8_t, 0x2489) = far_calloc(201, 23);
-    DS_PTR(uint8_t, 0x2626) = far_calloc(51, 57);
-    DS_PTR(uint8_t, 0x713c) = far_calloc(51, 435);
+    DS_SET_PTR(0x2489, far_calloc(201, 23));
+    DS_SET_PTR(0x2626, far_calloc(51, 57));
+    DS_SET_PTR(0x713c, far_calloc(51, 435));
     db_load_all();
 
     /* Spielpalette */
-    DS_PTR(uint8_t, 0x8ab0) = hes_load_raw(1);
+    DS_SET_PTR(0x8ab0, hes_load_raw(1));
     vga_set_palette(DS_PTR(uint8_t, 0x8ab0));
     far_free(DS_PTR(uint8_t, 0x8ab0));
     timer_pause();
 
-    DS_PTR(SpriteBank, 0x8c36) = hes_load_unpack(6);
-    DS_PTR(SpriteBank, 0x7b12) = hes_load_unpack(0xb);
-    DS_PTR(SpriteBank, 0x79a2) = hes_load_unpack(0xf);
-    DS_PTR(SpriteBank, 0x8b7c) = hes_load_unpack0(4);
-    DS_PTR(SpriteBank, 0x8b80) = hes_load_unpack0(7);
-    DS_PTR(SpriteBank, 0x8362) = hes_load_unpack(0xd);
-    DS_PTR(SpriteBank, 0x835e) = hes_load_unpack(0x10);
+    DS_SET_PTR(0x8c36, hes_load_unpack(6));
+    DS_SET_PTR(0x7b12, hes_load_unpack(0xb));
+    DS_SET_PTR(0x79a2, hes_load_unpack(0xf));
+    DS_SET_PTR(0x8b7c, hes_load_unpack0(4));
+    DS_SET_PTR(0x8b80, hes_load_unpack0(7));
+    DS_SET_PTR(0x8362, hes_load_unpack(0xd));
+    DS_SET_PTR(0x835e, hes_load_unpack(0x10));
 
     /* Spaltenzahl der Figurenbilder aus der Größe von Bank 4 ableiten */
     uint16_t bank4 = spritebank_size(DS_PTR(SpriteBank, 0x8b7c));
@@ -94,25 +94,25 @@ void game_main(void)
     DS_I16(0x8aae) = (int16_t)figure_frame_bytes(0x130, 1);
     int32_t bank_bytes = (int32_t)(uint16_t)(DS_I16(0x8aae) + 8) * 0x3c;
     SpriteBank *figures = far_calloc((uint16_t)(bank_bytes + 2), 1);
-    DS_PTR(SpriteBank, 0x00f8) = figures;
+    DS_SET_PTR(0x00f8, figures);
     figures->count = 0x3c;
     uint8_t *px = (uint8_t *)&figures->bmp[0x3c];
     for (int16_t i = 0; i < 0x3c; i++) {
         figures->bmp[i].wcols = 2;
         figures->bmp[i].h = 0x13;
-        figures->bmp[i].pixels = px;
+        figures->bmp[i].pixels = P32(px);
         px += (int16_t)figure_frame_bytes(0x130, 1);
     }
     figure_sprites_load_all();
 
-    DS_PTR(uint8_t, 0x7c5e) = hes_load_raw(0xa4); /* Bevölkerungskarte */
+    DS_SET_PTR(0x7c5e, hes_load_raw(0xa4)); /* Bevölkerungskarte */
     {
         /* PORT: Die KI (3b0a:46aa) liest/schreibt beide Karten mit doppelter Zeilenbreite über das
          * Pufferende hinaus (im DOS-Original trifft das den folgenden Heapblock). Puffer auffüllen. */
         uint8_t *padded = far_calloc(0x2400, 1);
         far_memcpy(padded, DS_PTR(uint8_t, 0x7c5e), 0x11e2);
         far_free(DS_PTR(uint8_t, 0x7c5e));
-        DS_PTR(uint8_t, 0x7c5e) = padded;
+        DS_SET_PTR(0x7c5e, padded);
     }
     timer_resume();
     savegame_load(0x2b); /* Startzustand eines neuen Spiels */
@@ -128,11 +128,11 @@ void game_main(void)
     DS_I16(0x79b2) = 1;
     cursor_reset();
 
-    DS_PTR(uint8_t, 0x8b8a) = far_calloc(0x2400, 1); /* PORT: 0x11e2 + Reserve, siehe oben */
+    DS_SET_PTR(0x8b8a, far_calloc(0x2400, 1)); /* PORT: 0x11e2 + Reserve, siehe oben */
     g_hour = 0x11;
-    DS_PTR(SpriteBank, 0x8c58) = hes_load_unpack0(9);
-    DS_PTR(SpriteBank, 0x799e) = hes_load_unpack(10);
-    DS_PTR(Bitmap, 0x8eb2) = bitmap_alloc(0x140, 0x50);
+    DS_SET_PTR(0x8c58, hes_load_unpack0(9));
+    DS_SET_PTR(0x799e, hes_load_unpack(10));
+    DS_SET_PTR(0x8eb2, bitmap_alloc(0x140, 0x50));
     panel_build();
     far_free(DS_PTR(SpriteBank, 0x799e));
     far_free(DS_PTR(SpriteBank, 0x8c58));
@@ -141,14 +141,14 @@ void game_main(void)
     status_bar_draw();
 
     /* Offscreen-Bitmaps */
-    DS_PTR(Bitmap, 0x8c30) = bitmap_alloc(0x78, 100);
+    DS_SET_PTR(0x8c30, bitmap_alloc(0x78, 100));
     /* PORT: die Zeigerpuffer DS:8e70/8ebe/8eb6 entfallen (Zeiger-Overlay, rtlib.c) */
-    DS_PTR(Bitmap, 0x8e88) = bitmap_alloc(0x30, 0xb);
-    DS_PTR(Bitmap, 0x8e66) = bitmap_alloc(0x30, 0xb);
-    DS_PTR(Bitmap, 0x7bdc) = bitmap_alloc(0x68, 0x3a);
-    DS_PTR(Bitmap, 0x8e62) = bitmap_alloc(0x140, 0x78);
-    DS_PTR(Bitmap, 0x8e6a) = bitmap_alloc(0x88, 0x38);
-    DS_PTR(Bitmap, 0x8eba) = bitmap_alloc(0xd0, 0x96);
+    DS_SET_PTR(0x8e88, bitmap_alloc(0x30, 0xb));
+    DS_SET_PTR(0x8e66, bitmap_alloc(0x30, 0xb));
+    DS_SET_PTR(0x7bdc, bitmap_alloc(0x68, 0x3a));
+    DS_SET_PTR(0x8e62, bitmap_alloc(0x140, 0x78));
+    DS_SET_PTR(0x8e6a, bitmap_alloc(0x88, 0x38));
+    DS_SET_PTR(0x8eba, bitmap_alloc(0xd0, 0x96));
     scr_grab(DS_PTR(Bitmap, 0x8e66), 0x13, 0x7f);
     status_show_start();
     DS_I16(0x8aac) = 0;
@@ -180,7 +180,7 @@ void game_main(void)
         }
         if (g_cur_room == 0x41 && DS_I16(0x7c58) == 1 && platform_debug_env("MADTV_LOAD") > 0) {
             /* PORT: Testhilfe – Spielstand n direkt laden (wie "Load game" + Klick auf Slot n) */
-            DS_PTR(uint8_t, 0x8ef9) = DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17);
+            DS_SET_PTR(0x8ef9, DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17));
             room_enter(0x3a);
             g_cur_dialog = 4;
             save_menu_load((int16_t)platform_debug_env("MADTV_LOAD"));
@@ -189,7 +189,7 @@ void game_main(void)
             room_leave(); /* PORT: Testhilfe – versehentlich geöffnetes Lademenü schließen (stoppt sonst die Uhr) */
         if (g_cur_room == 0x41 && DS_I16(0x7c58) == 1 && platform_debug_env("MADTV_NEWGAME")) {
             DS_I16(0x8ee3) = 0x4a; /* PORT: Testhilfe – "New game" direkt auslösen (wie room_click) */
-            DS_PTR(uint8_t, 0x8ef9) = DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17);
+            DS_SET_PTR(0x8ef9, DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17));
             room_click_new_game_setup();
         }
         if (DS_I16(0x7c58) == 3 && DS_I16(0x012c) == 0 && g_cur_room >= 0)
@@ -298,12 +298,12 @@ void hotkey_handle(int16_t key)
 static void ui_texts_load(void)
 {
     int16_t text_hes = DS_ADDR(int16_t, 0x055e)[g_language * 8];
-    DS_PTR(char, 0x8b8e) = far_calloc((uint16_t)hes_filesize(text_hes), 1);
+    DS_SET_PTR(0x8b8e, far_calloc((uint16_t)hes_filesize(text_hes), 1));
     hes_load(text_hes, DS_PTR(char, 0x8b8e));
     int16_t ofs = 0;
     for (int16_t i = 0; i < 0x1ae; i++) {
         char *t = DS_PTR(char, 0x8b8e) + ofs;
-        DS_ADDR(char *, 0x8370)[i] = t;
+        DS_ADDR(ptr32, 0x8370)[i] = P32(t);
         ofs = (int16_t)(ofs + strlen(t) + 1);
     }
 }
@@ -317,23 +317,23 @@ static void ui_texts_load(void)
  * Spielerdaten) werden auf die neuen Texte umgestellt. Spielstände enthalten die Sprache nicht. */
 static void language_switch(int16_t lang)
 {
-    static char *old[0x1ae];
-    memcpy(old, DS_ADDR(char *, 0x8370), sizeof old);
+    static ptr32 old[0x1ae]; /* bisherige Tabelle (4-Byte-Zeiger) */
+    memcpy(old, DS_ADDR(ptr32, 0x8370), sizeof old);
     g_language = lang;
     timer_pause();
     ui_texts_load();
     timer_resume();
     /* Zeiger auf alte Oberflächentexte im Datensegment umstellen (außer der Tabelle selbst) */
-    for (uint32_t o = 0; o + sizeof(char *) <= DGROUP_SIZE; o++) {
+    for (uint32_t o = 0; o + sizeof(ptr32) <= DGROUP_SIZE; o++) {
         if (o >= 0x8370 && o < 0x8370 + sizeof old)
             continue;
-        char *p;
+        ptr32 p;
         memcpy(&p, g_ds + o, sizeof p);
-        if (p == NULL || p < old[0] || p > old[0x1ad])
+        if (p == 0 || p < old[0] || p > old[0x1ad])
             continue;
         for (int16_t i = 0; i < 0x1ae; i++)
             if (p == old[i]) {
-                memcpy(g_ds + o, &DS_ADDR(char *, 0x8370)[i], sizeof p);
+                memcpy(g_ds + o, &DS_ADDR(ptr32, 0x8370)[i], sizeof p);
                 break;
             }
     }
@@ -344,7 +344,7 @@ static void language_switch(int16_t lang)
         text_cache_reload();
     }
     if (g_cur_room == 0xc && DS_PTR(uint8_t, 0x110) != NULL)
-        DS_PTR(uint8_t, 0x110) = hes_load_raw(g_language == 0 ? 0x2a : 0xf6);
+        DS_SET_PTR(0x110, hes_load_raw(g_language == 0 ? 0x2a : 0xf6));
     DS_I16(0x79ae) = 1; /* offenen Hinweiskasten bzw. Infokarte neu aufbauen (wie room_enter) */
     /* Raum ohne offenen Unterdialog neu aufbauen wie beim Betreten (ohne Raumwechsel, Musik und
      * Überblendung), damit fest gezeichnete Texte sofort in der neuen Sprache erscheinen.
@@ -397,16 +397,15 @@ static void new_game_restart(void)
     DS_I16(0x8bba) = 1;
     DS_I16(0x8e5c) = 2;
     DS_I16(0x8b86) = 0;
-    DS_I16(0x79b2) = 1; /* nichts am Zeiger */
+    DS_I16(0x79b2) = 1; /* Zeigerform: Pfeil (set_cursor_shape(0) hieße "vorige Form vom Stapel") */
     DS_I16(0x8aac) = 0; /* Zeiger-Zähler */
     g_player_idx = (int16_t)(g_local_player - 1);
     cursor_reset();
-    set_cursor_shape(0);
     DS_I16(0x7c58) = 0;
     /* untere Leiste neu aufbauen wie beim Programmstart (Geld- und Quotenanzeige leer) */
-    DS_PTR(SpriteBank, 0x8c58) = hes_load_unpack0(9);
-    DS_PTR(SpriteBank, 0x799e) = hes_load_unpack(10);
-    DS_PTR(Bitmap, 0x8eb2) = bitmap_alloc(0x140, 0x50);
+    DS_SET_PTR(0x8c58, hes_load_unpack0(9));
+    DS_SET_PTR(0x799e, hes_load_unpack(10));
+    DS_SET_PTR(0x8eb2, bitmap_alloc(0x140, 0x50));
     panel_build();
     far_free(DS_PTR(SpriteBank, 0x799e));
     far_free(DS_PTR(SpriteBank, 0x8c58));
@@ -447,7 +446,7 @@ void game_menu_poll(void)
 void init_tables(void)
 {
     timer_pause();
-    DS_PTR(uint8_t, 0x8f90) = far_calloc(0x1a90, 1);
+    DS_SET_PTR(0x8f90, far_calloc(0x1a90, 1));
     DS_U16(0x11e2) = 0; /* Leseposition für config_read */
     hes_load(0xd0, DS_PTR(uint8_t, 0x8f90));
     config_read(DS_ADDR(void, 0x1ce0), 8);
@@ -467,15 +466,15 @@ void init_tables(void)
     timer_resume();
 
     /* Namenspuffer mit Vorgaben aus den Texten */
-    DS_PTR(char, 0x8bd3) = far_calloc(0x29, 1);
-    far_memcpy(DS_PTR(char, 0x8bd3), DS_ADDR(char *, 0x8370)[0x3f], 7);
-    DS_PTR(char, 0x8bd7) = DS_ADDR(char *, 0x8370)[0x47];
-    DS_PTR(char, 0x8bea) = far_calloc(0x29, 1);
-    far_memcpy(DS_PTR(char, 0x8bea), DS_ADDR(char *, 0x8370)[0x42], 6);
-    DS_PTR(char, 0x8bee) = DS_ADDR(char *, 0x8370)[0x4c];
-    DS_PTR(char, 0x8c01) = far_calloc(0x29, 1);
-    far_memcpy(DS_PTR(char, 0x8c01), DS_ADDR(char *, 0x8370)[0x45], 10);
-    DS_PTR(char, 0x8c05) = DS_ADDR(char *, 0x8370)[0x91];
+    DS_SET_PTR(0x8bd3, far_calloc(0x29, 1));
+    far_memcpy(DS_PTR(char, 0x8bd3), PTR32(char, DS_ADDR(ptr32, 0x8370)[0x3f]), 7);
+    DS_U32(0x8bd7) = DS_ADDR(ptr32, 0x8370)[0x47];
+    DS_SET_PTR(0x8bea, far_calloc(0x29, 1));
+    far_memcpy(DS_PTR(char, 0x8bea), PTR32(char, DS_ADDR(ptr32, 0x8370)[0x42]), 6);
+    DS_U32(0x8bee) = DS_ADDR(ptr32, 0x8370)[0x4c];
+    DS_SET_PTR(0x8c01, far_calloc(0x29, 1));
+    far_memcpy(DS_PTR(char, 0x8c01), PTR32(char, DS_ADDR(ptr32, 0x8370)[0x45]), 10);
+    DS_U32(0x8c05) = DS_ADDR(ptr32, 0x8370)[0x91];
 
     far_memset(DS_ADDR(void, 0x1980), 0x4d);
     far_memset(DS_ADDR(void, 0x1b50), 0x118);
@@ -529,10 +528,10 @@ void room_reload(void)
         /* zurück im Gebäude: Gebäudegrafik neu aufbauen */
         DS_I16(0x7a6a) = 1;
         clock_suspend();
-        DS_PTR(Bitmap, 0x8e6a) = bitmap_alloc(0x88, 0x38);
-        DS_PTR(Bitmap, 0x8eba) = bitmap_alloc(0xd0, 0x96);
-        DS_PTR(SpriteBank, 0x00fc) = font_get(2, 1);
-        DS_PTR(SpriteBank, 0x00f4) = font_get(hour_index() >= 4, 0); /* Tag/Nacht */
+        DS_SET_PTR(0x8e6a, bitmap_alloc(0x88, 0x38));
+        DS_SET_PTR(0x8eba, bitmap_alloc(0xd0, 0x96));
+        DS_SET_PTR(0x00fc, font_get(2, 1));
+        DS_SET_PTR(0x00f4, font_get(hour_index() >= 4, 0)); /* Tag/Nacht */
         clock_resume();
         DS_I16(0x8c4a) = 1;
         DS_I16(0x79ae) = 1;
@@ -667,54 +666,54 @@ void room_load(int16_t room)
     timer_pause();
     switch (room) {
     case 0x41: /* Neues Spiel */
-        ROOM_RES(0x100) = hes_load_unpack(0x96);
+        DS_SET_PTR((0x100), hes_load_unpack(0x96));
         break;
     case 1: /* Büro */
         room_load_background(0x68);
-        ROOM_RES(0x100) = hes_load_unpack(0xb5);
+        DS_SET_PTR((0x100), hes_load_unpack(0xb5));
         break;
     case 0x3a: /* Laden/Speichern */
         room_load_background(0x74);
-        ROOM_RES(0x104) = hes_load_unpack(0xb6);
+        DS_SET_PTR((0x104), hes_load_unpack(0xb6));
         break;
     case 0x1f: /* Programmplaner */
-        ROOM_RES(0x100) = hes_load_unpack(0x96);
-        ROOM_RES(0x104) = hes_load_unpack(0x9e);
-        ROOM_RES(0x108) = hes_load_unpack(0x98);
-        ROOM_RES(0x10c) = hes_load_unpack(0xaf);
+        DS_SET_PTR((0x100), hes_load_unpack(0x96));
+        DS_SET_PTR((0x104), hes_load_unpack(0x9e));
+        DS_SET_PTR((0x108), hes_load_unpack(0x98));
+        DS_SET_PTR((0x10c), hes_load_unpack(0xaf));
         text_cache_titles(0x1f, g_room_owner);
         text_cache_descr(0x1f, g_room_owner);
         break;
     case 2: /* Nachrichtenstudio */
         room_load_background(0x6e);
-        ROOM_RES(0x100) = hes_load_unpack(0x96);
-        ROOM_RES(0x104) = hes_load_unpack(0xa2);
-        ROOM_RES(0x108) = hes_load_unpack(0xba);
+        DS_SET_PTR((0x100), hes_load_unpack(0x96));
+        DS_SET_PTR((0x104), hes_load_unpack(0xa2));
+        DS_SET_PTR((0x108), hes_load_unpack(0xba));
         text_cache_news(g_room_owner);
         break;
     case 3: /* Chef */
         room_load_background(0x69);
-        ROOM_RES(0x100) = hes_load_unpack(0xb6);
+        DS_SET_PTR((0x100), hes_load_unpack(0xb6));
         break;
     case 4: /* Filmagentur */
         room_load_background(0x65);
-        ROOM_RES(0x104) = hes_load_unpack(0x9d);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
-        ROOM_RES(0x10c) = hes_load_unpack(0xa6);
+        DS_SET_PTR((0x104), hes_load_unpack(0x9d));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
+        DS_SET_PTR((0x10c), hes_load_unpack(0xa6));
         text_cache_titles(4, g_room_owner);
         text_cache_descr(4, g_room_owner);
         break;
     case 0xe: /* Betty */
         room_load_background(0x66);
-        ROOM_RES(0x100) = hes_load_unpack0(0x97);
-        ROOM_RES(0x104) = hes_load_unpack(0x9f);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
+        DS_SET_PTR((0x100), hes_load_unpack0(0x97));
+        DS_SET_PTR((0x104), hes_load_unpack(0x9f));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
         break;
     case 9: /* Drehbuchagentur */
         room_load_background(0x67);
-        ROOM_RES(0x104) = hes_load_unpack(0xa5);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
-        ROOM_RES(0x10c) = hes_load_unpack(0xb9);
+        DS_SET_PTR((0x104), hes_load_unpack(0xa5));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
+        DS_SET_PTR((0x10c), hes_load_unpack(0xb9));
         text_cache_titles(9, 0);
         text_cache_descr(9, 0);
         text_cache_series(9, 0);
@@ -725,50 +724,50 @@ void room_load(int16_t room)
         uint16_t h = (uint16_t)hour_index();
         if (h < 8)
             DS_I16(0x7a06) = by_hour[h];
-        ROOM_RES(0x110) = hes_load_unpack(DS_I16(0x7a06));
+        DS_SET_PTR((0x110), hes_load_unpack(DS_I16(0x7a06)));
         room_variant_overlay_draw();
         far_free(ROOM_RES(0x110));
-        ROOM_RES(0x110) = hes_load_unpack(0xbb);
-        ROOM_RES(0x100) = hes_load_unpack(0x96);
-        ROOM_RES(0x10c) = hes_load_unpack(0x9b);
-        ROOM_RES(0x104) = hes_load_unpack(0x9d);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
+        DS_SET_PTR((0x110), hes_load_unpack(0xbb));
+        DS_SET_PTR((0x100), hes_load_unpack(0x96));
+        DS_SET_PTR((0x10c), hes_load_unpack(0x9b));
+        DS_SET_PTR((0x104), hes_load_unpack(0x9d));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
         text_cache_titles(8, 0);
         text_cache_descr(8, 0);
         break;
     }
     case 0xa: { /* Immobilien: Bild je nach Belegung DS:7a0e */
         room_load_background(0x6c);
-        ROOM_RES(0x100) = hes_load_unpack(0xc1);
+        DS_SET_PTR((0x100), hes_load_unpack(0xc1));
         static const int16_t by_state[11] = {0xc2, 0xc2, 0xc2, 0xc3, 0xc3, 0xc4, 0xc4, 0xc4, 0xc6, 0xc6, 0xc6};
         if ((uint16_t)DS_I16(0x7a0e) < 0xb)
             DS_I16(0x7a32) = by_state[DS_I16(0x7a0e)];
-        ROOM_RES(0x104) = hes_load_unpack(DS_I16(0x7a32));
+        DS_SET_PTR((0x104), hes_load_unpack(DS_I16(0x7a32)));
         break;
     }
     case 0x3e:
-        ROOM_RES(0x104) = hes_load_unpack(0xa0);
-        ROOM_RES(0x108) = hes_load_unpack(0x9d);
+        DS_SET_PTR((0x104), hes_load_unpack(0xa0));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9d));
         break;
     case 5: { /* Studio */
         DS_I16(0x79be) = DS_U8(0x7cd0 + DS_ADDR(int16_t, 0x7b24)[g_player_idx * 15] * 0x7a +
                                DS_ADDR(int16_t, 0x7b34)[g_player_idx * 15]);
         clip_reset();
         room_load_background((int16_t)(DS_I8(0x6147 + DS_I16(0x79be) * 0x10) + 0x70));
-        ROOM_RES(0x100) = hes_load_unpack(0xaa);
-        ROOM_RES(0x104) = hes_load_unpack0(0xa8);
+        DS_SET_PTR((0x100), hes_load_unpack(0xaa));
+        DS_SET_PTR((0x104), hes_load_unpack0(0xa8));
         studio_cast_preview();
         far_free(ROOM_RES(0x104));
-        ROOM_RES(0x104) = hes_load_unpack(0x70);
+        DS_SET_PTR((0x104), hes_load_unpack(0x70));
         draw_sprite(&ROOM_RES(0x104)->bmp[0], 4, 4);
         far_free(ROOM_RES(0x104));
-        ROOM_RES(0x104) = hes_load_unpack(0x3e);
+        DS_SET_PTR((0x104), hes_load_unpack(0x3e));
         draw_sprite(&ROOM_RES(0x104)->bmp[0], 0xa0, 4);
-        far_free_ptr(DS_ADDR(void *, 0x104));
-        ROOM_RES(0x110) = hes_load_unpack(0xc0);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
-        ROOM_BMP(0x10c) = bitmap_alloc(0x10, 0x1d);
-        ROOM_RES(0x11c) = hes_load_unpack(0x9d);
+        far_free_ptr(DS_ADDR(ptr32, 0x104));
+        DS_SET_PTR((0x110), hes_load_unpack(0xc0));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
+        DS_SET_PTR((0x10c), bitmap_alloc(0x10, 0x1d));
+        DS_SET_PTR((0x11c), hes_load_unpack(0x9d));
         text_cache_titles(5, DS_I16(0x79be));
         text_cache_descr(5, DS_I16(0x79be));
         text_cache_series(5, DS_I16(0x79be));
@@ -777,35 +776,35 @@ void room_load(int16_t room)
     }
     case 0xc: /* Supermarkt */
         room_load_background(0x6d);
-        ROOM_RES(0x100) = hes_load_unpack0(0xab);
-        ROOM_RES(0x104) = hes_load_unpack(0xae);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
-        ROOM_RES(0x10c) = hes_load_unpack0(0x97);
-        ROOM_RES(0x110) = hes_load_unpack(0xc5);
+        DS_SET_PTR((0x100), hes_load_unpack0(0xab));
+        DS_SET_PTR((0x104), hes_load_unpack(0xae));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
+        DS_SET_PTR((0x10c), hes_load_unpack0(0x97));
+        DS_SET_PTR((0x110), hes_load_unpack(0xc5));
         break;
     case 0x3f: /* Supermarkt-Regal */
-        ROOM_RES(0x100) = hes_load_unpack0(0xa7);
-        ROOM_RES(0x10c) = hes_load_unpack0(0xac);
-        ROOM_RES(0x104) = hes_load_unpack0(0xa8);
-        ROOM_RES(0x108) = hes_load_unpack(0xa9);
+        DS_SET_PTR((0x100), hes_load_unpack0(0xa7));
+        DS_SET_PTR((0x10c), hes_load_unpack0(0xac));
+        DS_SET_PTR((0x104), hes_load_unpack0(0xa8));
+        DS_SET_PTR((0x108), hes_load_unpack(0xa9));
         text_cache_titles(0xc, 0);
         text_cache_descr(0xc, 0);
         text_cache_series(0xc, 0);
-        DS_PTR(uint8_t, 0x110) = hes_load_raw(g_language == 0 ? 0x2a : 0xf6);
+        DS_SET_PTR(0x110, hes_load_raw(g_language == 0 ? 0x2a : 0xf6));
         break;
     case 0xb: /* Werbeagentur */
         room_load_background(0x6f);
-        ROOM_RES(0x104) = hes_load_unpack(0x9c);
-        ROOM_RES(0x108) = hes_load_unpack(0x9a);
+        DS_SET_PTR((0x104), hes_load_unpack(0x9c));
+        DS_SET_PTR((0x108), hes_load_unpack(0x9a));
         break;
     case 0x19: /* Senderkarte */
-        ROOM_RES(0x100) = hes_load_unpack0(0xa3);
-        ROOM_RES(0x104) = hes_load_unpack(0x99);
+        DS_SET_PTR((0x100), hes_load_unpack0(0xa3));
+        DS_SET_PTR((0x104), hes_load_unpack(0x99));
         break;
     case 0xd:
     case 0x3d: /* Infotafel / Aufzugtafel */
-        ROOM_RES(0x100) = hes_load_unpack(0xa1);
-        ROOM_RES(0x108) = hes_load_unpack(0x98);
+        DS_SET_PTR((0x100), hes_load_unpack(0xa1));
+        DS_SET_PTR((0x108), hes_load_unpack(0x98));
         break;
     case 0x16: room_load_background(0x75); break;
     case 0x17: room_load_background(0x76); break;
@@ -829,8 +828,8 @@ void room_load(int16_t room)
         player_setup_screen(0);
         break;
     case 0x1f:
-        ROOM_BMP(0x110) = bitmap_alloc(0x60, 10);
-        DS_PTR(uint8_t, 0x124) = far_calloc(0x3a88, 1); /* fester Puffer für Tooltips */
+        DS_SET_PTR((0x110), bitmap_alloc(0x60, 10));
+        DS_SET_PTR(0x124, far_calloc(0x3a88, 1)); /* fester Puffer für Tooltips */
         g_cur_dialog = 0;
         DS_I16(0x79d8) = 0;
         DS_I16(0x79da) = g_local_player;
@@ -843,8 +842,8 @@ void room_load(int16_t room)
             room_stack_overlay_draw();
         room_owner_marker_draw();
         if (g_room_owner == g_local_player && DS_I16(0x7a04) >= 1) {
-            ROOM_BMP(0x114) = bitmap_alloc(0x28, 0x10);
-            ROOM_BMP(0x118) = bitmap_alloc(0x28, 0x10);
+            DS_SET_PTR((0x114), bitmap_alloc(0x28, 0x10));
+            DS_SET_PTR((0x118), bitmap_alloc(0x28, 0x10));
             screen_grab(ROOM_BMP(0x114), 0x78, 0x45);
         }
         break;
@@ -854,8 +853,8 @@ void room_load(int16_t room)
         station_map_panel(0);
         break;
     case 8:
-        ROOM_BMP(0x114) = bitmap_alloc(0x48, 0x35);
-        ROOM_BMP(0x118) = bitmap_alloc(0x48, 0x35);
+        DS_SET_PTR((0x114), bitmap_alloc(0x48, 0x35));
+        DS_SET_PTR((0x118), bitmap_alloc(0x48, 0x35));
         screen_grab(ROOM_BMP(0x114), 0x10, 0x12);
         room8_items_panel(0);
         dialog_frame(0, 2);
@@ -870,7 +869,7 @@ void room_load(int16_t room)
         programmes_mark_scheduled();
         if (g_room_owner == g_local_player)
             dialog_frame(0, 1);
-        ROOM_BMP(0x114) = bitmap_alloc(0x38, 0x2d);
+        DS_SET_PTR((0x114), bitmap_alloc(0x38, 0x2d));
         screen_grab(ROOM_BMP(0x114), 0xe8, 0xc);
         break;
     case 0xd:
@@ -878,17 +877,17 @@ void room_load(int16_t room)
         building_directory_panel();
         break;
     case 2:
-        ROOM_BMP(0x10c) = bitmap_alloc(0x18, 10);
-        ROOM_BMP(0x110) = bitmap_alloc(0x18, 10);
+        DS_SET_PTR((0x10c), bitmap_alloc(0x18, 10));
+        DS_SET_PTR((0x110), bitmap_alloc(0x18, 10));
         screen_grab(ROOM_BMP(0x10c), 0xe8, 0x31);
         player_flags_draw(g_room_owner);
         DS_I16(0x7a76) = 0;
         break;
     case 9:
-        ROOM_BMP(0x114) = bitmap_alloc(0x30, 0x28);
-        ROOM_BMP(0x118) = bitmap_alloc(0x30, 0x28);
-        ROOM_BMP(0x11c) = bitmap_alloc(0x18, 0xc);
-        ROOM_BMP(0x120) = bitmap_alloc(0x20, 0x14);
+        DS_SET_PTR((0x114), bitmap_alloc(0x30, 0x28));
+        DS_SET_PTR((0x118), bitmap_alloc(0x30, 0x28));
+        DS_SET_PTR((0x11c), bitmap_alloc(0x18, 0xc));
+        DS_SET_PTR((0x120), bitmap_alloc(0x20, 0x14));
         screen_grab(ROOM_BMP(0x114), 0xd0, 0x20);
         draw_sprite((Bitmap *)((uint8_t *)ROOM_RES(0x10c) + 0x12), 0xe8, 0x3c);
         draw_sprite((Bitmap *)((uint8_t *)ROOM_RES(0x10c) + 0x1a), 0xe8, 0x32);
@@ -915,24 +914,24 @@ void room_load(int16_t room)
         break;
     case 0xa:
         room_crowd_draw();
-        ROOM_BMP(0x108) = bitmap_alloc(0x20, 10);
+        DS_SET_PTR((0x108), bitmap_alloc(0x20, 10));
         screen_grab(ROOM_BMP(0x108), 0xf8, 0x28);
-        ROOM_BMP(0x10c) = bitmap_alloc(0x20, 10);
+        DS_SET_PTR((0x10c), bitmap_alloc(0x20, 10));
         break;
     case 0x3e:
         studio_booking_panel();
         break;
     case 5:
-        ROOM_BMP(0x114) = bitmap_alloc(0x50, 0x53);
-        ROOM_BMP(0x118) = bitmap_alloc(0x50, 0x53);
+        DS_SET_PTR((0x114), bitmap_alloc(0x50, 0x53));
+        DS_SET_PTR((0x118), bitmap_alloc(0x50, 0x53));
         screen_grab(ROOM_BMP(0x114), 0, 0x1e);
         studio_panel_draw();
         if (g_room_owner == g_local_player)
             dialog_frame(0, 5);
         break;
     case 0xc:
-        ROOM_BMP(0x114) = bitmap_alloc(0x30, 0x5e);
-        ROOM_BMP(0x118) = bitmap_alloc(0x30, 0x5e);
+        DS_SET_PTR((0x114), bitmap_alloc(0x30, 0x5e));
+        DS_SET_PTR((0x118), bitmap_alloc(0x30, 0x5e));
         screen_grab(ROOM_BMP(0x114), 0, 0x14);
         draw_sprite((Bitmap *)((uint8_t *)ROOM_RES(0x110) + 2), 0xc, 0x4a);
         draw_sprite((Bitmap *)((uint8_t *)ROOM_RES(0x110) + 10), 6, 0x15);
@@ -980,22 +979,22 @@ void room_free_resources(void)
                                      0x010c, 0x0110, 0x0114, 0x0118, 0x011c, 0x0120, 0x0124};
     for (size_t i = 0; i < sizeof slots / sizeof *slots; i++)
         if (DS_PTR(void, slots[i]) != NULL)
-            far_free_ptr(DS_ADDR(void *, slots[i]));
+            far_free_ptr(DS_ADDR(ptr32, slots[i]));
 }
 
 /* 1054:1ce0 – Raumhintergrund aus zwei Hälften: HES hes_no-50 rechts, hes_no links */
 void room_load_background(int16_t hes_no)
 {
     clip_reset();
-    DS_PTR(SpriteBank, 0x8e5e) = hes_load_unpack0((int16_t)(hes_no - 0x32));
+    DS_SET_PTR(0x8e5e, hes_load_unpack0((int16_t)(hes_no - 0x32)));
     draw_bitmap_fast(&DS_PTR(SpriteBank, 0x8e5e)->bmp[0], 0xa0, 4);
     far_free(DS_PTR(SpriteBank, 0x8e5e));
-    DS_PTR(SpriteBank, 0x8e5e) = hes_load_unpack0(hes_no);
+    DS_SET_PTR(0x8e5e, hes_load_unpack0(hes_no));
     draw_bitmap_fast(&DS_PTR(SpriteBank, 0x8e5e)->bmp[0], 0, 4);
     far_free(DS_PTR(SpriteBank, 0x8e5e));
 }
 
-#define g_text(id)    (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)    PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define FIGW(i, ofs)  DS_I16(0x7b22 + (i) * 0x1e + (ofs))
 
 /* 1054:1d57 – neuer Tag: Abrechnungen, Märkte, Nachrichten, KI-Planung, Figuren an den Start */
@@ -1612,7 +1611,7 @@ subdialog:
             }
         } else if (g_cur_room == 0x3a) {
             for (int16_t i = 0; i < 10; i++)
-                far_free(DS_ADDR(char *, 0x8b92)[i]);
+                far_free(PTR32(char, DS_ADDR(ptr32, 0x8b92)[i]));
             clock_start();
         } else if (g_cur_room == -1) {
             message_box_draw(1, NULL);
@@ -1876,7 +1875,7 @@ void tv_anim_setup(int16_t force)
             else
                 DS_I16(0x8314) = 3;
             if (reload)
-                DS_PTR(SpriteBank, 0x830e) = sprite_pool_load(0xb0);
+                DS_SET_PTR(0x830e, sprite_pool_load(0xb0));
             tv_layer0_draw();
             break;
         case 1:
@@ -1889,7 +1888,7 @@ void tv_anim_setup(int16_t force)
                 DS_I16(0x8328) = 1;
             }
             if (reload)
-                DS_PTR(SpriteBank, 0x831e) = sprite_pool_load(0xb4);
+                DS_SET_PTR(0x831e, sprite_pool_load(0xb4));
             tv_layer1_draw();
             break;
         case 2:
@@ -1906,7 +1905,7 @@ void tv_anim_setup(int16_t force)
             }
             DS_I16(0x8338) = 0;
             if (reload)
-                DS_PTR(SpriteBank, 0x832e) = sprite_pool_load(0xb1);
+                DS_SET_PTR(0x832e, sprite_pool_load(0xb1));
             tv_layer2_draw();
             break;
         case 3:
@@ -1914,7 +1913,7 @@ void tv_anim_setup(int16_t force)
             DS_I16(0x8346) = 1;
             DS_I16(0x8344) = audience < 6 ? 7 : audience < 0xb ? 6 : audience < 0x15 ? 5 : audience < 0x1f ? 8 : 9;
             if (reload)
-                DS_PTR(SpriteBank, 0x833e) = sprite_pool_load(0xb2);
+                DS_SET_PTR(0x833e, sprite_pool_load(0xb2));
             tv_layer3_draw();
             break;
         case 4:
@@ -1928,7 +1927,7 @@ void tv_anim_setup(int16_t force)
             }
             DS_I16(0x8354) = audience < 0xb ? 0xc : audience < 0x15 ? 0 : 0xd;
             if (reload)
-                DS_PTR(SpriteBank, 0x834e) = sprite_pool_load(0xb3);
+                DS_SET_PTR(0x834e, sprite_pool_load(0xb3));
             tv_layer4_draw();
             break;
         }
@@ -1950,7 +1949,7 @@ void tv_anim_stop(void)
 void savegame_names_alloc(void)
 {
     for (int16_t i = 0; i < 10; i++)
-        DS_ADDR(char *, 0x8b92)[i] = far_calloc(0x29, 1);
+        DS_ADDR(ptr32, 0x8b92)[i] = P32(far_calloc(0x29, 1));
 }
 
 /* 1054:3a53 – Spielstandnamen aus 209.HES (10 x 40 Byte) */
@@ -1958,7 +1957,7 @@ void savegame_names_load(void)
 {
     char *raw = hes_load_raw(0xd1);
     for (int16_t i = 0; i < 10; i++)
-        far_memcpy(DS_ADDR(char *, 0x8b92)[i], raw + i * 0x28, 0x28);
+        far_memcpy(PTR32(char, DS_ADDR(ptr32, 0x8b92)[i]), raw + i * 0x28, 0x28);
     far_free(raw);
 }
 
@@ -1967,7 +1966,7 @@ void savegame_names_save(void)
 {
     char *buf = far_calloc(400, 1);
     for (int16_t i = 0; i < 10; i++)
-        far_memcpy(buf + i * 0x28, DS_ADDR(char *, 0x8b92)[i], 0x28);
+        far_memcpy(buf + i * 0x28, PTR32(char, DS_ADDR(ptr32, 0x8b92)[i]), 0x28);
     timer_pause();
     hes_write(0xd1, buf, 400);
     timer_resume();

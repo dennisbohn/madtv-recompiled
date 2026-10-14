@@ -72,7 +72,7 @@ Bitmap *bitmap_alloc(int16_t w_px, int16_t h)
         return NULL;
     b->wcols = cols;
     b->h = h;
-    b->pixels = (uint8_t *)b + 8;
+    b->pixels = P32((uint8_t *)b + 8);
     return b;
 }
 
@@ -88,7 +88,7 @@ void scr_grab(Bitmap *dst, int16_t xcol, int16_t y)
 {
     int w = dst->wcols * 8;
     const uint8_t *s = g_screen + (uint16_t)(y * SCREEN_W + xcol * 8);
-    uint8_t *d = dst->pixels;
+    uint8_t *d = BMP_PX(dst);
     for (int r = 0; r < dst->h; r++, s += SCREEN_W, d += w)
         memcpy(d, s, (size_t)w);
 }
@@ -97,7 +97,7 @@ void scr_blit(const Bitmap *src, int16_t xcol, int16_t y)
 {
     int w = src->wcols * 8;
     uint8_t *d = g_screen + (uint16_t)(y * SCREEN_W + xcol * 8);
-    const uint8_t *s = src->pixels;
+    const uint8_t *s = BMP_PX(src);
     for (int r = 0; r < src->h; r++, s += w, d += SCREEN_W)
         memcpy(d, s, (size_t)w);
 }
@@ -105,25 +105,25 @@ void scr_blit(const Bitmap *src, int16_t xcol, int16_t y)
 void bmp_fill(Bitmap *dst, int16_t xcol, int16_t y, int16_t wcols, int16_t h, uint8_t color)
 {
     int stride = dst->wcols * 8, w = wcols * 8;
-    uint8_t *d = dst->pixels + (uint16_t)(y * stride) + xcol * 8;
+    uint8_t *d = BMP_PX(dst) + (uint16_t)(y * stride) + xcol * 8;
     for (int r = 0; r < h; r++, d += stride)
         memset(d, color, (size_t)w);
 }
 
 void bmp_blit(const BlitArgs *a)
 {
-    int ds = a->dst->wcols * 8, w = a->src->wcols * 8;
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->y * ds) + a->xcol * 8;
-    const uint8_t *s = a->src->pixels;
-    for (int r = 0; r < a->src->h; r++, s += w, d += ds)
+    int ds = BLIT_BMP(a->dst)->wcols * 8, w = BLIT_BMP(a->src)->wcols * 8;
+    uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + (uint16_t)(a->y * ds) + a->xcol * 8;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src));
+    for (int r = 0; r < BLIT_BMP(a->src)->h; r++, s += w, d += ds)
         memcpy(d, s, (size_t)w);
 }
 
 void bmp_blit_rect(const BlitRectArgs *a)
 {
-    int ss = a->src->wcols * 8, ds = a->dst->wcols * 8, w = a->w * 8;
-    const uint8_t *s = a->src->pixels + (uint16_t)(a->sy * ss) + a->sx * 8;
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->dy * ds) + a->dx * 8;
+    int ss = BLIT_BMP(a->src)->wcols * 8, ds = BLIT_BMP(a->dst)->wcols * 8, w = a->w * 8;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src)) + (uint16_t)(a->sy * ss) + a->sx * 8;
+    uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + (uint16_t)(a->dy * ds) + a->dx * 8;
     for (int r = 0; r < a->h; r++, s += ss, d += ds)
         memcpy(d, s, (size_t)w);
 }
@@ -140,15 +140,15 @@ static void copy_trans(uint8_t *d, const uint8_t *s, int n)
  * bis zum rechten Rand der Quelle reicht, und der Sonderbehandlung bei sx*8 mod 256 != 0. */
 static void blit_rect_shift(const BlitRectShiftArgs *a, int trans)
 {
-    int ds = a->dst->wcols * 8, ss = a->src->wcols * 8;
+    int ds = BLIT_BMP(a->dst)->wcols * 8, ss = BLIT_BMP(a->src)->wcols * 8;
     int xpix = a->xpix;
     int bx = a->w * 8;
     int sx8 = (uint16_t)(a->sx * 8);
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->dy * ds) + a->dx * 8 + xpix;
+    uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + (uint16_t)(a->dy * ds) + a->dx * 8 + xpix;
     if (sx8 + bx != ss)
         bx = bx + 8 - xpix;
     int sskip = ss - bx, dskip = ds - bx;
-    const uint8_t *s = a->src->pixels + sx8 + (uint16_t)(a->sy * ss);
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src)) + sx8 + (uint16_t)(a->sy * ss);
     if (sx8 & 0xff) {
         d -= xpix;
         bx += xpix;
@@ -181,9 +181,9 @@ void bmp_blit_rect_trans_shift(const BlitRectShiftArgs *a)
 
 void bmp_glyph_trans(const BlitShiftArgs *a)
 {
-    int ds = a->dst->wcols * 8;
-    const uint8_t *s = a->src->pixels;
-    int rows = (uint8_t)a->src->h; /* Original zählt nur das Low-Byte */
+    int ds = BLIT_BMP(a->dst)->wcols * 8;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src));
+    int rows = (uint8_t)BLIT_BMP(a->src)->h; /* Original zählt nur das Low-Byte */
     if (rows == 0)
         rows = 256;
     /* PORT: auf das Zielbild begrenzen. Das Original prüft nicht; ein Text, der breiter ist als
@@ -193,9 +193,9 @@ void bmp_glyph_trans(const BlitShiftArgs *a)
     int x0 = a->xcol * 8 + a->xpix;
     for (int r = 0; r < rows; r++, s += 8) {
         int y = a->y + r;
-        if (y < 0 || y >= a->dst->h)
+        if (y < 0 || y >= BLIT_BMP(a->dst)->h)
             continue;
-        uint8_t *d = a->dst->pixels + y * ds;
+        uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + y * ds;
         for (int c = 0; c < 8; c++)
             if (s[c] && x0 + c >= 0 && x0 + c < ds)
                 d[x0 + c] = s[c];
@@ -204,19 +204,19 @@ void bmp_glyph_trans(const BlitShiftArgs *a)
 
 void bmp_blit_rect_trans(const BlitRectArgs *a)
 {
-    int ss = a->src->wcols * 8, ds = a->dst->wcols * 8, w = (a->w * 8) >> 3 << 3;
-    const uint8_t *s = a->src->pixels + (uint16_t)(a->sy * ss) + a->sx * 8;
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->dy * ds) + a->dx * 8;
+    int ss = BLIT_BMP(a->src)->wcols * 8, ds = BLIT_BMP(a->dst)->wcols * 8, w = (a->w * 8) >> 3 << 3;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src)) + (uint16_t)(a->sy * ss) + a->sx * 8;
+    uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + (uint16_t)(a->dy * ds) + a->dx * 8;
     for (int r = 0; r < a->h; r++, s += ss, d += ds)
         copy_trans(d, s, w);
 }
 
 void bmp_blit_trans_shift(const BlitShiftArgs *a)
 {
-    int ds = a->dst->wcols * 8, w = a->src->wcols * 8;
-    uint8_t *d = a->dst->pixels + (uint16_t)(a->y * ds) + a->xcol * 8 + a->xpix;
-    const uint8_t *s = a->src->pixels;
-    for (int r = 0; r < a->src->h; r++, s += w, d += ds)
+    int ds = BLIT_BMP(a->dst)->wcols * 8, w = BLIT_BMP(a->src)->wcols * 8;
+    uint8_t *d = BMP_PX(BLIT_BMP(a->dst)) + (uint16_t)(a->y * ds) + a->xcol * 8 + a->xpix;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src));
+    for (int r = 0; r < BLIT_BMP(a->src)->h; r++, s += w, d += ds)
         copy_trans(d, s, w);
 }
 
@@ -225,13 +225,13 @@ void scr_blit_px(const Bitmap *src, int sx, int sy, int w, int h, int dx, int dy
 {
     int ss = src->wcols * 8;
     for (int r = 0; r < h; r++)
-        memcpy(g_screen + (dy + r) * SCREEN_W + dx, src->pixels + (sy + r) * ss + sx, (size_t)w);
+        memcpy(g_screen + (dy + r) * SCREEN_W + dx, BMP_PX(src) + (sy + r) * ss + sx, (size_t)w);
 }
 
 void scr_blit_rect(const ScrRectArgs *a)
 {
-    int ss = a->src->wcols * 8, w = a->w * 8;
-    const uint8_t *s = a->src->pixels + (uint16_t)(a->sy * ss) + a->sx * 8;
+    int ss = BLIT_BMP(a->src)->wcols * 8, w = a->w * 8;
+    const uint8_t *s = BMP_PX(BLIT_BMP(a->src)) + (uint16_t)(a->sy * ss) + a->sx * 8;
     uint8_t *d = g_screen + (uint16_t)(a->dy * SCREEN_W + a->dx * 8);
     for (int r = 0; r < a->h; r++, s += ss, d += SCREEN_W)
         memcpy(d, s, (size_t)w);
@@ -278,12 +278,12 @@ static const uint8_t *cursor_overlay(int *w, int *h, int *stride, int *x, int *y
         int16_t shape = DS_I16(0x79b2);
         if (shape < 1 || shape > 3)
             return NULL;
-        Bitmap *b = DS_ADDR(Bitmap *, 0x8e74)[shape];
+        Bitmap *b = PTR32(Bitmap, DS_ADDR(ptr32, 0x8e74)[shape]);
         *w = *stride = b->wcols * 8;
         *h = b->h;
         *x = cx;
         *y = cy;
-        return b->pixels;
+        return BMP_PX(b);
     }
     if (visible == 0 && drag) {
         int16_t dw = DS_I16(0x0394), dh = DS_I16(0x0396);
@@ -293,7 +293,7 @@ static const uint8_t *cursor_overlay(int *w, int *h, int *stride, int *x, int *y
         int ox = cx - DS_I16(0x0398) * 256, oy = cy - DS_I16(0x039a) * 256;
         *x = ox < 0 ? 0 : ox > (0x13f - dw) * 256 ? (0x13f - dw) * 256 : ox;
         *y = oy < 0 ? 0 : oy > (0x78 - dh) * 256 ? (0x78 - dh) * 256 : oy;
-        return drag->pixels;
+        return BMP_PX(drag);
     }
     return NULL;
 }
@@ -440,7 +440,7 @@ void display_layers_commit(void)
 /* PORT: eigene, fein verschobene Ebene für das nächste Bild (siehe video_add_layer) */
 void display_layer(int x, int y, int w, int h, int frac256, const Bitmap *bmp, int transparent)
 {
-    video_add_layer(x, y, w, h, frac256, bmp->pixels, bmp->wcols * 8, transparent, NULL);
+    video_add_layer(x, y, w, h, frac256, BMP_PX(bmp), bmp->wcols * 8, transparent, NULL);
 }
 
 /* PORT: unverschobene Ebene mit Deckungsmaske (px/mask: h+1 Zeilen ab der Zeile über dem Bereich) */
@@ -693,7 +693,7 @@ void hes_unpack_sprites(const uint8_t *src, SpriteBank *dst)
         Bitmap *b = &dst->bmp[i];
         b->wcols = (int16_t)((s->w + 7) >> 3);
         b->h = (int16_t)s->h;
-        b->pixels = px;
+        b->pixels = P32(px);
         for (int y = 0; y < s->h; y++)
             memcpy(px + y * b->wcols * 8, s->pixels + y * s->w, (size_t)s->w);
         px += b->wcols * 8 * b->h;

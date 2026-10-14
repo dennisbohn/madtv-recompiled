@@ -25,10 +25,10 @@
 #define g_rand_salt         DS_I32(0x8e8c)
 #define g_resource_cache    DS_ADDR(uint8_t, 0x7be0) /* Slots à 6 Byte: void *data; int16 unpacked_size */
 #define g_figure_frames     DS_PTR(uint8_t, 0x00f8)  /* Figuren-Animationsbank */
-#define g_text_table        DS_ADDR(char *, 0x8370)  /* Zeiger auf Spieltexte */
+#define g_text_table        DS_ADDR(ptr32, 0x8370)   /* Zeiger auf Spieltexte */
 
 /* Slot des Ressourcen-Caches (6 Byte, im Original zwei Far-Pointer-Hälften + Größe) */
-#define CACHE_DATA(slot) (*(void **)(g_resource_cache + (slot) * 6))
+#define CACHE_DATA(slot) (MEM_PTR(void, g_resource_cache + (slot) * 6))
 #define CACHE_SIZE(slot) (*(int16_t *)(g_resource_cache + (slot) * 6 + 4))
 
 /* 1c74:0008 – Laufwerk merken und Liste aller HES-Dateien anlegen */
@@ -228,16 +228,17 @@ void spritebank_fix_pointers(SpriteBank *bank)
     uint8_t *px = (uint8_t *)&bank->bmp[n];
     for (int16_t i = 1; i <= n; i++) {
         Bitmap *b = &bank->bmp[i - 1];
-        b->pixels = px;
+        b->pixels = P32(px);
         px += b->h * b->wcols * 8;
     }
 }
 
-/* 1c74:03e4 – Speicher freigeben und Zeiger nullen */
-void far_free_ptr(void **pp)
+/* 1c74:03e4 – Speicher freigeben und Zeiger nullen (Zeiger-Slot im Datensegment bzw. in einem
+ * Datenblock des Spiels, 4 Byte) */
+void far_free_ptr(ptr32 *pp)
 {
-    far_free(*pp);
-    *pp = NULL;
+    far_free(PTR32(void, *pp));
+    *pp = 0;
 }
 
 /* 1c74:0408 – Bytes eines Figuren-Animationsbilds der Breite w */
@@ -269,7 +270,7 @@ int16_t hes_size_or_ask_disk(int16_t hes_no, int16_t *unpacked_size, int16_t mod
 void font_load(int16_t hes_no, int16_t slot, int16_t mode)
 {
     hes_size_or_ask_disk(hes_no, &CACHE_SIZE(slot), mode);
-    CACHE_DATA(slot) = hes_load_raw(hes_no);
+    MEM_SET_PTR(g_resource_cache + slot * 6, hes_load_raw(hes_no));
 }
 
 /* 1c74:0517 – Kopie einer gecachten Sprite-Bank entpacken (Aufrufer gibt frei) */
@@ -350,7 +351,7 @@ void clock_start(void)
 char *text_get_copy(int16_t text_id)
 {
     char *buf = far_calloc(500, 1);
-    const char *src = g_text_table[text_id];
+    const char *src = PTR32(char, g_text_table[text_id]);
     far_memcpy(buf, src, (uint16_t)strlen(src));
     return buf;
 }

@@ -178,7 +178,7 @@ void savegame_io(void *data, int16_t len)
 {
     if (g_save_mode == 2) {
         if (len == 0) {
-            g_save_buf = far_calloc(40000u, 1);
+            DS_SET_PTR(0x8faa, far_calloc(40000u, 1));
             g_save_pos = 0;
             return;
         }
@@ -197,7 +197,7 @@ void savegame_io(void *data, int16_t len)
         g_save_pos = (uint16_t)(g_save_pos + len);
     } else if (g_save_mode == 1) {
         if (len < 0) {
-            g_save_buf = hes_load_raw((int16_t)-len);
+            DS_SET_PTR(0x8faa, hes_load_raw((int16_t)-len));
             g_save_pos = 0;
             return;
         }

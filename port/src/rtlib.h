@@ -13,14 +13,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dgroup.h"
+
 #pragma pack(push, 1)
 
 /* 8-Byte-Bitmap-Kopf; die Pixel folgen bei bitmap_alloc direkt dahinter. */
 typedef struct Bitmap {
-    int16_t wcols;   /* Breite in 8-Pixel-Spalten */
-    int16_t h;       /* Höhe in Zeilen */
-    uint8_t *pixels; /* zeilenweise, Zeilenlänge wcols*8 */
+    int16_t wcols; /* Breite in 8-Pixel-Spalten */
+    int16_t h;     /* Höhe in Zeilen */
+    ptr32 pixels;  /* zeilenweise, Zeilenlänge wcols*8 (BMP_PX) */
 } Bitmap;
+#define BMP_PX(b) PTR32(uint8_t, (b)->pixels)
 
 /* Ergebnis von hes_unpack_sprites: Anzahl, Bitmap-Köpfe, danach die Pixeldaten. */
 typedef struct SpriteBank {
@@ -28,16 +31,18 @@ typedef struct SpriteBank {
     Bitmap bmp[];
 } SpriteBank;
 
-/* Parameterblöcke der Blitter (das Spiel legt sie teils im Datensegment ab). */
-typedef struct BlitArgs { Bitmap *src; Bitmap *dst; int16_t xcol, y; } BlitArgs;                 /* bmp_blit */
+/* Parameterblöcke der Blitter (das Spiel legt sie teils im Datensegment ab); src/dst sind
+ * 4-Byte-Zeiger auf Bitmap (P32 beim Füllen, BLIT_BMP beim Lesen). */
+typedef struct BlitArgs { ptr32 src; ptr32 dst; int16_t xcol, y; } BlitArgs;                     /* bmp_blit */
 typedef struct BlitRectArgs {
-    Bitmap *src; int16_t sx, sy, w, h; Bitmap *dst; int16_t dx, dy;
+    ptr32 src; int16_t sx, sy, w, h; ptr32 dst; int16_t dx, dy;
 } BlitRectArgs;                                                                               /* bmp_blit_rect(_trans) */
 typedef struct BlitRectShiftArgs {
-    Bitmap *src; int16_t xpix, sx, sy, w, h; Bitmap *dst; int16_t dx, dy;
+    ptr32 src; int16_t xpix, sx, sy, w, h; ptr32 dst; int16_t dx, dy;
 } BlitRectShiftArgs;                                                                          /* *_rect_shift */
-typedef struct BlitShiftArgs { Bitmap *src; int16_t xpix; Bitmap *dst; int16_t xcol, y; } BlitShiftArgs;
-typedef struct ScrRectArgs { Bitmap *src; int16_t sx, sy, w, h, dx, dy; } ScrRectArgs;          /* scr_blit_rect */
+typedef struct BlitShiftArgs { ptr32 src; int16_t xpix; ptr32 dst; int16_t xcol, y; } BlitShiftArgs;
+typedef struct ScrRectArgs { ptr32 src; int16_t sx, sy, w, h, dx, dy; } ScrRectArgs;              /* scr_blit_rect */
+#define BLIT_BMP(v) PTR32(Bitmap, v)
 
 #pragma pack(pop)
 

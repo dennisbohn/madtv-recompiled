@@ -16,6 +16,9 @@
 #include "game/game.h"
 #include "hes.h"
 #include "platform.h"
+#if defined(__linux__) && UINTPTR_MAX > 0xffffffffu
+#include <malloc.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -109,8 +112,23 @@ static void fail(const char *msg)
     exit(1);
 }
 
+#if defined(__linux__) && UINTPTR_MAX > 0xffffffffu
+/* PORT: Unter 64 Bit müssen alle Adressen, die das Spiel als 4-Byte-Far-Pointer ablegt, unter 4 GB
+ * liegen (src/dgroup.h). Code und statische Daten liegen dort, weil das Programm ohne PIE gelinkt
+ * ist. Den Heap legt glibc direkt hinter das Programm (brk), große Blöcke und die Heaps weiterer
+ * Threads aber per mmap weit oben ab; beides wird hier abgeschaltet, bevor etwas reserviert wird. */
+static void memory_init(void)
+{
+    mallopt(M_MMAP_MAX, 0);
+    mallopt(M_ARENA_MAX, 1);
+}
+#endif
+
 int main(int argc, char **argv)
 {
+#if defined(__linux__) && UINTPTR_MAX > 0xffffffffu
+    memory_init();
+#endif
 #ifdef _WIN32
     SetUnhandledExceptionFilter(crash_handler);
     if (getenv("MADTV_STACKDUMP")) {

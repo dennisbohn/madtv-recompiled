@@ -1,7 +1,7 @@
 /* Segment 1581 – Klickauswertung: Verteilung nach Raum und die Klick-Handler der meisten Räume */
 #include "game.h"
 
-#define g_text(id)      (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)      PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define g_click_hotspot DS_I16(0x8ee3) /* Bereich unter dem Mauszeiger (hotspot_at_mouse) */
 #define g_click_lock    DS_I16(0x7a7a)
 #define g_tv_player     DS_I16(0x79de) /* Spieler, dessen Programm der Fernseher zeigt */
@@ -45,7 +45,7 @@ int16_t pause_allowed(void)
 /* 1581:0009 – Linksklick auswerten */
 void room_click(void)
 {
-    DS_PTR(uint8_t, 0x8ef9) = DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17); /* eigener Spieler */
+    DS_SET_PTR(0x8ef9, DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17)); /* eigener Spieler */
     g_click_hotspot = hotspot_at_mouse(0);
 
     if (g_cur_room == -5) {
@@ -609,7 +609,7 @@ void room_click_movie_agency(void)
 #define SCHED(p, h)     DS_I16(0x43f7 + (p) * 0x5a + (h) * 2)
 #define SCHED_AD(p, h)  DS_I16(0x4433 + (p) * 0x5a + (h) * 2)
 #define CONTRACT(p, i)  DS_I16(0x1b50 + (p) * 0x46 + (i) * 7)
-#define AD_NAME(n)      (*(char **)DS_ADDR(uint8_t, 0x3f2f + (n) * 0x18))
+#define AD_NAME(n)      (MEM_PTR(char, DS_ADDR(uint8_t, 0x3f2f + (n) * 0x18)))
 
 static int16_t prog_hours(int16_t prog)
 {
@@ -1599,7 +1599,7 @@ void room_click_studio(void)
     }
 }
 
-#define SAVE_NAME(n)    (DS_ADDR(char *, 0x8b92)[n])
+#define SAVE_NAME(n)    PTR32(char, DS_ADDR(ptr32, 0x8b92)[n])
 
 /* 1581:4112 */
 void save_menu_refresh(void)
@@ -1784,7 +1784,7 @@ void room_click_porter(void)
         g_dialog = 0;
         return;
     }
-    char *me = *(char **)g_me, *s;
+    char *me = MEM_PTR(char, g_me), *s;
     int16_t who = DS_I16(0x7a3e);
     if (DS_I16(0x7a3c) != 3)
         s = fmt(g_text(0x13d), me);

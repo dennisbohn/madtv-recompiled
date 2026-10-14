@@ -134,10 +134,11 @@ def main():
     files = ('DGROUP.bin', 'SOURCE1.RSC', 'SOURCE2.RSC', 'ICON.rgba')
     with open(os.path.join(out, 'bundle.S'), 'w', encoding='ascii') as f:
         f.write('/* erzeugt von tools/make_bundle.py */\n')
-        f.write('\t.section .data.rel.ro,"aw"\n\t.balign 4\n\t.globl mtv_bundle\nmtv_bundle:\n')
+        f.write('\t.section .data.rel.ro,"aw"\n\t.balign 8\n\t.globl mtv_bundle\nmtv_bundle:\n')
         for n in names:
-            f.write('\t.long name_%s, data_%s, end_%s - data_%s\n' % (n, n, n, n))
-        f.write('\t.long 0, 0, 0\n\t.section .rodata\n')
+            # .dc.a: zeigergroß (32 wie 64 Bit), passend zu struct BundleEntry in src/platform.c
+            f.write('\t.dc.a name_%s, data_%s, end_%s - data_%s\n' % (n, n, n, n))
+        f.write('\t.dc.a 0, 0, 0\n\t.section .rodata\n')
         for n, fn in zip(names, files):
             path = os.path.abspath(os.path.join(out, fn + '.z')).replace('\\', '/')
             f.write('name_%s:\t.asciz "%s"\ndata_%s:\t.incbin "%s"\nend_%s:\n' % (n, n, n, path, n))

@@ -9,7 +9,7 @@
 #include "game.h"
 #include "platform.h"
 
-#define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)        PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define g_building        DS_PTR(Bitmap, 0x8eba)
 #define g_upper_screen    DS_PTR(Bitmap, 0x8e62)
 #define g_scroll          DS_I16(0x8c2e) /* Scrollposition des Gebäudes */
@@ -73,8 +73,8 @@ void building_draw(int16_t scroll_y)
     int16_t night = hour_index() >= 4;
     if ((!night && DS_I16(0x117c) != 1) || (night && DS_I16(0x117c) != 2)) {
         if (DS_PTR(SpriteBank, 0x00f4))
-            far_free_ptr(DS_ADDR(void *, 0x00f4));
-        DS_PTR(SpriteBank, 0x00f4) = font_get(DS_I16(0x117c) != 2, 0);
+            far_free_ptr(DS_ADDR(ptr32, 0x00f4));
+        DS_SET_PTR(0x00f4, font_get(DS_I16(0x117c) != 2, 0));
         DS_I16(0x117c) = (int16_t)(3 - DS_I16(0x117c));
         g_force_redraw = 1;
         DS_I16(0x7a24) = 9999;
@@ -494,7 +494,7 @@ void building_render_smooth(void)
      * Was danach in beiden gleich ist, stammt von den Hinweisen. */
     enum { SCENE_W = 0x140 }; /* Breite der Spielszene DS:8e62 */
     static uint8_t before[SCENE_W * 0x6e], over[SCENE_W * 0x6e], mask[SCENE_W * 0x6e];
-    uint8_t *up = g_upper_screen->pixels + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
+    uint8_t *up = BMP_PX(g_upper_screen) + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
     memcpy(before, up, sizeof before);
     building_hover_draw();
     building_markers_draw();
@@ -516,7 +516,7 @@ void building_render_smooth(void)
     int16_t row = (int16_t)(g_top_floor * 0x1e - (g_scroll + 0x6d) - 1);
     if ((scroll_fine & 0xff) != 0 && row >= 0 && row < g_building->h)
         display_subpixel_shift(0x38, 4, 0xd0, 0x6d, (int)(scroll_fine & 0xff),
-                               g_building->pixels + row * g_building->wcols * 8);
+                               BMP_PX(g_building) + row * g_building->wcols * 8);
     building_sides_layers(scroll_fine);
     if (any)
         display_overlay(0, 4, SCENE_W, 0x6d, over, mask, SCENE_W);
@@ -531,7 +531,7 @@ void building_render_smooth(void)
     }
 
     /* Gebäudeausschnitt auf den Bildschirm (wie screen_update beim Scrollen, ohne Warten) */
-    ScrRectArgs a = {g_upper_screen, 0, 4, 0x28, 0x6d, 0, 4};
+    ScrRectArgs a = {P32(g_upper_screen), 0, 4, 0x28, 0x6d, 0, 4};
     scr_blit_rect(&a);
     display_layers_commit(); /* Ebenen gehören zu genau diesem Grundbild */
 }
@@ -1061,16 +1061,16 @@ void player_eliminated_sequence(void)
         room_leave();
     }
     status_text(DS_ADDR(char, 0x11de), 0xb4);
-    DS_PTR(SpriteBank, 0x00fc) = font_get(2, 1);
-    DS_PTR(SpriteBank, 0x00f4) = font_get(0, 0);
+    DS_SET_PTR(0x00fc, font_get(2, 1));
+    DS_SET_PTR(0x00f4, font_get(0, 0));
     mouse_hide();
     g_scroll = (int16_t)((player * 3 + 2) * 0x1e - 0x3c);
-    DS_PTR(SpriteBank, 0x104) = hes_load_unpack0(0x1c);
-    DS_PTR(SpriteBank, 0x108) = hes_load_unpack(0x1d);
-    DS_PTR(SpriteBank, 0x10c) = hes_load_unpack((int16_t)(player + 0x18));
+    DS_SET_PTR(0x104, hes_load_unpack0(0x1c));
+    DS_SET_PTR(0x108, hes_load_unpack(0x1d));
+    DS_SET_PTR(0x10c, hes_load_unpack((int16_t)(player + 0x18)));
     if (player == g_local_player) {
-        DS_PTR(SpriteBank, 0x110) = hes_load_unpack(0x1e);
-        DS_PTR(Bitmap, 0x114) = bitmap_alloc(0x128, 0x3d);
+        DS_SET_PTR(0x110, hes_load_unpack(0x1e));
+        DS_SET_PTR(0x114, bitmap_alloc(0x128, 0x3d));
     }
     clip_reset();
     g_clip_top = 4;
@@ -1135,8 +1135,8 @@ void player_eliminated_sequence(void)
         g_mouse_buttons = 0;
         while (g_mouse_buttons == 0)
             game_tick();
-        far_free_ptr(DS_ADDR(void *, 0x110));
-        far_free_ptr(DS_ADDR(void *, 0x114));
+        far_free_ptr(DS_ADDR(ptr32, 0x110));
+        far_free_ptr(DS_ADDR(ptr32, 0x114));
         music_on_leave(1000, 0);
         savegame_load(0x2b);
         DS_I16(0x7c58) = 0;
@@ -1172,9 +1172,9 @@ void player_eliminated_sequence(void)
         room_load_background(0x69);
         screen_transition(1, 1, 4);
     }
-    far_free_ptr(DS_ADDR(void *, 0x10c));
-    far_free_ptr(DS_ADDR(void *, 0x108));
-    far_free_ptr(DS_ADDR(void *, 0x104));
+    far_free_ptr(DS_ADDR(ptr32, 0x10c));
+    far_free_ptr(DS_ADDR(ptr32, 0x108));
+    far_free_ptr(DS_ADDR(ptr32, 0x104));
     DS_I16(0x7a34) = 0;
     mouse_show();
     clock_start();

@@ -258,10 +258,10 @@ int platform_switch_request(void)
  * unter Linux aus der Tabelle mtv_bundle (build/linux/bundle.S, per .incbin eingebunden). Ohne
  * Bündel (Entwicklungs-Build) fehlt die Tabelle; sie ist daher nur schwach referenziert. */
 #ifndef _WIN32
-struct BundleEntry {
+struct BundleEntry { /* drei zeigergroße Felder (.dc.a in bundle.S) */
     const char *name;
     const uint8_t *data;
-    uint32_t len;
+    uintptr_t len;
 };
 extern const struct BundleEntry mtv_bundle[] __attribute__((weak));
 #endif

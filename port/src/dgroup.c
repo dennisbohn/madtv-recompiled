@@ -9,6 +9,12 @@ uint8_t g_ds[DGROUP_SIZE];
 /* Lage von DGROUP im Ladeabbild von MTV.EXE (Ladesegment 0, DGROUP-Segment 35d4h). */
 enum { DGROUP_PARA = 0x35d4 };
 
+void ptr32_fail(uintptr_t addr)
+{
+    fprintf(stderr, "Interner Fehler: Adresse %p passt nicht in einen 4-Byte-Zeiger\n", (void *)addr);
+    abort();
+}
+
 int32_t ds_offset_of(const void *p)
 {
     const uint8_t *b = p;

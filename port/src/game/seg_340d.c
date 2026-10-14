@@ -3,7 +3,7 @@
 
 #include "game.h"
 
-#define g_text(id) (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id) PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 
 /* 340d:0002 – Meldung (Text in Vorlage Nr. 89 eingesetzt) als Sprechblase zeigen */
 void show_message_text(char *text)
@@ -87,8 +87,8 @@ void frame_draw_to(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t style
 {
     int16_t base = DS_I8(0x132e + style);
     DS_I16(0x0386) = 0; /* ohne Clipping */
-    DS_PTR(uint8_t, 0x8f2e) = (uint8_t *)DS_PTR(SpriteBank, 0x0100);
-    DS_PTR(Bitmap, 0x8f2a) = dst;
+    DS_SET_PTR(0x8f2e, (uint8_t *)DS_PTR(SpriteBank, 0x0100));
+    DS_SET_PTR(0x8f2a, dst);
     for (int16_t x = (int16_t)(x0 + 8); x < x1 - 8; x += 8) {
         bank_draw(sprite_ofs((int16_t)(base + 1)), x, y0);           /* oben */
         bank_draw(sprite_ofs((int16_t)(base + 7)), x, (int16_t)(y1 - 2)); /* unten */
@@ -118,7 +118,7 @@ void frame_draw_to(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t style
 #define SCHED(p, h)     DS_I16(0x43f7 + (p) * 0x5a + (h) * 2)
 #define SCHED_EP(p, h)  DS_I16(0x4415 + (p) * 0x5a + (h) * 2)
 #define SCHED_AD(p, h)  DS_I16(0x4433 + (p) * 0x5a + (h) * 2)
-#define AD_NAME(n)      (*(char **)DS_ADDR(uint8_t, 0x3f2f + (n) * 0x18))
+#define AD_NAME(n)      (MEM_PTR(char, DS_ADDR(uint8_t, 0x3f2f + (n) * 0x18)))
 #define AD_SPOTS(n)     DS_I8(0x3f38 + (n) * 0x18)
 
 /* 340d:0287 – Programmplaner: Hintergrund, Reiter, Briefkasten-Symbol, dann Stundenliste */
@@ -130,8 +130,8 @@ void schedule_panel_open(int16_t player)
     DS_I16(0x038c) = 0x13b;
     DS_I16(0x038a) = 4;
     DS_I16(0x038e) = 0x74;
-    g_draw_target = g_upper_screen;
-    g_draw_bank = RBANK(0x100);
+    DS_SET_PTR(0x8f2a, g_upper_screen);
+    DS_SET_PTR(0x8f2e, RBANK(0x100));
     for (int16_t y = 0; y < 0x71; y += 8) {
         g_draw_fixed_y = y;
         for (int16_t x = 8; x < 0x138; x += 8)
@@ -144,7 +144,7 @@ void schedule_panel_open(int16_t player)
     if (DS_I8(0x7227) > 0 && g_view_player == g_local_player)
         bank_draw(0x2ba, 0x128, 0x5d);
     frame_draw(8, 8, 0x20, 0x72, 1);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     bank_draw(0x102, 0xc, 0x5d);
     schedule_view(player);
 }
@@ -154,8 +154,8 @@ void schedule_view(int16_t player)
 {
     clip_reset();
     schedule_draw_rows(player);
-    g_draw_bank = RBANK(0x100);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, RBANK(0x100));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     bank_draw(0x42, 0xc, 0xc);
     bank_draw(0x4a, 0xc, 0x1e);
     bank_draw(0x52, 0xc, g_sched_scroll == 0 ? 0xc : 0x1e);
@@ -321,8 +321,8 @@ void station_map_panel(int16_t part)
     int16_t p = g_station_player;
     clip_reset();
     DS_I16(0x038e) = 0x71;
-    g_draw_bank = RBANK(0x104);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, RBANK(0x104));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     for (int16_t y = 4; y < 0x71; y += 8)
         for (int16_t x = 4; x < 0x28; x += 8)
             bank_draw(0x62, x, y);
@@ -370,7 +370,7 @@ void room8_items_panel(int16_t redraw)
 {
     clip_reset();
     if (redraw == 0) {
-        DS_PTR(Bitmap, 0x011c) = bitmap_alloc(0x70, 0x2c);
+        DS_SET_PTR(0x011c, bitmap_alloc(0x70, 0x2c));
         mouse_hide();
         screen_grab(DS_PTR(Bitmap, 0x011c), 0x48, 0x3b);
     } else {
@@ -404,8 +404,8 @@ void dialog_frame(int16_t mode, int16_t frame_id)
         return;
     if (mode == 0)
         DS_I16(0x8fb4) = window_open(c0, r0, c1, r1, NULL, 3);
-    g_draw_bank = RBANK(0x108);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, RBANK(0x108));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     bank_draw(2, x0, y0);
     bank_draw(10, x1, y0);
     bank_draw(0x12, x0, y1);
@@ -467,7 +467,7 @@ void ad_offers_panel(void)
 {
     clip_reset();
     if (DS_PTR(Bitmap, 0x0110) == NULL) {
-        DS_PTR(Bitmap, 0x0110) = bitmap_alloc(0x88, 0x46);
+        DS_SET_PTR(0x0110, bitmap_alloc(0x88, 0x46));
         mouse_hide();
         screen_grab(DS_PTR(Bitmap, 0x0110), 0x48, 0x2b);
     } else {
@@ -495,7 +495,7 @@ void archive_shelf_panel(int16_t player)
 {
     clip_reset();
     if (DS_PTR(Bitmap, 0x0110) == NULL) {
-        DS_PTR(Bitmap, 0x0110) = bitmap_alloc(0x50, 0x38);
+        DS_SET_PTR(0x0110, bitmap_alloc(0x50, 0x38));
         mouse_hide();
         screen_grab(DS_PTR(Bitmap, 0x0110), 0xa0, 0x30);
     } else {
@@ -553,7 +553,7 @@ void cursor_attach_item(int16_t w, int16_t h, int16_t grab_x, int16_t grab_y, ch
         return;
     mouse_hide();
     Bitmap *b = bitmap_alloc(w, h);
-    g_drag_bitmap = b;
+    DS_SET_PTR(0x0390, b);
     if (style == 0 || style == 10)
         frame_draw_to(0, 0, w, h, 0, b);
     if (style >= 0x15 && style <= 0x18) {
@@ -591,7 +591,7 @@ void cursor_drop_item(void)
     if (g_drag_bitmap == NULL)
         return;
     /* PORT: ohne Zurückschreiben des Hintergrunds und Puffertausch, siehe cursor_attach_item */
-    far_free_ptr((void **)DS_ADDR(Bitmap *, 0x0390));
+    far_free_ptr(DS_ADDR(ptr32, 0x0390));
     g_cursor_shape = 1;
     cursor_reset();
     mouse_show();
@@ -746,7 +746,7 @@ char *news_format_text(void *news_item, int16_t text_id)
         ;
     if (k >= 0x14) /* PORT: das Original liest hier hinter die Tabelle */
         return fmt(DS_ADDR(char, 0x1370));
-    const char *tpl = *(char **)DS_ADDR(uint8_t, 0x729c + k * 6);
+    const char *tpl = MEM_PTR(char, DS_ADDR(uint8_t, 0x729c + k * 6));
     if (tpl == NULL)
         return fmt(DS_ADDR(char, 0x1370));
     uint16_t len = (uint16_t)strlen(tpl);
@@ -763,7 +763,7 @@ char *news_format_text(void *news_item, int16_t text_id)
     char *w[5];
     for (k = 0; k < 5; k++) {
         int16_t list = *(int16_t *)(item + idx[k] * 4 + 2), entry = *(int16_t *)(item + idx[k] * 4 + 4);
-        w[k] = DS_ADDR(char *, 0x5573)[list * 0xe + entry];
+        w[k] = PTR32(char, DS_ADDR(ptr32, 0x5573)[list * 0xe + entry]);
     }
     char *s = fmt(t, w[0], w[1], w[2], w[3], w[4]);
     far_free(t);
@@ -869,7 +869,7 @@ void production_offers_panel(void)
 {
     clip_reset();
     if (DS_PTR(Bitmap, 0x0110) == NULL) {
-        DS_PTR(Bitmap, 0x0110) = bitmap_alloc(0x40, 0x21);
+        DS_SET_PTR(0x0110, bitmap_alloc(0x40, 0x21));
         mouse_hide();
         screen_grab(DS_PTR(Bitmap, 0x0110), 0x58, 0x1f);
     } else {
@@ -1133,8 +1133,8 @@ void people_select_dialog(int16_t mode)
 void player_ranking_panel(void)
 {
     if (DS_PTR(Bitmap, 0x010c) == NULL) {
-        DS_PTR(Bitmap, 0x010c) = bitmap_alloc(0x38, 0x4e);
-        DS_PTR(Bitmap, 0x0110) = bitmap_alloc(0x18, 0x4e);
+        DS_SET_PTR(0x010c, bitmap_alloc(0x38, 0x4e));
+        DS_SET_PTR(0x0110, bitmap_alloc(0x18, 0x4e));
         screen_grab(DS_PTR(Bitmap, 0x010c), 0xa8, 0xc);
         screen_grab(DS_PTR(Bitmap, 0x0110), 0x110, 0xc);
     } else {
@@ -1184,8 +1184,8 @@ void statistics_panel(void)
     int32_t *bars_e = NULL, *bars_a = NULL;
     int8_t *flags = NULL;
     int16_t n = 7, title = 0x102;
-    g_draw_bank = RBANK(0x10c);
-    g_draw_target = g_upper_screen;
+    DS_SET_PTR(0x8f2e, RBANK(0x10c));
+    DS_SET_PTR(0x8f2a, g_upper_screen);
     DS_I16(0x0386) = 1;
     DS_I16(0x0388) = 4;
     DS_I16(0x038c) = 0x13b;

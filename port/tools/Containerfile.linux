@@ -1,0 +1,10 @@
+# Bauumgebung für den Linux-Release (tools/build_linux.sh): Ubuntu 22.04 mit glibc 2.35, damit die
+# fertige Datei auf allen Distributionen ab Ubuntu 22.04 läuft (auch Debian 12, Fedora, SteamOS ...).
+# Neuere glibc-Versionen bleiben abwärtskompatibel, ältere nicht.
+FROM docker.io/library/ubuntu:22.04
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential cmake ninja-build pkg-config python3 python-is-python3 curl ca-certificates \
+        libx11-dev libxext-dev libxcursor-dev libxi-dev libxrandr-dev libxfixes-dev libxss-dev \
+        libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev \
+        libgles-dev libpipewire-0.3-dev libpulse-dev libasound2-dev \
+    && rm -rf /var/lib/apt/lists/*

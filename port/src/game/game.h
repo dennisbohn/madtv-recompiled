@@ -146,7 +146,7 @@ void clock_resume(void); /* 1c74:0291 */
 void clock_get_cached(int16_t *out_seconds); /* 1c74:02b5 */
 void clock_get_seconds(int16_t *out_seconds); /* 1c74:02c3 */
 void spritebank_fix_pointers(SpriteBank *bank); /* 1c74:0384 */
-void far_free_ptr(void **pp); /* 1c74:03e4 */
+void far_free_ptr(ptr32 *pp); /* 1c74:03e4 */
 int32_t figure_frame_bytes(int16_t w, int16_t with_extra); /* 1c74:0408, med */
 int16_t hes_size_or_ask_disk(int16_t hes_no, int16_t *unpacked_size, int16_t mode); /* 1c74:0457 */
 void font_load(int16_t hes_no, int16_t slot, int16_t mode); /* 1c74:04d1 */
@@ -309,7 +309,7 @@ void facade_draw(void); /* 27bb:2951, med */
 void db_load_all(void); /* 2a62:000c */
 void db_texts_load(void); /* PORT: Textteil von db_load_all */
 void text_cache_reload(void); /* PORT: Text-Caches in neuer Sprache */
-void text_pool_take(int16_t len, char **out); /* 2a62:029e, med */
+void text_pool_take(int16_t len, ptr32 *out); /* 2a62:029e, med */
 void episodes_init_from_first(void); /* 2a62:02eb, med */
 void money_add(int16_t category, int32_t amount); /* 2a62:036d */
 void news_update(int16_t elapsed, int16_t min_new); /* 2a62:0387, med */

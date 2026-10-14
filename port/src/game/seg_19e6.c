@@ -96,7 +96,7 @@ int16_t hotspot_at_mouse(int16_t any_owner)
 #define ME_MONEY          (*(int32_t *)(g_me + 8))
 #define ME_METER          (*(int16_t *)(g_me + 0xc))
 #define ME_IMG            (*(int16_t *)(g_me + 0x15))
-#define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)        PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define g_credit          DS_I32(0x7abe)
 #define g_talk_step       DS_I16(0x79ee)
 #define g_boss_menu       DS_I16(0x7a6e)
@@ -161,7 +161,7 @@ void room_click_boss(void)
                 } else {
                     id = 0x9d;
                 }
-                bubble_text_dialog(0, fmt(g_text(id), *(char **)g_me));
+                bubble_text_dialog(0, fmt(g_text(id), MEM_PTR(char, g_me)));
                 g_talk_step = 1;
                 said = 1;
                 DS_I16(0x05e4) = 0;
@@ -190,8 +190,10 @@ void room_click_boss(void)
                         part[2] = text_get_copy(0xa3);
                     bubble_text_dialog(2, fmt(DS_ADDR(char, 0x605), part[0], part[1], part[2]));
                     for (int16_t i = 0; i < 3; i++)
-                        if (part[i] != NULL)
-                            far_free_ptr((void **)&part[i]);
+                        if (part[i] != NULL) {
+                            far_free(part[i]); /* far_free_ptr auf lokale Zeiger */
+                            part[i] = NULL;
+                        }
                     screen_update();
                     said = 1;
                 }
@@ -201,18 +203,21 @@ void room_click_boss(void)
                 if (contest_tick() == 0 && DS_I16(0x7a34) != g_local_player)
                     part[0] = fmt(g_text(0xa4), g_text(DS_I16(0x7468) + 0x153));
                 int16_t id = ME_IMG < 0x14 ? 0xa5 : ME_IMG < 0x3c ? 0xa6 : 0xa7;
-                part[1] = fmt(g_text(id), *(char **)g_me);
+                part[1] = fmt(g_text(id), MEM_PTR(char, g_me));
                 bubble_text_dialog(2, fmt(DS_ADDR(char, 0x60c), part[0], part[1]));
                 screen_update();
-                if (part[0] != NULL)
-                    far_free_ptr((void **)&part[0]);
-                far_free_ptr((void **)&part[1]);
+                if (part[0] != NULL) {
+                    far_free(part[0]); /* far_free_ptr auf lokale Zeiger */
+                    part[0] = NULL;
+                }
+                far_free(part[1]);
+                part[1] = NULL;
                 said = 1;
                 g_talk_step = 3;
             }
             if (!said && g_talk_step == 3) {
                 int16_t id = ME_IMG < 0x14 ? 0xa8 : ME_IMG < 0x4b ? 0xa9 : 0xaa;
-                bubble_text_dialog(2, fmt(g_text(id), *(char **)g_me));
+                bubble_text_dialog(2, fmt(g_text(id), MEM_PTR(char, g_me)));
                 screen_update();
                 said = 1;
                 g_talk_step = 4;

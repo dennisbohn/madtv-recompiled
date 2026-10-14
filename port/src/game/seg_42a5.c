@@ -34,8 +34,8 @@ void music_load_play(int16_t hes_no)
     uint16_t unpacked_len;
     hes_read(hes_no, &unpacked_len, 0, 2);
     uint16_t alloc = (uint16_t)(unpacked_len + 0xf);
-    g_song_buffer = far_calloc(alloc, 1);
-    g_song_data = para_align(g_song_buffer);
+    DS_SET_PTR(0x9000, far_calloc(alloc, 1));
+    DS_SET_PTR(0x8ff8, para_align(g_song_buffer));
     uint8_t *packed = far_calloc((uint16_t)hes_filesize(hes_no), 1);
     void *work = far_calloc(0x2000, 1);
     hes_read_into(hes_no, packed);

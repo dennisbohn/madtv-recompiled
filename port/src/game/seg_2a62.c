@@ -47,27 +47,27 @@ void db_texts_load(void)
     int16_t ad_texts = g_lang_files[g_language * 8 + 5];   /* 46/249: Werbekunden */
     int16_t news_texts = g_lang_files[g_language * 8 + 7]; /* 44/247: Nachrichten */
     uint16_t pool = (uint16_t)(hes_filesize(news_texts) + hes_filesize(ad_texts));
-    g_text_pool = far_calloc(pool, 1);
+    DS_SET_PTR(0x8aa8, far_calloc(pool, 1));
     g_text_pool_pos = 0;
 
     /* Werbekunden: zwei Längentabellen (je 51 Wörter), danach die Texte */
     g_load_pos = 0;
-    g_load_buf = far_calloc((uint16_t)hes_filesize(ad_texts), 1);
+    DS_SET_PTR(0x8f90, far_calloc((uint16_t)hes_filesize(ad_texts), 1));
     hes_load(ad_texts, g_load_buf);
     int16_t *lengths = (int16_t *)(g_load_buf + g_load_pos);
     g_load_pos += 0x66;
     for (int16_t i = 1; i < 0x33; i++)
         if (lengths[i] != 0)
-            text_pool_take(lengths[i], (char **)DS_ADDR(uint8_t, 0x3f2f + i * 0x18));
+            text_pool_take(lengths[i], (ptr32 *)DS_ADDR(uint8_t, 0x3f2f + i * 0x18));
     lengths = (int16_t *)(g_load_buf + g_load_pos);
     g_load_pos += 0x66;
     for (int16_t i = 1; i < 0x33; i++)
         if (lengths[i] != 0)
-            text_pool_take(lengths[i], (char **)DS_ADDR(uint8_t, 0x3f33 + i * 0x18));
+            text_pool_take(lengths[i], (ptr32 *)DS_ADDR(uint8_t, 0x3f33 + i * 0x18));
     far_free(g_load_buf);
 
     /* Nachrichtenthemen: 51 x 11 Längen, je Thema 10 Textvarianten */
-    g_load_buf = far_calloc((uint16_t)hes_filesize(news_texts), 1);
+    DS_SET_PTR(0x8f90, far_calloc((uint16_t)hes_filesize(news_texts), 1));
     g_load_pos = 0;
     hes_load(news_texts, g_load_buf);
     lengths = (int16_t *)g_load_buf;
@@ -75,16 +75,17 @@ void db_texts_load(void)
     for (int16_t i = 1; i < 0x33; i++)
         for (int16_t j = 1; j < 0xb; j++)
             if (lengths[i * 10 + j] != 0)
-                text_pool_take(lengths[i * 10 + j], (char **)DS_ADDR(uint8_t, i * 0x38 + 0x5573 + j * 4));
+                text_pool_take(lengths[i * 10 + j], (ptr32 *)DS_ADDR(uint8_t, i * 0x38 + 0x5573 + j * 4));
     far_free(g_load_buf);
 }
 
-/* 2a62:029e – len Bytes aus dem Ladepuffer in den Textpool übernehmen (NUL-terminiert) */
-void text_pool_take(int16_t len, char **out)
+/* 2a62:029e – len Bytes aus dem Ladepuffer in den Textpool übernehmen (NUL-terminiert); out ist
+ * ein 4-Byte-Zeiger im Datensegment */
+void text_pool_take(int16_t len, ptr32 *out)
 {
     far_memcpy(g_text_pool + g_text_pool_pos, g_load_buf + g_load_pos, (uint16_t)len);
     g_load_pos = (uint16_t)(g_load_pos + len);
-    *out = g_text_pool + g_text_pool_pos;
+    *out = P32(g_text_pool + g_text_pool_pos);
     g_text_pool_pos = (uint16_t)(g_text_pool_pos + len + 1);
 }
 

@@ -25,8 +25,8 @@ the original code.
 
 **Release build:** `MadTV-Recompiled-<version>.exe` from *Releases*. Single file, no installation. The executable is
 not code-signed; Windows SmartScreen may show a warning on first start. On Linux, make
-`MadTV-Recompiled-<version>-linux` executable (`chmod +x`) and start it; see *Building > Linux* for the
-required 32-bit libraries.
+`MadTV-Recompiled-<version>-linux` executable (`chmod +x`) and start it. It is a 64-bit program and runs
+on distributions from Ubuntu 22.04 / Debian 12 on (glibc 2.34 or later) without additional packages.
 
 **Repository build** (`bin/madtv.exe`, `bin/SDL2.dll`) reads the game data from folders next to
 the executable:
@@ -105,24 +105,26 @@ the size of the executable.
 
 ### Linux
 
-The port must be built as a 32-bit program. On Fedora:
+The Linux version is a 64-bit program. Releases are built in an Ubuntu 22.04 container (podman or
+docker), so that the result runs with glibc 2.34 or later:
 
 ```sh
-sudo dnf install glibc-devel.i686 libatomic.i686 cmake ninja-build wayland-devel wayland-protocols-devel \
-  libX11-devel.i686 libXext-devel.i686 libXcursor-devel.i686 libXi-devel.i686 libXrandr-devel.i686 \
-  libXfixes-devel.i686 libXScrnSaver-devel.i686 libxkbcommon-devel.i686 wayland-devel.i686 \
-  libdecor-devel.i686 mesa-libGL-devel.i686 mesa-libEGL-devel.i686 mesa-dri-drivers.i686 \
-  pipewire-devel.i686 pulseaudio-libs-devel.i686 alsa-lib-devel.i686
 cd port
-make linux V1_EXE=<MTV.EXE of the original release or a MadTV-Recompiled-<version>.exe> V2_DIR=<folder with SOURCE1.RSC, SOURCE2.RSC>
+sh tools/build_linux.sh V1_EXE=<MTV.EXE of the original release or a MadTV-Recompiled-<version>.exe> V2_DIR=<folder with SOURCE1.RSC, SOURCE2.RSC>
 ```
 
-The result `build/linux/MadTV-Recompiled-<version>-linux` is a single file with the game data
-embedded (via `.incbin`, `tools/make_bundle.py`) and a static SDL built by
-`tools/build_sdl_linux.sh`. `V1_EXE` may also be a Windows release executable: the data segment
-is then taken from its embedded resources. SDL loads X11 or Wayland, OpenGL/EGL and
-PipeWire/PulseAudio/ALSA at runtime, so the target system needs the 32-bit (i686) versions of
-these libraries.
+The result `build/ubuntu2204/linux/MadTV-Recompiled-<version>-linux` is a single file with the game
+data embedded (via `.incbin`, `tools/make_bundle.py`) and a static SDL built by
+`tools/build_sdl_linux.sh`. Paths must lie inside the repository (it is mounted into the container).
+`V1_EXE` may also be a Windows release executable: the data segment is then taken from its embedded
+resources. SDL loads X11 or Wayland, OpenGL/EGL and PipeWire/PulseAudio/ALSA at runtime. Without a
+container, `make linux` builds the same on the host, given cmake, ninja and the development packages
+of these libraries (the result then requires the host's glibc version).
+
+Like the original, the game stores far pointers as 4-byte values in its data segment. On 64-bit
+Linux the program is linked without PIE and `malloc` is restricted to the heap behind the program,
+so that all addresses stored there lie below 4 GB; `P32`/`PTR32` in `port/src/dgroup.h` convert
+between pointers and these values (on 32-bit Windows they are plain casts).
 
 The menu bar has the same entries as on Windows (both are built from `port/src/menu.c`). Linux has
 no window menu of its own, so the port draws the bar, its menus and the About dialog itself, in the

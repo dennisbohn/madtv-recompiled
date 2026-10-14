@@ -19,7 +19,7 @@
 static void open_text_index(int16_t file_slot, uint16_t bytes, uint16_t alloc_n, uint16_t alloc_size)
 {
     timer_pause();
-    g_text_index = far_calloc(alloc_n, alloc_size);
+    DS_SET_PTR(0x609b, far_calloc(alloc_n, alloc_size));
     g_text_file = TEXT_FILE(file_slot);
     hes_read(g_text_file, g_text_index, 0, bytes);
 }
@@ -30,8 +30,9 @@ static void close_text_index(void)
     timer_resume();
 }
 
-/* Eintrag n der offenen Datei lesen und in count Einzelstrings (je eigener Puffer) zerlegen */
-static void load_entry(int16_t n, char **dst, int16_t count)
+/* Eintrag n der offenen Datei lesen und in count Einzelstrings (je eigener Puffer) zerlegen;
+ * dst: Tabelle von 4-Byte-Zeigern im Datensegment */
+static void load_entry(int16_t n, ptr32 *dst, int16_t count)
 {
     uint16_t ofs = g_text_index[n - 1];
     int16_t len = (int16_t)(g_text_index[n] - ofs);
@@ -39,11 +40,11 @@ static void load_entry(int16_t n, char **dst, int16_t count)
     hes_read(g_text_file, buf, ofs, (uint16_t)len);
     for (int16_t k = 0; k < count; k++) {
         if (*p == 0) {
-            dst[k] = NULL;
+            dst[k] = 0;
             p++;
         } else {
-            dst[k] = far_calloc((uint16_t)(*p + 1), 1);
-            far_memcpy(dst[k], p + 1, *p);
+            dst[k] = P32(far_calloc((uint16_t)(*p + 1), 1));
+            far_memcpy(PTR32(char, dst[k]), p + 1, *p);
             p += *p + 1;
         }
     }
@@ -65,7 +66,7 @@ void text_cache_news(int16_t player)
     if (g_cur_room == 2 && g_cur_dialog == 2)
         text_cache_load_news(slot++, DS_I16(0x6127));
     for (; slot < 0x18; slot++)
-        *(char **)(NEWS_SLOT(slot) + 2) = NULL;
+        MEM_SET_PTR(NEWS_SLOT(slot) + 2, NULL);
     close_text_index();
 }
 
@@ -76,11 +77,11 @@ void text_cache_load_news(int16_t slot, int16_t text_id)
     int16_t len = (int16_t)(g_text_index[text_id] - g_text_index[text_id - 1]);
     *(int16_t *)e = text_id;
     if (len == 0) {
-        *(char **)(e + 2) = NULL;
+        MEM_SET_PTR(e + 2, NULL);
         return;
     }
     char *t = far_calloc((uint16_t)(len + 1), 1);
-    *(char **)(e + 2) = t;
+    MEM_SET_PTR(e + 2, t);
     hes_read(g_text_file, t, g_text_index[text_id - 1], (uint16_t)len);
 }
 
@@ -88,8 +89,8 @@ void text_cache_load_news(int16_t slot, int16_t text_id)
 void text_cache_news_free(void)
 {
     for (int16_t i = 0; i < 0x18; i++)
-        if (*(char **)(NEWS_SLOT(i) + 2) != NULL)
-            far_free_ptr((void **)(NEWS_SLOT(i) + 2));
+        if (MEM_PTR(char, NEWS_SLOT(i) + 2) != NULL)
+            far_free_ptr((ptr32 *)(NEWS_SLOT(i) + 2));
 }
 
 static void film_if_new(int16_t film, int16_t *slot)
@@ -198,7 +199,7 @@ void text_cache_load_film(int16_t film_id, int16_t slot)
     if (slot >= 0x31) /* PORT: das Original schriebe hinter den Cache */
         return;
     *(int16_t *)FILM_CACHE(slot) = film_id;
-    load_entry(film_id, (char **)(FILM_CACHE(slot) + 2), 2);
+    load_entry(film_id, (ptr32 *)(FILM_CACHE(slot) + 2), 2);
 }
 
 /* 1433:09a2 – fixed 0: Raumplätze 3..48 freigeben, sonst die festen Plätze 0..2 */
@@ -214,10 +215,10 @@ void text_cache_film_free(int16_t slot)
 {
     uint8_t *c = FILM_CACHE(slot);
     *(int16_t *)c = 0;
-    if (*(char **)(c + 2) != NULL)
-        far_free_ptr((void **)(c + 2));
-    if (*(char **)(c + 6) != NULL)
-        far_free_ptr((void **)(c + 6));
+    if (MEM_PTR(char, c + 2) != NULL)
+        far_free_ptr((ptr32 *)(c + 2));
+    if (MEM_PTR(char, c + 6) != NULL)
+        far_free_ptr((ptr32 *)(c + 6));
 }
 
 static void series_if_new(int16_t prog, int16_t *slot, int16_t limit)
@@ -327,7 +328,7 @@ void text_cache_load_series(int16_t series_id, int16_t slot)
     if (slot >= 0xf) /* PORT: das Original schriebe hinter den Cache */
         return;
     *(int16_t *)SERIES_CACHE(slot) = series_id;
-    load_entry(series_id, (char **)(SERIES_CACHE(slot) + 2), 0x16);
+    load_entry(series_id, (ptr32 *)(SERIES_CACHE(slot) + 2), 0x16);
 }
 
 /* 1433:1134 */
@@ -344,8 +345,8 @@ void text_cache_series_free_slot(int16_t slot)
     uint8_t *c = SERIES_CACHE(slot);
     *(int16_t *)c = 0;
     for (int16_t k = 0; k < 0x16; k++)
-        if (((char **)(c + 2))[k] != NULL)
-            far_free_ptr((void **)((char **)(c + 2) + k));
+        if (((ptr32 *)(c + 2))[k] != 0)
+            far_free_ptr((ptr32 *)(c + 2) + k);
 }
 
 /* 1433:11cf – Showtexte (Rollen- und Titeltexte der Drehbücher) für einen Raum laden */
@@ -385,7 +386,7 @@ void text_cache_load_show(int16_t text_id, int16_t slot)
     if (slot >= 10) /* PORT: das Original schriebe hinter den Cache */
         return;
     *(int16_t *)SHOW_CACHE(slot) = text_id;
-    load_entry(text_id, (char **)(SHOW_CACHE(slot) + 2), 0x10);
+    load_entry(text_id, (ptr32 *)(SHOW_CACHE(slot) + 2), 0x10);
 }
 
 /* 1433:148c */
@@ -398,10 +399,10 @@ void text_cache_series_free(void)
 /* 1433:14a0 */
 void text_cache_show_free_slot(int16_t slot)
 {
-    char **t = (char **)(SHOW_CACHE(slot) + 2);
+    ptr32 *t = (ptr32 *)(SHOW_CACHE(slot) + 2);
     for (int16_t k = 0; k < 0x10; k++)
-        if (t[k] != NULL)
-            far_free_ptr((void **)&t[k]);
+        if (t[k] != 0)
+            far_free_ptr(&t[k]);
 }
 
 /* PORT: nach einem Sprachwechsel alle Einträge der Text-Caches aus den Dateien der neuen Sprache
@@ -413,21 +414,21 @@ void text_cache_reload(void)
     open_text_index(0, 0x192, 0x192, 1);
     for (i = 0; i < 0x31; i++)
         if (*(int16_t *)FILM_CACHE(i) > 0)
-            load_entry(*(int16_t *)FILM_CACHE(i), (char **)(FILM_CACHE(i) + 2), 2);
+            load_entry(*(int16_t *)FILM_CACHE(i), (ptr32 *)(FILM_CACHE(i) + 2), 2);
     close_text_index();
     open_text_index(1, 0x66, 0x66, 1);
     for (i = 0; i < 0xf; i++)
         if (*(int16_t *)SERIES_CACHE(i) > 0)
-            load_entry(*(int16_t *)SERIES_CACHE(i), (char **)(SERIES_CACHE(i) + 2), 0x16);
+            load_entry(*(int16_t *)SERIES_CACHE(i), (ptr32 *)(SERIES_CACHE(i) + 2), 0x16);
     close_text_index();
     open_text_index(2, 0x66, 0x33, 2);
     for (i = 0; i < 10; i++)
         if (*(int16_t *)SHOW_CACHE(i) > 0)
-            load_entry(*(int16_t *)SHOW_CACHE(i), (char **)(SHOW_CACHE(i) + 2), 0x10);
+            load_entry(*(int16_t *)SHOW_CACHE(i), (ptr32 *)(SHOW_CACHE(i) + 2), 0x10);
     close_text_index();
     open_text_index(4, 0x322, 0x322, 1);
     for (i = 0; i < 0x18; i++)
-        if (*(char **)(NEWS_SLOT(i) + 2) != NULL && *(int16_t *)NEWS_SLOT(i) > 0)
+        if (MEM_PTR(char, NEWS_SLOT(i) + 2) != NULL && *(int16_t *)NEWS_SLOT(i) > 0)
             text_cache_load_news(i, *(int16_t *)NEWS_SLOT(i));
     close_text_index();
 }

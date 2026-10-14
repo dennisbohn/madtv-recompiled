@@ -43,25 +43,25 @@ void *intro_load_frame(int16_t hes_no)
 void intro_scene_setup(void)
 {
     if (g_intro_stream1)
-        far_free_ptr((void **)&g_intro_stream1);
+        far_free_ptr(DS_ADDR(ptr32, 0x160e));
     if (g_intro_stream2)
-        far_free_ptr((void **)&g_intro_stream2);
+        far_free_ptr(DS_ADDR(ptr32, 0x1612));
     if (g_intro_stream3)
-        far_free_ptr((void **)&g_intro_stream3);
+        far_free_ptr(DS_ADDR(ptr32, 0x1616));
     if (g_intro_bg)
-        far_free_ptr((void **)&g_intro_bg);
+        far_free_ptr(DS_ADDR(ptr32, 0x160a));
 
     const int16_t *scene = &g_intro_scenes[(g_intro_scene - 1) * 4];
-    g_intro_bg = hes_load_unpack0(scene[0]);
+    DS_SET_PTR(0x160a, hes_load_unpack0(scene[0]));
     bmp_copy_at(&g_intro_bg->bmp[0], g_intro_canvas, 0, 0);
     if (g_intro_scene == 1)
-        far_free_ptr((void **)&g_intro_bg);
+        far_free_ptr(DS_ADDR(ptr32, 0x160a));
     if (scene[1] != 0)
-        g_intro_stream1 = intro_load_frame(scene[1]);
+        DS_SET_PTR(0x160e, intro_load_frame(scene[1]));
     if (scene[2] != 0)
-        g_intro_stream2 = intro_load_frame(scene[2]);
+        DS_SET_PTR(0x1612, intro_load_frame(scene[2]));
     if (scene[3] != 0)
-        g_intro_stream3 = intro_load_frame(scene[3]);
+        DS_SET_PTR(0x1616, intro_load_frame(scene[3]));
     scr_blit(g_intro_canvas, 4, g_intro_y);
 }
 
@@ -69,7 +69,9 @@ void intro_scene_setup(void)
 void intro_frame_step(void)
 {
     vga_wait_vsync();
-    rle_delta_frame_bmp(&g_intro_pos, g_intro_canvas);
+    uint8_t *pos = g_intro_pos; /* Leseposition steht als 4-Byte-Zeiger im Datensegment */
+    rle_delta_frame_bmp(&pos, g_intro_canvas);
+    DS_SET_PTR(0x9042, pos);
 }
 
 /* 4301:0212 – ein Animationsschritt: Strom wechseln oder nächstes Bild, dann anzeigen */
@@ -94,8 +96,8 @@ void intro_tick(void)
                           : g_intro_next_str == 3 ? g_intro_stream3
                                                   : NULL;
         if (stream) {
-            g_intro_cur = (int8_t *)stream;
-            g_intro_pos = stream + 1;
+            DS_SET_PTR(0x903a, (int8_t *)stream);
+            DS_SET_PTR(0x9042, stream + 1);
         }
         g_intro_next_str++;
         g_intro_frame++;
@@ -168,7 +170,7 @@ void intro_play(void)
 {
     /* Titelbild aus drei Teilen (HES 307-309) */
     Bitmap *title = bitmap_alloc(0x140, 200);
-    g_intro_stream1 = (uint8_t *)title;
+    DS_SET_PTR(0x160e, (uint8_t *)title);
     bmp_fill(title, 0, 0, 0x28, 200, 0);
     static const int16_t parts[3][2] = {{0x133, 0}, {0x134, 0x70}, {0x135, 0xd0}};
     for (int16_t i = 0; i < 3; i++) {
@@ -193,10 +195,10 @@ void intro_play(void)
     while (held != 0 && (held = mouse_poll()) != 0)
         ;
 
-    g_intro_canvas = bitmap_alloc(0xd0, 0x90);
+    DS_SET_PTR(0x9036, bitmap_alloc(0xd0, 0x90));
     bmp_fill(g_intro_canvas, 0, 0, 0x1a, 0x90, 0);
-    g_intro_stream1 = NULL;
-    g_intro_stream2 = NULL;
+    DS_SET_PTR(0x160e, NULL);
+    DS_SET_PTR(0x1612, NULL);
     while (kbd_getkey() != -1)
         ;
     g_intro_abort = 0;
@@ -231,18 +233,18 @@ void intro_play(void)
     }
 
     if (g_intro_stream1)
-        far_free_ptr((void **)&g_intro_stream1);
+        far_free_ptr(DS_ADDR(ptr32, 0x160e));
     if (g_intro_stream2)
-        far_free_ptr((void **)&g_intro_stream2);
+        far_free_ptr(DS_ADDR(ptr32, 0x1612));
     if (g_intro_stream3)
-        far_free_ptr((void **)&g_intro_stream3);
+        far_free_ptr(DS_ADDR(ptr32, 0x1616));
     if (g_intro_bg)
-        far_free_ptr((void **)&g_intro_bg);
-    far_free_ptr((void **)&g_intro_canvas);
+        far_free_ptr(DS_ADDR(ptr32, 0x160a));
+    far_free_ptr(DS_ADDR(ptr32, 0x9036));
 
     /* schwarz ausblenden */
-    g_intro_canvas = bitmap_alloc(0x140, 200);
+    DS_SET_PTR(0x9036, bitmap_alloc(0x140, 200));
     bmp_fill(g_intro_canvas, 0, 0, 0x28, 200, 0);
     screen_wipe_in(g_intro_canvas, 0, 0, 0x140, 200, 1, 1);
-    far_free_ptr((void **)&g_intro_canvas);
+    far_free_ptr(DS_ADDR(ptr32, 0x9036));
 }

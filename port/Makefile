@@ -84,13 +84,16 @@ $(RELEASE_EXE): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC)
 
 release: $(RELEASE_EXE)
 
-# ---- Linux: Einzeldatei (32 Bit, Spieldaten eingebettet, SDL statisch) ----
+# ---- Linux: Einzeldatei (64 Bit, Spieldaten eingebettet, SDL statisch) ----
 # Gleiche Daten wie die Windows-Release-EXE, eingebunden per .incbin (bundle.S aus make_bundle.py).
 # V1_EXE darf statt der MTV.EXE der Originalfassung auch eine Release-EXE dieses Ports sein (das
 # Datensegment wird dann aus deren Ressourcen gelesen), z. B.:
 #   make linux V1_EXE=MadTV-Recompiled-0.2.0.exe V2_DIR=../madtv
-# Die fertige Datei braucht zur Laufzeit 32-Bit-Bibliotheken (glibc, X11 oder Wayland, Mesa,
-# PipeWire/PulseAudio/ALSA); SDL lädt sie per dlopen, siehe tools/build_sdl_linux.sh.
+# Die fertige Datei braucht zur Laufzeit glibc, X11 oder Wayland, Mesa und PipeWire/PulseAudio/ALSA
+# (SDL lädt sie per dlopen, siehe tools/build_sdl_linux.sh). Für Releases im Ubuntu-22.04-Container
+# bauen (tools/build_linux.sh), damit sie auch mit älterer glibc läuft.
+# Ohne PIE gelinkt: Code und statische Daten liegen unter 4 GB, damit ihre Adressen in die 4 Byte
+# großen Far-Pointer des Datensegments passen (siehe src/dgroup.h).
 LINUX     := $(BUILD)/linux
 LINUX_BIN := $(LINUX)/MadTV-Recompiled-$(VERSION)-linux
 SDL_LINUX := $(BUILD)/sdl-linux/install
@@ -99,13 +102,13 @@ MENUBAR   := src/menubar.c src/menufont.S
 MENUBAR_DEPS := $(MENUBAR) third_party/stb/stb_truetype.h third_party/noto-sans/NotoSans-Regular-subset.ttf
 
 $(SDL_LINUX)/lib/libSDL2.a: tools/build_sdl_linux.sh
-	sh tools/build_sdl_linux.sh
+	SDL_LINUX_DIR=$(BUILD)/sdl-linux sh tools/build_sdl_linux.sh
 
 $(LINUX)/bundle.S: tools/make_bundle.py res/madtv.ico $(V1_EXE) $(V2_DIR)/SOURCE1.RSC $(V2_DIR)/SOURCE2.RSC
 	python3 -I tools/make_bundle.py $(V1_EXE) $(V2_DIR) $(LINUX)
 
 $(LINUX_BIN): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(MENUBAR_DEPS) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a
-	$(CC) -m32 $(CFLAGS) -g0 -ffunction-sections -fdata-sections -I$(SDL_LINUX)/include/SDL2 -D_REENTRANT -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(MENUBAR) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a -pthread -lm -ldl -Wl,--gc-sections
+	$(CC) $(CFLAGS) -g0 -no-pie -ffunction-sections -fdata-sections -I$(SDL_LINUX)/include/SDL2 -D_REENTRANT -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(MENUBAR) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a -pthread -lm -ldl -no-pie -Wl,--gc-sections
 	strip $@
 
 linux: $(LINUX_BIN)

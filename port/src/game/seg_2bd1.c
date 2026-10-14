@@ -556,7 +556,7 @@ void start_programmes_assign(void)
 #define COV_MAP   DS_PTR(uint16_t, 0x8b8a)
 #define CIRCLE    DS_ADDR(uint16_t, 0x11f2)
 #define FLOOR_B(floor, ofs) DS_U8(0x7c62 + (floor) * 0x7a + (ofs))
-#define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)        PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 
 static uint16_t shr16(uint16_t v, int n) { return n >= 16 ? 0 : (uint16_t)(v >> n); }
 static uint16_t shl16(uint16_t v, int n) { return n >= 16 ? 0 : (uint16_t)(v << n); }

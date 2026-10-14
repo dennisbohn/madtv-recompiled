@@ -1,7 +1,7 @@
 /* Segment 239a – Maus-Tooltips und Infokarten (Hover über Räume, Listen, Statuszeile) */
 #include "game.h"
 
-#define g_text(id)        (DS_ADDR(char *, 0x8370)[id])
+#define g_text(id)        PTR32(char, DS_ADDR(ptr32, 0x8370)[id])
 #define g_upper_screen    DS_PTR(Bitmap, 0x8e62)
 #define RBANK(ofs)        DS_PTR(uint8_t, ofs)
 #define BANK_BMP(bank, ofs) ((Bitmap *)((uint8_t *)(bank) + (ofs)))
@@ -31,7 +31,8 @@
 #define g_hv_n1           DS_I16(0x8f6c)
 #define g_hv_n2           DS_I16(0x8f6e)
 #define g_hv_spec         DS_PTR(char, 0x8f68) /* Layout-Beschreibung für hover_dispatch-Fall 5 */
-#define HV_STR(k)         DS_ADDR(char *, 0x8f4c)[k] /* Textbausteine für layout_box */
+#define HV_STR(k)         PTR32(char, DS_ADDR(ptr32, 0x8f4c)[k]) /* Textbausteine für layout_box */
+#define HV_STR_SET(k, p)  (DS_ADDR(ptr32, 0x8f4c)[k] = P32(p))
 #define g_hv_last         DS_I16(0x0e80) /* zuletzt angezeigtes Objekt */
 #define g_hv_last_x       DS_I16(0x0e82)
 #define g_hv_last_y       DS_I16(0x0e84)
@@ -84,10 +85,10 @@ void room_hover(void)
             g_hv_w = 0xe;
             g_hv_h = 6;
         } else if (mouse_in_rect(0x99, 0xb5, 0xc2, 0xbe)) {
-            g_hv_spec = DS_ADDR(char, 0x0e8e); /* Tag */
+            DS_SET_PTR(0x8f68, DS_ADDR(char, 0x0e8e)); /* Tag */
             id = 5000;
             if (g_hv_last != 5000 || g_card_dirty != 0)
-                HV_STR(0) = fmt(g_text(0x51), g_day);
+                HV_STR_SET(0, fmt(g_text(0x51), g_day));
             hv_at(0x10, 0xc);
             g_hv_w = 6;
             g_hv_h = 1;
@@ -326,22 +327,22 @@ void room_hover(void)
                     g_hv_y = 1;
                     g_hv_w = 0x10;
                     g_hv_h = 7;
-                    g_hv_spec = DS_ADDR(char, 0x0e92);
+                    DS_SET_PTR(0x8f68, DS_ADDR(char, 0x0e92));
                     if (id != g_hv_last || g_card_dirty != 0) {
                         g_hv_a = DS_U8(0x7cd0 + g_hv_i * 0x7a + g_hv_j);
                         uint8_t *st = DS_ADDR(uint8_t, 0x6145 + g_hv_a * 0x10);
                         int8_t size = (int8_t)st[2], owner = (int8_t)st[3], pend = (int8_t)st[0xf];
                         if (g_hv_a == 0)
-                            HV_STR(0) = text_get_copy(0x6c);
+                            HV_STR_SET(0, text_get_copy(0x6c));
                         else if (pend >= 1)
-                            HV_STR(0) = pend == g_local_player ? fmt(g_text(0x71), size)
-                                                               : fmt(g_text(0x72), CHANNEL_NAME(pend), size);
+                            HV_STR_SET(0, pend == g_local_player ? fmt(g_text(0x71), size)
+                                                               : fmt(g_text(0x72), CHANNEL_NAME(pend), size));
                         else if (owner == -1)
-                            HV_STR(0) = fmt(g_text(0x6d), *(int32_t *)(st + 6) * 3 / 2, size);
+                            HV_STR_SET(0, fmt(g_text(0x6d), *(int32_t *)(st + 6) * 3 / 2, size));
                         else if (owner == 0 || owner != g_local_player)
-                            HV_STR(0) = text_get_copy(0x6c);
+                            HV_STR_SET(0, text_get_copy(0x6c));
                         else
-                            HV_STR(0) = fmt(g_text(0x6f), *(int32_t *)(st + 6), size);
+                            HV_STR_SET(0, fmt(g_text(0x6f), *(int32_t *)(st + 6), size));
                     }
                     break;
                 }
@@ -353,9 +354,9 @@ void room_hover(void)
         if (g_cur_room != 5) {
             if (g_cur_room == 0xe && contest_tick() < 2) { /* Chefbüro: Wettbewerb */
                 if (g_hotspot == 0x4a) {
-                    g_hv_spec = DS_ADDR(char, 0x0eae);
+                    DS_SET_PTR(0x8f68, DS_ADDR(char, 0x0eae));
                     if (g_hv_last != 5000 || g_card_dirty != 0)
-                        HV_STR(0) = fmt(g_text(0x177), g_text(DS_I16(0x7468) + 0x153));
+                        HV_STR_SET(0, fmt(g_text(0x177), g_text(DS_I16(0x7468) + 0x153)));
                     hv_at(0x15, 2);
                     g_hv_w = 0x11;
                     g_hv_h = 3;
@@ -385,9 +386,9 @@ void room_hover(void)
             } else if (g_cur_room == 2) { /* Bank: Kredit */
                 if (g_cur_dialog == 0 && g_hotspot > 0x3e && g_hotspot < 0x42) {
                     id = (int16_t)(g_hotspot + 0x146b);
-                    g_hv_spec = DS_ADDR(char, 0x0eba);
+                    DS_SET_PTR(0x8f68, DS_ADDR(char, 0x0eba));
                     if (id != g_hv_last || g_card_dirty == 1)
-                        HV_STR(0) = fmt(DS_ADDR(char, 0x0ec2), g_text(g_hotspot + 0xe3), g_hotspot == 0x3f ? 1000 : 10000);
+                        HV_STR_SET(0, fmt(DS_ADDR(char, 0x0ec2), g_text(g_hotspot + 0xe3), g_hotspot == 0x3f ? 1000 : 10000));
                     hv_at(2, 6);
                     g_hv_w = 9;
                     g_hv_h = 2;
@@ -503,8 +504,8 @@ static void hover_station(int16_t id)
         g_hv_h = 4;
         g_hv_val = station_reach_gain((int16_t)(mouse_x() - 0x30), (int16_t)(mouse_y() - 4)) * 0x9a0;
         int32_t price = price_step_next(station_reach_at((int16_t)(mouse_x() - 0x30), (int16_t)(mouse_y() - 4)) * 0x268 / 10);
-        HV_STR(1) = fmt_money(g_hv_val, 3);
-        HV_STR(0) = fmt(g_text(0x17a), HV_STR(1), price);
+        HV_STR_SET(1, fmt_money(g_hv_val, 3));
+        HV_STR_SET(0, fmt(g_text(0x17a), HV_STR(1), price));
         hv_free(1);
         layout_box(DS_ADDR(char, 0x0f31));
     } else if (id > 2000 && id <= 0x9c4) { /* eigener Mast */
@@ -512,8 +513,8 @@ static void hover_station(int16_t id)
         g_hv_w = 10;
         g_hv_h = 4;
         g_hv_val = *(int32_t *)(st + 4) * 0x9a0;
-        HV_STR(1) = fmt_money(g_hv_val, 3);
-        HV_STR(0) = fmt(g_text(0x17b), HV_STR(1), *(int32_t *)st);
+        HV_STR_SET(1, fmt_money(g_hv_val, 3));
+        HV_STR_SET(0, fmt(g_text(0x17b), HV_STR(1), *(int32_t *)st));
         hv_free(1);
         layout_box(DS_ADDR(char, 0x0f41));
     } else if (id > 0x9c4 && id < 0xa29) { /* Satellit / Kabel */
@@ -524,16 +525,16 @@ static void hover_station(int16_t id)
         g_hv_val2 = DS_I32(0x7a96 + (k + 7) * 4) * 0x9a0;
         if (*(int32_t *)(STATION(DS_I16(0x79ac), id - 0x9c4) + 4) == 0) {
             g_hv_h = 6;
-            HV_STR(2) = fmt_money(g_hv_val - g_hv_val2, 3);
-            HV_STR(1) = fmt_money(g_hv_val, 3);
-            HV_STR(0) = fmt(g_text(0x17c), HV_STR(1), HV_STR(2), *(int32_t *)st);
+            HV_STR_SET(2, fmt_money(g_hv_val - g_hv_val2, 3));
+            HV_STR_SET(1, fmt_money(g_hv_val, 3));
+            HV_STR_SET(0, fmt(g_text(0x17c), HV_STR(1), HV_STR(2), *(int32_t *)st));
             hv_free(1);
             hv_free(2);
             layout_box(DS_ADDR(char, 0x0f51));
         } else {
             g_hv_h = 4;
-            HV_STR(1) = fmt_money(g_hv_val, 3);
-            HV_STR(0) = fmt(g_text(0x17d), HV_STR(1), *(int32_t *)st);
+            HV_STR_SET(1, fmt_money(g_hv_val, 3));
+            HV_STR_SET(0, fmt(g_text(0x17d), HV_STR(1), *(int32_t *)st));
             hv_free(1);
             layout_box(DS_ADDR(char, 0x0f69));
         }
@@ -552,23 +553,23 @@ static void hover_ad(int16_t id)
     ad_requirements_text_build(ad);
     g_hv_w = 0xf;
     g_hv_h = 0xb;
-    HV_STR(1) = *(char **)rec;
-    HV_STR(2) = *(char **)(rec + 4);
+    HV_STR_SET(1, MEM_PTR(char, rec));
+    HV_STR_SET(2, MEM_PTR(char, rec + 4));
     int16_t p = g_cur_room == 0xb ? g_local_player : g_view_player;
     int32_t reach = REACH_LEVEL((int8_t)rec[0xa]);
     int16_t rating = (int16_t)rating_from_viewers(p, reach);
-    HV_STR(4) = fmt_money(reach, 3);
-    HV_STR(3) = fmt(g_text(0x17e), *(int32_t *)(rec + 0x10), *(int32_t *)(rec + 0x14), HV_STR(4), rating);
+    HV_STR_SET(4, fmt_money(reach, 3));
+    HV_STR_SET(3, fmt(g_text(0x17e), *(int32_t *)(rec + 0x10), *(int32_t *)(rec + 0x14), HV_STR(4), rating));
     hv_free(4);
     if (id < 4001) {
-        HV_STR(4) = fmt(g_text(0x181), (int16_t)(int8_t)rec[9], (int16_t)(int8_t)rec[8]);
+        HV_STR_SET(4, fmt(g_text(0x181), (int16_t)(int8_t)rec[9], (int16_t)(int8_t)rec[8]));
     } else if (g_hv_sel < 0) {
-        HV_STR(4) = text_get_copy(0x180);
+        HV_STR_SET(4, text_get_copy(0x180));
     } else {
         uint8_t *c = DS_ADDR(uint8_t, 0x1b50 + g_view_player * 0x46 + g_hv_sel * 7);
         int16_t days = (int16_t)(*(int16_t *)(c + 5) - g_day);
         const char *f = days == 0 ? g_text(0x1a7) : days == 1 ? g_text(0x1a8) : g_text(0x17f);
-        HV_STR(4) = fmt(f, (int16_t)((int8_t)rec[9] - (int8_t)c[4]), (int16_t)(int8_t)rec[9], days);
+        HV_STR_SET(4, fmt(f, (int16_t)((int8_t)rec[9] - (int8_t)c[4]), (int16_t)(int8_t)rec[9], days));
     }
     layout_box(DS_ADDR(char, 0x0f79));
     hv_free(0);
@@ -591,25 +592,25 @@ static void hover_show(int16_t id)
     uint8_t *rec = DS_ADDR(uint8_t, 0x1a25 + g_view_player * 0x32 + i * 5);
     if (*(uint16_t *)(sh + 5) & 1) {
         uint8_t *ser = SERIES(prog);
-        HV_STR(0) = series_title_get(prog);
-        HV_STR(1) = g_text((int8_t)ser[0x21] + 0x124);
+        HV_STR_SET(0, series_title_get(prog));
+        HV_STR_SET(1, g_text((int8_t)ser[0x21] + 0x124));
         g_hv_val = (int8_t)ser[0x23];
         if (g_cur_room == 5)
-            HV_STR(2) = fmt(g_text(0x183), (int16_t)(*(int16_t *)(rec + 3) - 1), (int16_t)(int8_t)ser[0x22]);
+            HV_STR_SET(2, fmt(g_text(0x183), (int16_t)(*(int16_t *)(rec + 3) - 1), (int16_t)(int8_t)ser[0x22]));
         else
-            HV_STR(2) = fmt(g_text(0x184), (int16_t)(int8_t)ser[0x22]);
+            HV_STR_SET(2, fmt(g_text(0x184), (int16_t)(int8_t)ser[0x22]));
     } else {
         uint8_t *f = FILM(prog);
-        HV_STR(0) = film_title_get(prog);
-        HV_STR(1) = g_text((int8_t)f[0] + 0x1a);
+        HV_STR_SET(0, film_title_get(prog));
+        HV_STR_SET(1, g_text((int8_t)f[0] + 0x1a));
         g_hv_val = (int8_t)f[4];
         if ((*(uint16_t *)(f + 7) & 4) || g_cur_room != 5)
-            HV_STR(2) = fmt(DS_ADDR(char, 0x0fa5));
+            HV_STR_SET(2, fmt(DS_ADDR(char, 0x0fa5)));
         else
-            HV_STR(2) = fmt(g_text(0x182), (int16_t)(*(int16_t *)(rec + 3) - 1));
+            HV_STR_SET(2, fmt(g_text(0x182), (int16_t)(*(int16_t *)(rec + 3) - 1)));
     }
-    HV_STR(3) = show_text_title_get(s);
-    HV_STR(4) = fmt(g_text(0x185), show_role_count(s), (int16_t)g_hv_val);
+    HV_STR_SET(3, show_text_title_get(s));
+    HV_STR_SET(4, fmt(g_text(0x185), show_role_count(s), (int16_t)g_hv_val));
     layout_box(DS_ADDR(char, 0x0fa7));
     text_draw_right_to_free(0x88, 0x24, fmt(DS_ADDR(char, 0x0fc7), *(int32_t *)sh), g_popup_bmp);
     tooltip_present();
@@ -627,29 +628,29 @@ static void hover_studio(int16_t id)
     g_hv_w = 0x14;
     g_hv_h = 9;
     for (int16_t i = 2; i < 7; i++)
-        HV_STR(i) = NULL;
+        HV_STR_SET(i, NULL);
     if (*(uint16_t *)(sh + 5) & 1) {
-        HV_STR(0) = series_title_get(prog);
-        HV_STR(1) = fmt(g_text(0x187), (int16_t)(first - 1), (int16_t)(int8_t)SERIES(prog)[0x22]);
+        HV_STR_SET(0, series_title_get(prog));
+        HV_STR_SET(1, fmt(g_text(0x187), (int16_t)(first - 1), (int16_t)(int8_t)SERIES(prog)[0x22]));
         for (int16_t e = first; e <= last && k < 7; e++) { /* PORT: k < 7, Original ohne Grenze */
             const char *mark = episode_cast_complete(*(int16_t *)st, e) == 1 ? g_text(0x16a) : DS_ADDR(char, 0x0fe5);
-            HV_STR(k++) = fmt(DS_ADDR(char, 0x0feb), e, episode_title_get(prog, e), mark);
+            HV_STR_SET(k++, fmt(DS_ADDR(char, 0x0feb), e, episode_title_get(prog, e), mark));
         }
     } else {
-        HV_STR(0) = film_title_get(prog);
+        HV_STR_SET(0, film_title_get(prog));
         if (*(uint16_t *)(FILM(prog) + 7) & 4) { /* mehrteilig */
-            HV_STR(1) = fmt(g_text(0x186), (int16_t)(first - 1));
+            HV_STR_SET(1, fmt(g_text(0x186), (int16_t)(first - 1)));
             for (int16_t e = first; e <= last && k < 7; e++) {
                 const char *mark = episode_cast_complete(*(int16_t *)st, e) == 1 ? g_text(0x16a) : DS_ADDR(char, 0x0fcc);
-                HV_STR(k++) = fmt(DS_ADDR(char, 0x0fd2), g_text(0x8e), e, mark);
+                HV_STR_SET(k++, fmt(DS_ADDR(char, 0x0fd2), g_text(0x8e), e, mark));
             }
         } else {
-            HV_STR(1) = fmt(DS_ADDR(char, 0x0fde));
+            HV_STR_SET(1, fmt(DS_ADDR(char, 0x0fde)));
             if (last == 1) {
                 const char *mark = episode_cast_complete(*(int16_t *)st, first) == 1 ? g_text(0x16a) : DS_ADDR(char, 0x0fdf);
-                HV_STR(2) = fmt(g_text(0x8f), mark);
+                HV_STR_SET(2, fmt(g_text(0x8f), mark));
             } else {
-                HV_STR(2) = text_get_copy(0x90);
+                HV_STR_SET(2, text_get_copy(0x90));
             }
         }
     }
@@ -748,22 +749,22 @@ static void hover_rating(void)
         c = 3; /* Anforderung verfehlt */
     card_band_fill(0x2c, 9, c);
     if (hour_index() > 0 && DS_I16(0x71cc) >= 5) {
-        HV_STR(1) = fmt_money(viewers, 2);
-        HV_STR(0) = fmt(g_text(0x18f), HV_STR(1), (int16_t)rating_from_viewers(p, viewers));
+        HV_STR_SET(1, fmt_money(viewers, 2));
+        HV_STR_SET(0, fmt(g_text(0x18f), HV_STR(1), (int16_t)rating_from_viewers(p, viewers)));
         hv_free(1);
     } else {
-        HV_STR(0) = text_get_copy(0x190);
+        HV_STR_SET(0, text_get_copy(0x190));
     }
     if (g_hv_val2 != 0 || ad != 0) {
-        HV_STR(2) = fmt_money(g_hv_val2, 2);
-        HV_STR(1) = fmt(g_text(0x191), HV_STR(2), (int16_t)rating_from_viewers(p, g_hv_val2));
+        HV_STR_SET(2, fmt_money(g_hv_val2, 2));
+        HV_STR_SET(1, fmt(g_text(0x191), HV_STR(2), (int16_t)rating_from_viewers(p, g_hv_val2)));
         hv_free(2);
     } else if (hour_index() > 0 && ad == 0) {
-        HV_STR(1) = text_get_copy(0x192);
+        HV_STR_SET(1, text_get_copy(0x192));
     } else {
-        HV_STR(1) = text_get_copy(0x190);
+        HV_STR_SET(1, text_get_copy(0x190));
     }
-    HV_STR(2) = fmt_money(*(int32_t *)(STATION(p, 0) + 4) * 0x9a0, 1);
+    HV_STR_SET(2, fmt_money(*(int32_t *)(STATION(p, 0) + 4) * 0x9a0, 1));
     text_draw_to_free(8, -4, fmt(g_text(0x193), HV_STR(2), HV_STR(0), HV_STR(1)), g_popup_bmp);
     hv_free(2);
     tooltip_present();
@@ -833,15 +834,15 @@ void hover_dispatch(int16_t id)
         uint8_t *ser = SERIES(n);
         g_hv_w = 0x11;
         g_hv_h = 0xc;
-        HV_STR(0) = series_title_get(n);
-        HV_STR(1) = series_descr_get(n);
-        HV_STR(2) = g_text((int8_t)ser[0x21] + 0x124);
-        HV_STR(3) = fmt(g_text(0x178), (int8_t)ser[0x35] << 2, (int8_t)ser[0x36] << 2);
+        HV_STR_SET(0, series_title_get(n));
+        HV_STR_SET(1, series_descr_get(n));
+        HV_STR_SET(2, g_text((int8_t)ser[0x21] + 0x124));
+        HV_STR_SET(3, fmt(g_text(0x178), (int8_t)ser[0x35] << 2, (int8_t)ser[0x36] << 2));
         if (*(int16_t *)(ser + 0x31) == 0)
             *(int16_t *)(ser + 0x31) = 1;
-        HV_STR(4) = fmt(g_text(0x179), (int16_t)(int8_t)ser[0x22], (int16_t)(int8_t)ser[0x23], *(int16_t *)(ser + 0x31),
-                        episode_title_get(n, *(int16_t *)(ser + 0x31)));
-        HV_STR(5) = (*(uint16_t *)(ser + 0x26) & 2) ? g_text(0x27) : DS_ADDR(char, 0x0eca);
+        HV_STR_SET(4, fmt(g_text(0x179), (int16_t)(int8_t)ser[0x22], (int16_t)(int8_t)ser[0x23], *(int16_t *)(ser + 0x31),
+                        episode_title_get(n, *(int16_t *)(ser + 0x31))));
+        HV_STR_SET(5, (*(uint16_t *)(ser + 0x26) & 2) ? g_text(0x27) : DS_ADDR(char, 0x0eca));
         layout_box(text_line_count(series_title_get(n), 0x10, 1) == 0 ? DS_ADDR(char, 0x0efc) : DS_ADDR(char, 0x0ecc));
         text_draw_right_to_free(0x88, 0x3c, fmt(DS_ADDR(char, 0x0f2c), series_price(n)), g_popup_bmp);
         tooltip_present();
@@ -880,8 +881,8 @@ void hover_dispatch(int16_t id)
         g_hv_h = 6;
         g_hv_a = (int16_t)(id / 10 - 1000);
         g_hv_i = (int16_t)(id - g_hv_a * 10 - 9999);
-        HV_STR(0) = episode_title_get(g_hv_a, g_hv_i);
-        HV_STR(1) = episode_descr_get(g_hv_a, g_hv_i);
+        HV_STR_SET(0, episode_title_get(g_hv_a, g_hv_i));
+        HV_STR_SET(1, episode_descr_get(g_hv_a, g_hv_i));
         layout_box(DS_ADDR(char, 0x101c));
         tooltip_present();
         break;
@@ -895,7 +896,7 @@ void hover_dispatch(int16_t id)
         g_hv_w = 0xc;
         g_hv_h = 7;
         g_hv_a = DS_I16(0x4ff3 + (DS_I16(0x79c2) - 1) * 0xc0 + (id - 13000) * 0xc);
-        HV_STR(0) = fmt(DS_ADDR(char, 0x1059), name_table_get(g_hv_a, 2), name_table_get(g_hv_a, 1));
+        HV_STR_SET(0, fmt(DS_ADDR(char, 0x1059), name_table_get(g_hv_a, 2), name_table_get(g_hv_a, 1)));
         layout_box(DS_ADDR(char, 0x1061));
         tooltip_present();
         hv_free(0);
@@ -905,10 +906,10 @@ void hover_dispatch(int16_t id)
         g_hv_w = 0x14;
         g_hv_h = 4;
         DS_I16(0x8f74) = (int8_t)f[0];
-        HV_STR(0) = film_title_get(n);
-        HV_STR(2) = fmt_money(g_hv_val, 3);
-        HV_STR(1) = fmt(g_text(0x18b), g_text(DS_I16(0x8f74) + 0x1a), g_hv_n1, (int16_t)(int8_t)f[4], HV_STR(2),
-                        (int16_t)g_hv_val2);
+        HV_STR_SET(0, film_title_get(n));
+        HV_STR_SET(2, fmt_money(g_hv_val, 3));
+        HV_STR_SET(1, fmt(g_text(0x18b), g_text(DS_I16(0x8f74) + 0x1a), g_hv_n1, (int16_t)(int8_t)f[4], HV_STR(2),
+                        (int16_t)g_hv_val2));
         hv_free(2);
         layout_box(DS_ADDR(char, 0x107d));
         tooltip_present();
@@ -921,11 +922,11 @@ void hover_dispatch(int16_t id)
         g_hv_w = 0x14;
         g_hv_h = 6;
         DS_I16(0x8f74) = (int8_t)ser[0x21];
-        HV_STR(0) = series_title_get(n);
-        HV_STR(1) = fmt(DS_ADDR(char, 0x108d), g_hv_n2, episode_title_get(n, g_hv_n2));
-        HV_STR(3) = fmt_money(g_hv_val, 3);
-        HV_STR(2) = fmt(g_text(0x18c), g_text(DS_I16(0x8f74) + 0x124), g_hv_n1, (int16_t)(int8_t)ser[0x23], HV_STR(3),
-                        (int16_t)g_hv_val2);
+        HV_STR_SET(0, series_title_get(n));
+        HV_STR_SET(1, fmt(DS_ADDR(char, 0x108d), g_hv_n2, episode_title_get(n, g_hv_n2)));
+        HV_STR_SET(3, fmt_money(g_hv_val, 3));
+        HV_STR_SET(2, fmt(g_text(0x18c), g_text(DS_I16(0x8f74) + 0x124), g_hv_n1, (int16_t)(int8_t)ser[0x23], HV_STR(3),
+                        (int16_t)g_hv_val2));
         hv_free(3);
         layout_box(DS_ADDR(char, 0x1094));
         tooltip_present();
@@ -994,7 +995,7 @@ void channel_info_card_draw(Bitmap *dst)
     int32_t viewers = DS_I32(0x248f + ch * 10);
     char *s = NULL;
     g_hv_w = 0x10;
-    g_popup_bmp = dst;
+    DS_SET_PTR(0x8ec2, dst);
     card_band_fill(3, 9, 3);
     card_band_fill(0xc, 0x20, 2);
     card_band_fill(0x2c, 9, 1);
@@ -1028,7 +1029,7 @@ void channel_info_card_draw(Bitmap *dst)
         }
     } else { /* Werbeblock */
         int16_t n = ad % 1000;
-        text_draw_to(8, 5, *(char **)AD_REC(n), dst);
+        text_draw_to(8, 5, MEM_PTR(char, AD_REC(n)), dst);
         switch ((uint16_t)ad / 1000) {
         case 0:
             s = fmt(DS_ADDR(char, 0x10c6));
@@ -1112,15 +1113,15 @@ void ad_requirements_text_build(int16_t ad)
 {
     int8_t g = (int8_t)AD_REC(ad)[0xc];
     if (g == 0) {
-        HV_STR(0) = fmt(DS_ADDR(char, 0x1101));
+        HV_STR_SET(0, fmt(DS_ADDR(char, 0x1101)));
         return;
     }
     if (g > 0) {
         ad_targets_text_build(ad, 1);
-        HV_STR(0) = fmt(g_text(0x4e), HV_STR(4));
+        HV_STR_SET(0, fmt(g_text(0x4e), HV_STR(4)));
     } else {
         ad_targets_text_build(ad, -1);
-        HV_STR(0) = fmt(g_text(0x4d), HV_STR(4));
+        HV_STR_SET(0, fmt(g_text(0x4d), HV_STR(4)));
     }
     hv_free(4);
 }
@@ -1144,9 +1145,9 @@ void ad_targets_text_build(int16_t ad, int16_t sign)
             else
                 s = fmt(name);
         }
-        HV_STR(i) = s;
+        HV_STR_SET(i, s);
     }
-    HV_STR(4) = fmt(DS_ADDR(char, 0x1109), HV_STR(1), HV_STR(2), HV_STR(3));
+    HV_STR_SET(4, fmt(DS_ADDR(char, 0x1109), HV_STR(1), HV_STR(2), HV_STR(3)));
     hv_free(1);
     hv_free(2);
     hv_free(3);
@@ -1199,45 +1200,45 @@ void info_card_film_small(int16_t film)
     int8_t genre = (int8_t)f[0];
     g_hv_w = 0x11;
     g_hv_h = 0xc;
-    HV_STR(0) = film_title_get(film);
-    HV_STR(1) = film_descr_get(film);
-    HV_STR(2) = g_text(genre + 0x1a);
+    HV_STR_SET(0, film_title_get(film));
+    HV_STR_SET(1, film_descr_get(film));
+    HV_STR_SET(2, g_text(genre + 0x1a));
     if (genre < 6 || genre > 8)
-        HV_STR(3) = fmt(g_text(0x19c), g_text((int8_t)f[0x13] + 0x13e), (int16_t)(int8_t)f[0x14], (int8_t)f[0x15] << 2,
-                        (int8_t)f[0x16] << 2);
+        HV_STR_SET(3, fmt(g_text(0x19c), g_text((int8_t)f[0x13] + 0x13e), (int16_t)(int8_t)f[0x14], (int8_t)f[0x15] << 2,
+                        (int8_t)f[0x16] << 2));
     else if (genre == 6)
-        HV_STR(3) = fmt(g_text(0x19d), g_text((int8_t)f[0x13] + 0x13e), (int16_t)(int8_t)f[0x14], (int8_t)f[0x15] << 2,
-                        (int8_t)f[0x16] << 2);
+        HV_STR_SET(3, fmt(g_text(0x19d), g_text((int8_t)f[0x13] + 0x13e), (int16_t)(int8_t)f[0x14], (int8_t)f[0x15] << 2,
+                        (int8_t)f[0x16] << 2));
     else if (genre == 8)
-        HV_STR(3) = fmt(g_text(0x19e), (int8_t)f[0x13] << 2, (int8_t)f[0x14] << 2);
+        HV_STR_SET(3, fmt(g_text(0x19e), (int8_t)f[0x13] << 2, (int8_t)f[0x14] << 2));
     else
-        HV_STR(3) = fmt(DS_ADDR(char, 0x1110));
-    HV_STR(4) = NULL;
+        HV_STR_SET(3, fmt(DS_ADDR(char, 0x1110)));
+    HV_STR_SET(4, NULL);
     if (*(uint16_t *)(f + 7) & 2)
-        HV_STR(4) = g_text(0x27);
+        HV_STR_SET(4, g_text(0x27));
     if (g_cur_room == 8 && DS_I8(0x6f59 + g_local_player * 0x6c + genre) > 3)
-        HV_STR(4) = g_text(0x28); /* Genre im Archiv schon reichlich vorhanden */
+        HV_STR_SET(4, g_text(0x28)); /* Genre im Archiv schon reichlich vorhanden */
     int16_t live_day = *(int16_t *)(f + 0xf);
     if (genre == 7 && live_day != 0) { /* Live-Sport mit Termin */
         if (film == 0x1d)
-            HV_STR(6) = fmt(g_text(0x19f), 3 - DS_I16(0x7a22), 3);
+            HV_STR_SET(6, fmt(g_text(0x19f), 3 - DS_I16(0x7a22), 3));
         else if (film == 0xbb)
-            HV_STR(6) = fmt(g_text(0x19f), 5 - DS_I16(0x7a7c), 5);
+            HV_STR_SET(6, fmt(g_text(0x19f), 5 - DS_I16(0x7a7c), 5));
         else
-            HV_STR(6) = fmt(DS_ADDR(char, 0x1112));
+            HV_STR_SET(6, fmt(DS_ADDR(char, 0x1112)));
         if (live_day - g_day < 2)
-            HV_STR(5) = fmt(g_text(0x1a9), live_day == g_day ? g_text(0xce) : g_text(0xcf),
-                            (int16_t)(*(int16_t *)(f + 0x11) + 0x11), HV_STR(6));
+            HV_STR_SET(5, fmt(g_text(0x1a9), live_day == g_day ? g_text(0xce) : g_text(0xcf),
+                            (int16_t)(*(int16_t *)(f + 0x11) + 0x11), HV_STR(6)));
         else
-            HV_STR(5) = fmt(g_text(0x1a0), (int16_t)(live_day - g_day), HV_STR(6));
+            HV_STR_SET(5, fmt(g_text(0x1a0), (int16_t)(live_day - g_day), HV_STR(6)));
         hv_free(6);
     } else if (genre == 7 || genre == 8) {
-        HV_STR(5) = fmt(DS_ADDR(char, 0x1114));
+        HV_STR_SET(5, fmt(DS_ADDR(char, 0x1114)));
     } else {
         int16_t div = (int8_t)f[1] != 0 ? (int8_t)f[1] : 1; /* PORT: Original teilt ggf. durch 0 */
-        HV_STR(5) = fmt(g_text(0x1a1), ((int8_t)f[3] * 0x28) / div);
+        HV_STR_SET(5, fmt(g_text(0x1a1), ((int8_t)f[3] * 0x28) / div));
     }
-    HV_STR(6) = fmt(g_text(0x1a2), (int16_t)(int8_t)f[4]);
+    HV_STR_SET(6, fmt(g_text(0x1a2), (int16_t)(int8_t)f[4]));
     layout_box(text_line_count(film_title_get(film), 0x10, 1) < 2 ? DS_ADDR(char, 0x1116) : DS_ADDR(char, 0x1146));
     text_draw_right_to_free(0x88, 0x44, fmt(DS_ADDR(char, 0x1176), film_price(film)), g_popup_bmp);
     if (*(uint16_t *)(f + 7) & 8)

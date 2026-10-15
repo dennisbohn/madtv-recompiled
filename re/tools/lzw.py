@@ -5,7 +5,7 @@ Codes MSB-first, Startbreite 9 Bit; 0x100 = Reset (Breite 9, nächster Code 0x10
 0x101 = Codebreite + 1. Das Original verarbeitet einen Code nur, solange der
 Byte-Zähler nach dem Lesen noch nicht 0 ist.
 
-Aufruf: python -I lzw.py <Gamefiles-Ordner>   -> listet Dateien, die sich sauber entpacken lassen
+Aufruf: python -I lzw.py <Ordner mit NNN.HES der Beta, re/v1>   -> listet Dateien, die sich sauber entpacken lassen
 """
 import os
 import struct

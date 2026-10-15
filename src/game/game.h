@@ -1,4 +1,4 @@
-/* GENERIERT von re/tools/gen_game_h.py aus re/notes/sigs - nicht von Hand ändern. */
+/* Prototypen aller übersetzten Spielfunktionen, Kommentar = Adresse im Original (re/notes/sigs). */
 #ifndef MADTV_GAME_H
 #define MADTV_GAME_H
 

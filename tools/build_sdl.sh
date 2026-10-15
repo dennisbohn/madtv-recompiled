@@ -7,7 +7,7 @@
 # HIDAPI, Haptik, Sensoren, Power, OpenGL/GLES/Vulkan, Direct3D 9/12 und die dynamische API
 # (Austausch der SDL-Version zur Laufzeit, bei statischem Linken ohne Nutzen).
 #
-# Aufruf aus port/: sh tools/build_sdl.sh   -> build/sdl/install (lib, include, pkgconfig)
+# Aufruf aus der Projektwurzel: sh tools/build_sdl.sh   -> build/sdl/install (lib, include, pkgconfig)
 set -e
 VER=2.32.10
 DIR=build/sdl

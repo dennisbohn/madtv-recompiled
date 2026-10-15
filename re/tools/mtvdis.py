@@ -12,7 +12,7 @@ import sys
 import capstone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-EXE = open(os.path.join(ROOT, "Gamefiles", "MTV.EXE"), "rb").read()
+EXE = open(os.path.join(ROOT, "re", "v1", "MTV.EXE"), "rb").read()
 HDR = struct.unpack_from("<H", EXE, 8)[0] * 16
 NAMES = {}
 names_path = os.path.join(ROOT, "re", "notes", "names.tsv")

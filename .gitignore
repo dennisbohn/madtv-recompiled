@@ -1,20 +1,20 @@
-# Nur Quelltexte, Notizen, Werkzeuge und fertige Binaries – keine Spieldateien.
+# Nur Quelltexte, Notizen und Werkzeuge – keine Spieldateien.
 /*
 !/.gitignore
 !/README.md
-!/bin/
-!/port/
-!/re/
+!/Makefile
+!/TRANSLATION.md
 !/src/
-!/build.ps1
+!/res/
+!/tools/
+!/third_party/
+!/re/
 
-# Build-Ausgaben und Testbilder
-/port/build/
-/port/build2/
-
-# aus dem Originalspiel erzeugte Analysedaten (Ghidra-Projekt, Disassembler-Ausgaben)
+# aus dem Originalspiel erzeugte Analysedaten und die erste Fassung (Ghidra-Projekt, Disassembler-
+# Ausgaben, MTV.EXE der Beta)
 /re/out/
 /re/ghidra_project/
+/re/v1/
 
 __pycache__/
 *.pyc

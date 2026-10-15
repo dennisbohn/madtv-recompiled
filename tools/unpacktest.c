@@ -1,5 +1,5 @@
 /* Selbsttest: entpackt alle HES-Dateien und prüft die Ergebnisse gegen die Header.
- *   unpacktest [Gamefiles-Ordner]
+ *   unpacktest [Datenordner, Standard build/data]
  * Ausgabe je Datei: Nummer, Typ, Ergebnisgröße, FNV-1a-Prüfsumme (zum Vergleich mit re/tools). */
 #include <stdio.h>
 #include <stdlib.h>

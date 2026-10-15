@@ -1,7 +1,7 @@
 # MadTV (MTV.EXE) – Architektur-Übersicht
 
 Stand: erste Grobkartierung auf Basis von `re/out/decompiled.c` (Ghidra), `functions.tsv`,
-`dgroup_strings.tsv` sowie gezielter Disassemblierung der Rohbytes von `Gamefiles/MTV.EXE`
+`dgroup_strings.tsv` sowie gezielter Disassemblierung der Rohbytes von `re/v1/MTV.EXE` (Beta)
 (Capstone, nur für Switch-Tabellen und Aufrufstellen). Nicht alles ist verifiziert –
 Vermutungen sind mit **(?)** markiert. Namen in `code` sind Vorschläge für die Umbenennung in Ghidra.
 

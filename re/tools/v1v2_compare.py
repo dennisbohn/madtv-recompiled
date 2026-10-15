@@ -1,4 +1,4 @@
-"""Vergleich der Programmstände MTV.EXE Version 1 (Gamefiles) und Version 2 (Gamefiles2, LZEXE).
+"""Vergleich der Programmstände MTV.EXE Version 1 (re/v1, Beta) und Version 2 (gamedata, LZEXE).
 
 Aufruf (Projektwurzel, capstone im PYTHONPATH): python re/tools/v1v2_compare.py [--list]
 
@@ -15,6 +15,7 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools'))
 from unlzexe import unlzexe  # noqa: E402
 
 import capstone  # noqa: E402
@@ -80,8 +81,8 @@ def tokens(img, lin, maxlen):
 
 
 def main():
-    v1 = load_v1('Gamefiles/MTV.EXE')
-    v2, _, _ = unlzexe(open('Gamefiles2/MTV.EXE', 'rb').read())
+    v1 = load_v1('re/v1/MTV.EXE')
+    v2, _, _ = unlzexe(open('gamedata/MTV.EXE', 'rb').read())
     funcs = []
     for f in sorted(glob.glob('re/notes/sigs/*.tsv')):
         for line in open(f, encoding='utf-8'):

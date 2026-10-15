@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 #endif
 
-static char g_game_dir[512] = "Gamefiles";
+static char g_game_dir[512] = "."; /* nur für Testprogramme: Ordner mit SOURCE1/2.RSC */
 static uint64_t g_last_present_us;
 static uint32_t g_present_count;
 static PlatformCursorFn g_cursor_fn;
@@ -1023,9 +1023,8 @@ int platform_mouse_abs(int16_t cur_x, int16_t cur_y, int16_t *x, int16_t *y)
     return 1;
 }
 
-int platform_init(const char *game_dir, int windowed)
+int platform_init(int windowed)
 {
-    platform_set_game_dir(game_dir);
     /* auch der Klick, der das Fenster erst aktiviert, zählt (sonst muss man z. B. die Sprache
      * zweimal anklicken) */
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");

@@ -20,7 +20,7 @@ import capstone
 from capstone import x86
 
 ROOT = os.getcwd()
-EXE = open(os.path.join(ROOT, "Gamefiles", "MTV.EXE"), "rb").read()
+EXE = open(os.path.join(ROOT, "re", "v1", "MTV.EXE"), "rb").read()
 HDR = struct.unpack_from("<H", EXE, 8)[0] * 16
 
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_16)

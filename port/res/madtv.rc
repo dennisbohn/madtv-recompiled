@@ -1,4 +1,0 @@
-// Programmsymbol (Pixel-Art-Fernseher, erzeugt mit res/make_icon.py). ID 1 nutzt SDL über
-// SDL_HINT_WINDOWS_INTRESOURCE_ICON auch für Fenster und Taskleiste.
-1 ICON "madtv.ico"
-#include "version.rc"

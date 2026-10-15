@@ -9,6 +9,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools'))
 from unlzexe import unlzexe  # noqa: E402
 from v1v2_compare import load_v1, md, tokens  # noqa: E402
 
@@ -24,8 +25,8 @@ def listing(img, lin, n=400):
 
 def main():
     s, o = (int(x, 16) for x in sys.argv[1].split(':'))
-    v1 = load_v1('Gamefiles/MTV.EXE')
-    v2, _, _ = unlzexe(open('Gamefiles2/MTV.EXE', 'rb').read())
+    v1 = load_v1('re/v1/MTV.EXE')
+    v2, _, _ = unlzexe(open('gamedata/MTV.EXE', 'rb').read())
     lin = (s - 0x1000) * 16 + o
     head = tokens(v1, lin, 12)
     full1 = tokens(v1, lin, 4000)

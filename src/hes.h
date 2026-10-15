@@ -19,7 +19,7 @@ typedef struct {
     uint8_t *storage; /* gemeinsamer Pixelspeicher aller Sprites */
 } HesSpriteSet;
 
-/* Ordner mit den Spieldateien setzen (Standard: "Gamefiles"). */
+/* Ordner mit SOURCE1.RSC/SOURCE2.RSC setzen (Standard: "build/data"); für Testprogramme. */
 void hes_set_dir(const char *dir);
 
 /* Ganze Datei laden. Rückgabe: malloc-Puffer (Aufrufer gibt frei) oder NULL. */

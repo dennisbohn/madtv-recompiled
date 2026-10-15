@@ -1,7 +1,7 @@
 # MTV.EXE – Library-Map (Segment 1000 und 42a0 … 45d0)
 
 Quelle: `re/out/decompiled.c` (Zeilen 1–1080 und 87856–91575), `functions.tsv`, `interrupts.tsv`,
-eigene Disassemblierung von `Gamefiles/MTV.EXE` (Capstone, 16 Bit) und Auswertung der
+eigene Disassemblierung von `re/v1/MTV.EXE` (Beta) (Capstone, 16 Bit) und Auswertung der
 MZ-Relokationstabelle.
 
 **Aufrufzählung:** "Aufrufe" = Anzahl Call-Sites im ganzen EXE. `far` wurde exakt über die

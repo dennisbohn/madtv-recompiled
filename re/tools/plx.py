@@ -1,6 +1,6 @@
 """PLX-Musikdateien (PALLADIX-PSM AdLib, nach LZW) analysieren / validieren.
 
-Aufruf: python -I plx.py <Gamefiles-Ordner> [HES-Nr ...] [-v]
+Aufruf: python -I plx.py <Ordner mit NNN.HES der Beta, re/v1> [HES-Nr ...] [-v]
 Format siehe re/notes/sound_driver.md.
 """
 import os

@@ -1,5 +1,5 @@
 /* Schrift der selbst gezeichneten Menüleiste (src/menubar.c): Noto Sans, Teilmenge, siehe
- * third_party/noto-sans/SOURCE.txt. Pfad relativ zu port/ (dort wird gebaut). */
+ * third_party/noto-sans/SOURCE.txt. Pfad relativ zur Projektwurzel (dort wird gebaut). */
 	.section .rodata
 	.globl menubar_font
 	.balign 4

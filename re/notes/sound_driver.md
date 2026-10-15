@@ -3,7 +3,7 @@
 Quellen: `098.HES` (AdLib-Treiber V1.3, 0x1565 Byte), `095.HES` (PC-Beeper V1.1, 0xe0f Byte),
 `099.HES` (PSMDETECT), MTV.EXE Segmente `42a5`, `42fe`, `43ae`.
 Disassembler-Hilfen: `re/tools/disasm_hes.py <HES> [start end]` (lineare Disassemblierung, Slot-Labels),
-`re/tools/plx.py <Gamefiles> [nr ...] [-v]` (Musikdateien parsen/validieren, alle 24 Songs fehlerfrei).
+`re/tools/plx.py <re/v1> [nr ...] [-v]` (Musikdateien parsen/validieren, alle 24 Songs fehlerfrei).
 Alle Adressen ohne Segment = Offset im Treiber (CS:0 = Dateianfang).
 
 ---

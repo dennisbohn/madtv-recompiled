@@ -1,6 +1,7 @@
 /* Integrationstest der Laufzeitbibliothek (Original-API) ohne Fenster:
- *   rttest [Gamefiles-Ordner] [ausgabe.bmp]
- * Lädt DGROUP aus MTV.EXE, prüft Tabellen, entpackt eine Sprite-Bank im Originallayout,
+ *   rttest [Datenordner, Standard build/data] [ausgabe.bmp]
+ * Lädt DGROUP.bin und die Archive aus dem Datenordner (tools/make_bundle.py), prüft
+ * Tabellen, entpackt eine Sprite-Bank im Originallayout,
  * blittet sie auf den Bildschirm und speichert das Ergebnis als BMP. */
 #include <SDL.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@ static int fails;
 
 int main(int argc, char **argv)
 {
-    const char *dir = argc >= 2 ? argv[1] : "Gamefiles";
+    const char *dir = argc >= 2 ? argv[1] : "build/data";
     const char *out = argc >= 3 ? argv[2] : "rttest.bmp";
     hes_set_dir(dir);
     platform_set_game_dir(dir);
@@ -65,7 +66,7 @@ int main(int argc, char **argv)
     /* Füllen + Rechteck-Blit in eine Offscreen-Bitmap und zurück */
     Bitmap *off = bitmap_alloc(320, 40);
     bmp_fill(off, 0, 0, 40, 40, 15);
-    BlitRectArgs ra = {&bank->bmp[0], 0, 0, bank->bmp[0].wcols, bank->bmp[0].h, off, 10, 4};
+    BlitRectArgs ra = {P32(&bank->bmp[0]), 0, 0, bank->bmp[0].wcols, bank->bmp[0].h, P32(off), 10, 4};
     bmp_blit_rect(&ra);
     scr_blit(off, 0, 150);
 

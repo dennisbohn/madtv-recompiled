@@ -1,6 +1,6 @@
 """Erzeugt res/madtv.ico: Pixel-Art-Fernseher (32x32-Raster), Größen 16, 32, 64, 256.
 
-Aufruf (aus port/): python -I res/make_icon.py
+Aufruf (aus der Projektwurzel): python -I res/make_icon.py
 """
 import os
 import struct

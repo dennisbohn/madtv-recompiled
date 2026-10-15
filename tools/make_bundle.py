@@ -1,12 +1,12 @@
-"""Spieldaten für die gebündelte Einzel-EXE vorbereiten.
+"""Spieldaten für die Programmdatei vorbereiten (alle Builds betten sie ein).
 
-Aufruf (aus port/): python -I tools/make_bundle.py MTV_EXE_V1 V2_DIR OUT_DIR
+Aufruf (aus der Projektwurzel): python -I tools/make_bundle.py GAMEDATA_DIR OUT_DIR
 
+GAMEDATA_DIR enthält MTV.EXE, SOURCE1.RSC und SOURCE2.RSC der Release-Fassung von Mad TV.
 Erzeugt in OUT_DIR:
-  DGROUP.bin   Datensegment aus der MTV.EXE der Originalfassung (der Port ist aus deren Code
-               übersetzt und erwartet dessen Adressen; inhaltlich gleich wie in Fassung 2)
-  SOURCE1.RSC  Spieldaten-Archiv der überarbeiteten Fassung OHNE Spielstände (Einträge 209–219
-               werden aus dem Verzeichnis entfernt und ihre Daten mit Nullen überschrieben)
+  DGROUP.bin   Datensegment im Layout, das der Port erwartet (siehe dgroup_from_exe)
+  SOURCE1.RSC  Spieldaten-Archiv OHNE Spielstände (Einträge 209–219 werden aus dem Verzeichnis
+               entfernt und ihre Daten mit Nullen überschrieben)
   SOURCE2.RSC  zweites Archiv (Grafik, Intro); wird ebenso geprüft
   *.z          dieselben Dateien gepackt: "MTVZ", Länge entpackt (u32), Deflate-Rohdaten;
                platform_resource entpackt sie beim ersten Zugriff (third_party/tinf)
@@ -15,46 +15,53 @@ Erzeugt in OUT_DIR:
   bundle.S     dasselbe für Linux: Tabelle mtv_bundle {Name, Daten, Länge}, Daten per .incbin
 Bricht ab, wenn danach noch ein Spielstand-Eintrag enthalten ist.
 """
+import hashlib
 import os
 import struct
 import sys
 import zlib
 
-DGROUP_PARA = 0x35d4       # Lage von DGROUP im Ladeabbild (siehe src/dgroup.c)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from unlzexe import unlzexe  # noqa: E402
+
 RSC_ENTRIES = 600
 SAVES = range(0xd1, 0xdc)  # 209.HES (Namen) und 210..219.HES (Spielstände)
 
+# Der Port ist aus dem Code der ersten Fassung von MTV.EXE übersetzt und spricht das Datensegment
+# über deren Adressen an (DS_*-Makros). Die Release-Fassung ist neu übersetzt; ihr Datensegment
+# enthält dieselben Spieldaten, aber ab DS:057d um einige Byte verschoben. Abschnitte (Adresse im
+# Port, Adresse in der Release-Fassung, Länge), ermittelt durch Abgleich beider Segmente:
+SECTIONS = [(0x0000, 0x0000, 0x057d), (0x057d, 0x057f, 0x1138), (0x16b6, 0x16b8, 0x00fc),
+            (0x17c3, 0x17b7, 0x005d), (0x182c, 0x1820, 0x0115), (0x1941, 0x1961, 0x0009),
+            (0x194a, 0x198a, 0x8ef7)]
+DGROUP_LEN = 0xa841
+# Dazwischen liegen nur Werte der Laufzeitbibliothek, die der Port nicht nutzt (ein Flag, der
+# Dateiname "000.HES" der ersten Fassung, Far-Zeiger der Exit-Hooks). Sie werden wie in der ersten
+# Fassung gesetzt, damit das Ergebnis Byte für Byte dem bisherigen Datensegment entspricht.
+FILLS = [(0x16b5, bytes.fromhex('ff')), (0x17b2, bytes.fromhex("48455300") + b"000.HES" + bytes(6)),
+         (0x1820, bytes.fromhex('0f0019350f0019350f001935'))]
+DGROUP_SHA256 = '994137498f000727396563fc1a5a272c9902994d413a9691db31877fa98ac1de'
 
-def dgroup_ok(dg):
-    return dg[4:11] == b'Turbo-C' and 0x2000 <= len(dg) <= 0x10000
 
-
-def extract_dgroup(exe):
-    """Datensegment aus MTV.EXE der Originalfassung, aus einer Release-EXE dieses Ports (eingebettete
-    Ressource DGROUP, gepackt) oder aus einem bereits herausgelösten Abbild (DGROUP.bin)"""
-    if dgroup_ok(exe):
-        return exe
-    if exe[:2] != b'MZ':
-        sys.exit('MTV.EXE: keine MZ-Datei')
-    pe = struct.unpack_from('<I', exe, 0x3c)[0] if len(exe) > 0x40 else 0
-    if exe[pe:pe + 4] == b'PE\0\0':  # Release-EXE: gepackte Ressourcen ("MTVZ") durchsuchen
-        pos = exe.find(b'MTVZ')
-        while pos >= 0:
-            raw = struct.unpack_from('<I', exe, pos + 4)[0]
-            try:
-                dg = zlib.decompressobj(-15).decompress(exe[pos + 8:], raw)
-            except zlib.error:
-                dg = b''
-            if len(dg) == raw and dgroup_ok(dg):
-                return dg
-            pos = exe.find(b'MTVZ', pos + 4)
-        sys.exit('Release-EXE: eingebettetes Datensegment nicht gefunden')
-    last, pages, _, head_para = struct.unpack_from('<4H', exe, 2)
-    end = (pages - 1) * 512 + last if last else pages * 512
-    dg = exe[head_para * 16 + DGROUP_PARA * 16:end]
-    if dg[4:11] != b'Turbo-C' or not 0x2000 <= len(dg) <= 0x10000:
-        sys.exit('MTV.EXE: Datensegment nicht gefunden (falsche Fassung? Erwartet wird die Originalfassung)')
-    return dg
+def dgroup_from_exe(exe):
+    """Datensegment aus MTV.EXE der Release-Fassung (LZEXE-gepackt) im Layout des Ports"""
+    if exe[:2] != b'MZ' or exe[0x1c:0x20] != b'LZ91':
+        sys.exit('MTV.EXE: keine LZEXE-gepackte Release-Fassung')
+    img = unlzexe(exe)[0]
+    pos = img.find(b'Turbo-C')  # steht bei DS:0004, DGROUP beginnt auf einer Paragraphengrenze
+    while pos >= 0 and (pos - 4) % 16:
+        pos = img.find(b'Turbo-C', pos + 1)
+    if pos < 0:
+        sys.exit('MTV.EXE: Datensegment nicht gefunden')
+    src = img[pos - 4:]
+    dg = bytearray(DGROUP_LEN)
+    for dst, s, n in SECTIONS:
+        dg[dst:dst + n] = src[s:s + n]
+    for dst, data in FILLS:
+        dg[dst:dst + len(data)] = data
+    if hashlib.sha256(dg).hexdigest() != DGROUP_SHA256:
+        sys.exit('MTV.EXE: unbekannte Fassung (Datensegment weicht ab)')
+    return bytes(dg)
 
 
 def strip_saves(rsc, name):
@@ -108,19 +115,21 @@ def icon_rgba(path, size=64):
 
 
 def main():
-    exe_path, v2_dir, out = sys.argv[1:4]
+    data_dir, out = sys.argv[1:3]
     os.makedirs(out, exist_ok=True)
-    dg = extract_dgroup(open(exe_path, 'rb').read())
+    dg = dgroup_from_exe(open(os.path.join(data_dir, 'MTV.EXE'), 'rb').read())
     open(os.path.join(out, 'DGROUP.bin'), 'wb').write(dg)
     for k in (1, 2):
         name = 'SOURCE%d.RSC' % k
-        data, removed = strip_saves(open(os.path.join(v2_dir, name), 'rb').read(), name)
+        data, removed = strip_saves(open(os.path.join(data_dir, name), 'rb').read(), name)
         open(os.path.join(out, name), 'wb').write(data)
         print('%s: %d Byte, Spielstand-Einträge entfernt: %s' % (name, len(data), removed or 'keine'))
     print('DGROUP.bin: %d Byte' % len(dg))
     ico = os.path.abspath('res/madtv.ico').replace('\\', '/')
     with open(os.path.join(out, 'bundle.rc'), 'w', encoding='ascii') as f:
         f.write('// erzeugt von tools/make_bundle.py\n')
+        # Programmsymbol (res/make_icon.py); ID 1 nutzt SDL über SDL_HINT_WINDOWS_INTRESOURCE_ICON
+        # auch für Fenster und Taskleiste
         f.write('1 ICON "%s"\n' % ico)
         f.write('#include "version.rc"\n')
         for res in ('DGROUP.bin', 'SOURCE1.RSC', 'SOURCE2.RSC'):

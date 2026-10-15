@@ -4,48 +4,55 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char g_dir[512] = "Gamefiles";
+static char g_dir[512] = "build/data";
 
 void hes_set_dir(const char *dir)
 {
     snprintf(g_dir, sizeof g_dir, "%s", dir);
 }
 
-static void hes_path(int no, char *buf, size_t len)
+/* Eintrag no aus SOURCE1.RSC bzw. SOURCE2.RSC im Ordner (Verzeichnis aus 600 Einträgen zu 6 Byte:
+ * u32 Offset, u16 Länge). Rückgabe: malloc-Puffer oder NULL. */
+static uint8_t *rsc_load(int no, size_t *size)
 {
-    snprintf(buf, len, "%s/%03d.HES", g_dir, no);
+    if (no < 0 || no >= 600)
+        return NULL;
+    for (int k = 1; k <= 2; k++) {
+        char path[600];
+        snprintf(path, sizeof path, "%s/SOURCE%d.RSC", g_dir, k);
+        FILE *f = fopen(path, "rb");
+        if (!f)
+            continue;
+        uint8_t e[6];
+        uint8_t *buf = NULL;
+        if (fseek(f, no * 6L, SEEK_SET) == 0 && fread(e, 1, 6, f) == 6) {
+            long off = (long)(e[0] | e[1] << 8 | e[2] << 16 | (uint32_t)e[3] << 24);
+            size_t len = (size_t)(e[4] | e[5] << 8);
+            if (len > 0 && (buf = malloc(len)) != NULL &&
+                (fseek(f, off, SEEK_SET) != 0 || fread(buf, 1, len, f) != len)) {
+                free(buf);
+                buf = NULL;
+            }
+            if (buf && size)
+                *size = len;
+        }
+        fclose(f);
+        if (buf)
+            return buf;
+    }
+    return NULL;
 }
 
 int hes_exists(int no)
 {
-    char path[600];
-    hes_path(no, path, sizeof path);
-    FILE *f = fopen(path, "rb");
-    if (!f)
-        return 0;
-    fclose(f);
-    return 1;
+    uint8_t *d = rsc_load(no, NULL);
+    free(d);
+    return d != NULL;
 }
 
 uint8_t *hes_file_load(int no, size_t *size)
 {
-    char path[600];
-    hes_path(no, path, sizeof path);
-    FILE *f = fopen(path, "rb");
-    if (!f)
-        return NULL;
-    fseek(f, 0, SEEK_END);
-    long len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    uint8_t *buf = malloc(len > 0 ? (size_t)len : 1);
-    if (buf && fread(buf, 1, (size_t)len, f) != (size_t)len) {
-        free(buf);
-        buf = NULL;
-    }
-    fclose(f);
-    if (buf && size)
-        *size = (size_t)len;
-    return buf;
+    return rsc_load(no, size);
 }
 
 int hes_load_palette(int no, uint8_t rgb[768])

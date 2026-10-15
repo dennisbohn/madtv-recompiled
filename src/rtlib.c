@@ -481,8 +481,8 @@ uint16_t ticks_get(void)
 
 /* PORT: Spielstände getrennt von den Spieldaten. Das Original schreibt sie als 209.HES (Namen
  * der 10 Plätze) und 210..219.HES in den Spielordner. Der Port legt genau diese Dateien im
- * Spielstand-Ordner von Windows ab (platform_save_dir); das Spiel merkt davon nichts. Spielstände
- * im Spielordner werden nicht gelesen. */
+ * Spielstand-Ordner des Systems ab (platform_save_dir); das Spiel merkt davon nichts. Alle anderen
+ * Dateien kommen aus den Archiven (rsc_entry). */
 static int hes_is_save(int16_t no)
 {
     return no >= 0xd1 && no <= 0xdb;
@@ -491,22 +491,18 @@ static int hes_is_save(int16_t no)
 static FILE *hes_open(int16_t no, const char *mode)
 {
     char path[600];
-    if (hes_is_save(no)) {
-        snprintf(path, sizeof path, "%s/%03d.HES", platform_save_dir(), no);
-    } else {
-        snprintf(path, sizeof path, "%s/%03d.HES", platform_game_dir(), no);
-    }
+    if (!hes_is_save(no))
+        return NULL;
+    snprintf(path, sizeof path, "%s/%03d.HES", platform_save_dir(), no);
     return fopen(path, mode);
 }
 
-/* ---- Spieldaten-Archive der überarbeiteten Fassung ----
- * Die zweite Fassung von Mad TV liefert alle HES-Dateien in zwei Archiven SOURCE1.RSC und
+/* ---- Spieldaten-Archive ----
+ * Die Release-Fassung von Mad TV liefert alle HES-Dateien in zwei Archiven SOURCE1.RSC und
  * SOURCE2.RSC: Verzeichnis aus 600 Einträgen zu 6 Byte (u32 Offset, u16 Länge), Eintrag n =
- * Datei n.HES. Sie enthalten jede Datei der Originalfassung, einige davon korrigiert (Shows mit
- * Länge und Zuschauer-Bits, Darstellernamen, Texte, Titelbild mit Copyright, Intro-Szenen).
- * Gelesen wird daher zuerst aus den Archiven, erst dann aus einzelnen NNN.HES-Dateien. Die Archive
- * kommen aus dem Programm selbst (eingebettet) oder aus dem Spielordner bzw. "<Spielordner>2".
- * Spielstände (209–219) werden nie aus den Archiven gelesen. */
+ * Datei n.HES. Die Archive sind ins Programm eingebettet (tools/make_bundle.py); nur die
+ * Testprogramme lesen sie aus einem Ordner (platform_game_dir). Spielstände (209–219) werden nie
+ * aus den Archiven gelesen. */
 enum { RSC_ENTRIES = 600 };
 static const uint8_t *g_rsc[3];
 static long g_rsc_size[3];
@@ -527,26 +523,23 @@ static void rsc_init(void)
             g_rsc_size[k] = (long)len;
             continue;
         }
-        static const char *const fmts[] = {"%s/SOURCE%d.RSC", "%s2/SOURCE%d.RSC"};
-        for (size_t v = 0; v < sizeof fmts / sizeof *fmts && !g_rsc[k]; v++) {
-            char path[600];
-            snprintf(path, sizeof path, fmts[v], platform_game_dir(), k);
-            FILE *f = fopen(path, "rb");
-            if (!f)
-                continue;
-            fseek(f, 0, SEEK_END);
-            long size = ftell(f);
-            fseek(f, 0, SEEK_SET);
-            uint8_t *buf = malloc(size > 0 ? (size_t)size : 1);
-            if (buf && fread(buf, 1, (size_t)size, f) == (size_t)size) {
-                g_rsc[k] = buf;
-                g_rsc_size[k] = size;
-                fprintf(stderr, "Spieldaten aus %s\n", path);
-            } else {
-                free(buf);
-            }
-            fclose(f);
+        char path[600];
+        snprintf(path, sizeof path, "%s/SOURCE%d.RSC", platform_game_dir(), k);
+        FILE *f = fopen(path, "rb");
+        if (!f)
+            continue;
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        uint8_t *buf = malloc(size > 0 ? (size_t)size : 1);
+        if (buf && fread(buf, 1, (size_t)size, f) == (size_t)size) {
+            g_rsc[k] = buf;
+            g_rsc_size[k] = size;
+            fprintf(stderr, "Spieldaten aus %s\n", path);
+        } else {
+            free(buf);
         }
+        fclose(f);
     }
 }
 

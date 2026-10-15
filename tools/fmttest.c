@@ -20,9 +20,9 @@ static void expect(const char *got, const char *want, size_t n, const char *what
 
 int main(int argc, char **argv)
 {
-    const char *dir = argc >= 2 ? argv[1] : "../Gamefiles";
+    const char *dir = argc >= 2 ? argv[1] : "build/data";
     if (dgroup_load(dir) != 0) {
-        printf("MTV.EXE nicht gefunden\n");
+        printf("DGROUP.bin nicht gefunden\n");
         return 1;
     }
     char *s;

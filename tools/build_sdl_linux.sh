@@ -8,7 +8,7 @@
 # und Audio lädt SDL zur Laufzeit (dlopen); die fertige Datei hängt dadurch nur von libc, libm und
 # libdl ab und läuft unter X11 wie Wayland.
 #
-# Aufruf aus port/: sh tools/build_sdl_linux.sh   -> $SDL_LINUX_DIR (Standard build/sdl-linux)/install
+# Aufruf aus der Projektwurzel: sh tools/build_sdl_linux.sh   -> $SDL_LINUX_DIR (Standard build/sdl-linux)/install
 set -e
 VER=2.32.10
 DIR=${SDL_LINUX_DIR:-build/sdl-linux}
@@ -31,7 +31,7 @@ fi
 rm -rf "$DIR/build"
 cmake -S "$SRC" -B "$DIR/build" -G Ninja \
     -DCMAKE_BUILD_TYPE=MinSizeRel \
-    -DCMAKE_INSTALL_PREFIX="$PWD/$DIR/install" \
+    -DCMAKE_INSTALL_PREFIX="$PWD/$DIR/install" -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_C_FLAGS="$CFLAGS" \
     -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL_TESTS=OFF \
     -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF -DSDL_HIDAPI=OFF -DSDL_SENSOR=OFF -DSDL_POWER=OFF \

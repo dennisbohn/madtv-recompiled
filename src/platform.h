@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 /* windowed = 0: Vollbild (Desktop-Auflösung) */
-int platform_init(const char *game_dir, int windowed);
+int platform_init(int windowed);
 void platform_shutdown(void);
 
 /* Ereignisse verarbeiten und den Bildschirm höchstens ~70-mal pro Sekunde anzeigen.

@@ -8,7 +8,7 @@ Nachbau von hes_unpack_sprites (MTV.EXE 4444:04ac):
           tragen ein 8-Bit-Literal.
   Escape: im Startbaum -> 8 Rohbits; im Kontextbaum -> Startbaum dekodieren.
 
-Aufruf: python -I hes.py <Gamefiles-Ordner> <Ausgabeordner>
+Aufruf: python -I hes.py <Ordner mit NNN.HES der Beta, re/v1> <Ausgabeordner>
 """
 import os
 import struct

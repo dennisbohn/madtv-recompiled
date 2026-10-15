@@ -1,50 +1,41 @@
-"""Eine Funktion von Version 1 in Version 2 suchen und beide normalisiert gegenüberstellen.
+"""Eine Funktion der ersten Fassung und ihr Gegenstück in der Release-Fassung gegenüberstellen.
 
-Aufruf: python re/tools/v1v2_func.py SEG:OFF [--asm]
-Zeigt den Unterschied der normalisierten Befehlsfolgen (difflib) und mit --asm beide Listings.
+Aufruf (Projektwurzel, capstone im PYTHONPATH): python re/tools/v1v2_func.py NAME|SEG:OFF [--asm]
+Das Gegenstück kommt aus re/notes/v1v2_map.tsv (re/tools/v1v2_map.py). Gezeigt werden die
+Unterschiede der inhaltlichen Merkmale (Datenzugriffe, Konstanten, Aufrufe), mit --asm zusätzlich
+beide Listings.
 """
 import difflib
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools'))
-from unlzexe import unlzexe  # noqa: E402
-from v1v2_compare import load_v1, md, tokens  # noqa: E402
-
-
-def listing(img, lin, n=400):
-    out = []
-    for ins in md.disasm(img[lin:lin + 4000], 0):
-        out.append('%04x  %-6s %s' % (ins.address, ins.mnemonic, ins.op_str))
-        if ins.mnemonic in ('ret', 'retf') or len(out) >= n:
-            break
-    return out
+import v1v2_map as M  # noqa: E402
 
 
 def main():
-    s, o = (int(x, 16) for x in sys.argv[1].split(':'))
-    v1 = load_v1('re/v1/MTV.EXE')
-    v2, _, _ = unlzexe(open('gamedata/MTV.EXE', 'rb').read())
-    lin = (s - 0x1000) * 16 + o
-    head = tokens(v1, lin, 12)
-    full1 = tokens(v1, lin, 4000)
-    cands = [m.start() for m in re.finditer(b'\x55\x8b\xec', v2) if tokens(v2, m.start(), 12) == head]
-    if not cands:
-        print('kein Gegenstück gefunden')
-        return
-    best = max(cands, key=lambda c: difflib.SequenceMatcher(None, full1, tokens(v2, c, 4000)).ratio())
-    full2 = tokens(v2, best, 4000)
-    print('Version 2: lineare Adresse %x (Seg %04x:%04x), Ähnlichkeit %.2f, %d/%d Befehle' % (
-        best, 0x1000 + best // 16, best % 16, difflib.SequenceMatcher(None, full1, full2).ratio(), len(full1), len(full2)))
-    for line in difflib.unified_diff(full1, full2, 'v1', 'v2', n=2, lineterm=''):
+    key = sys.argv[1]
+    row = None
+    for line in open('re/notes/v1v2_map.tsv', encoding='utf-8'):
+        p = line.rstrip('\n').split('\t')
+        if not line.startswith('#') and key in (p[0], p[2]):
+            row = p
+    if not row or not row[1]:
+        sys.exit('%s: kein Gegenstück in re/notes/v1v2_map.tsv' % key)
+    v1, rel1 = M.load_v1('re/v1/MTV.EXE')
+    v2, rel2 = M.load_v2('gamedata/MTV.EXE')
+    a1 = [int(x, 16) for x in row[0].split(':')]
+    a2 = [int(x, 16) for x in row[1].split(':')]
+    f1 = M.Func(v1, a1[0] - 0x1000, a1[1], lambda x: x, rel1)
+    f2 = M.Func(v2, a2[0] - 0x1000, a2[1], M.ds_v2_to_v1, rel2)
+    print('%s  Beta %s  Release %s  %s %s' % (row[2], row[0], row[1], row[3], row[4]))
+    for line in difflib.unified_diff(f1.tokens, f2.tokens, 'Beta', 'Release', lineterm='', n=2):
         print(line)
     if '--asm' in sys.argv:
-        print('\n--- Version 1 ---')
-        print('\n'.join(listing(v1, lin)))
-        print('\n--- Version 2 ---')
-        print('\n'.join(listing(v2, best)))
+        for title, f in (('Beta', f1), ('Release', f2)):
+            print('\n== %s' % title)
+            for a in sorted(f.ins):
+                print('%04x  %-6s %s' % (a, f.ins[a].mnemonic, f.ins[a].op_str))
 
 
 if __name__ == '__main__':

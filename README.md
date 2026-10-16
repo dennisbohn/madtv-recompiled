@@ -18,7 +18,7 @@ Single file, game data included, no installation.
 
 - Menu bar: *Game* (new game, pause, speed, Control Center switches, quit), *Settings* (language,
   fullscreen), *Help*. In fullscreen, Alt shows it.
-- Keys: Space or P pause, F10 language, F11 or Alt+Enter fullscreen.
+- Keys: Space pause, F10 language, F11 or Alt+Enter fullscreen.
 - Command line as in the original: `D`/`E` picks the language for this start, stars in the second
   argument multiply the computer players' starting capital (e.g. `MadTV-Recompiled… E ***`).
 - Savegames (original format) and `settings.ini`: `%USERPROFILE%\Saved Games\Mad TV Recompiled`

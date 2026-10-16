@@ -5,7 +5,6 @@
 #include "platform.h"
 
 static void debug_room_jump(void);
-static int g_pause_key; /* PORT: Taste P seit dem letzten game_menu_poll */
 static void debug_autoplan(void);
 void save_menu_load(int16_t slot); /* seg_1581.c */
 
@@ -284,10 +283,6 @@ void hotkey_handle(int16_t key)
             DS_I16(0x7a62) = 5;
             return;
         }
-        if (key == 0x35) { /* PORT: 'P' Pause ein/aus (ausgeführt in game_menu_poll) */
-            g_pause_key = 1;
-            return;
-        }
         if (key == 0x2f) { /* 'J': Spielfigur umschalten */
             DS_ADDR(int16_t, 0x7b3c)[g_player_idx * 15] = DS_I16(0x7a14) != 0 ? 4 : 2;
             DS_I16(0x7a14) = DS_I16(0x7a14) == 0;
@@ -437,8 +432,7 @@ void game_menu_poll(void)
     for (int16_t i = 0; i < 3; i++)
         switches |= options_switch_on(i) << i;
     platform_game_show(running ? 2 : 1, DS_I16(0x7282), switches, paused);
-    int pause = platform_pause_request() | g_pause_key; /* Pause umschalten wie Klick auf Start */
-    g_pause_key = 0;
+    int pause = platform_pause_request(); /* Pause umschalten wie Klick auf Start */
     if (pause && paused)
         pause_end();
     else if (pause && running && pause_allowed())

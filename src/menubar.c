@@ -327,8 +327,8 @@ static void layout_menu(const MenuItem *items, float x, float y, float alt_x, fl
         *n = MAX_ITEMS;
     for (int i = 0; i < *n; i++) {
         float iw = (MARK_W + RIGHT_PAD) * dpi + text_width(menu_text(&items[i], g_state.lang));
-        if (items[i].key)
-            iw += KEY_GAP * dpi + text_width(items[i].key);
+        if (menu_key(&items[i], g_state.lang))
+            iw += KEY_GAP * dpi + text_width(menu_key(&items[i], g_state.lang));
         if (items[i].sub)
             iw += ARROW_W * dpi;
         if (iw > w)
@@ -914,8 +914,8 @@ static void draw_menu(const MenuItem *items, const SDL_FRect *menu, const SDL_FR
         if (it->sub) {
             const char *arrow = "\xE2\x80\xBA"; /* › */
             text_draw(arrow, right - text_width(arrow), base, col);
-        } else if (it->key) {
-            text_draw(it->key, roundf(right - text_width(it->key)), base, COL_KEY);
+        } else if (menu_key(it, g_state.lang)) {
+            text_draw(menu_key(it, g_state.lang), roundf(right - text_width(menu_key(it, g_state.lang))), base, COL_KEY);
         }
     }
 }

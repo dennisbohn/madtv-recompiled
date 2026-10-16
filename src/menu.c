@@ -7,52 +7,57 @@
 #endif
 
 static const MenuItem menu_speed_items[] = {
-    {MENU_SPEED_SLOW, {"Langsam", "Slow"}, NULL, MENU_MARK_RADIO, NULL},
-    {MENU_SPEED_NORMAL, {"Normal", "Normal"}, NULL, MENU_MARK_RADIO, NULL},
-    {MENU_SPEED_FAST, {"Schnell", "Fast"}, NULL, MENU_MARK_RADIO, NULL},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_SPEED_SLOW, {"Langsam", "Slow"}, {NULL, NULL}, MENU_MARK_RADIO, NULL},
+    {MENU_SPEED_NORMAL, {"Normal", "Normal"}, {NULL, NULL}, MENU_MARK_RADIO, NULL},
+    {MENU_SPEED_FAST, {"Schnell", "Fast"}, {NULL, NULL}, MENU_MARK_RADIO, NULL},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 static const MenuItem menu_game[] = {
-    {MENU_NEW_GAME, {"Neues Spiel", "New Game"}, NULL, MENU_MARK_NONE, NULL},
-    {MENU_PAUSE, {"Pause", "Pause"}, "P", MENU_MARK_CHECK, NULL},
-    {MENU_NONE, {"Geschwindigkeit", "Speed"}, NULL, MENU_MARK_NONE, menu_speed_items},
-    {MENU_SEPARATOR, {"", ""}, NULL, MENU_MARK_NONE, NULL},
-    {MENU_TV_FAMILY, {"Fernsehfamilie", "TV family"}, NULL, MENU_MARK_CHECK, NULL},
-    {MENU_TV_PICTURE, {"Fernsehbild", "TV picture"}, NULL, MENU_MARK_CHECK, NULL},
-    {MENU_MUSIC, {"Musik", "Music"}, NULL, MENU_MARK_CHECK, NULL},
-    {MENU_SEPARATOR, {"", ""}, NULL, MENU_MARK_NONE, NULL},
-    {MENU_QUIT, {"Beenden", "Quit"}, "Alt+F4", MENU_MARK_NONE, NULL},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_NEW_GAME, {"Neues Spiel", "New Game"}, {NULL, NULL}, MENU_MARK_NONE, NULL},
+    {MENU_PAUSE, {"Pause", "Pause"}, {"Leertaste", "Space"}, MENU_MARK_CHECK, NULL},
+    {MENU_NONE, {"Geschwindigkeit", "Speed"}, {NULL, NULL}, MENU_MARK_NONE, menu_speed_items},
+    {MENU_SEPARATOR, {"", ""}, {NULL, NULL}, MENU_MARK_NONE, NULL},
+    {MENU_TV_FAMILY, {"Fernsehfamilie", "TV family"}, {NULL, NULL}, MENU_MARK_CHECK, NULL},
+    {MENU_TV_PICTURE, {"Fernsehbild", "TV picture"}, {NULL, NULL}, MENU_MARK_CHECK, NULL},
+    {MENU_MUSIC, {"Musik", "Music"}, {NULL, NULL}, MENU_MARK_CHECK, NULL},
+    {MENU_SEPARATOR, {"", ""}, {NULL, NULL}, MENU_MARK_NONE, NULL},
+    {MENU_QUIT, {"Beenden", "Quit"}, {"Alt+F4", "Alt+F4"}, MENU_MARK_NONE, NULL},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 static const MenuItem menu_lang[] = {
-    {MENU_LANG_DE, {"Deutsch", "Deutsch"}, "F10", MENU_MARK_RADIO, NULL},
-    {MENU_LANG_EN, {"English", "English"}, "F10", MENU_MARK_RADIO, NULL},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_LANG_DE, {"Deutsch", "Deutsch"}, {"F10", "F10"}, MENU_MARK_RADIO, NULL},
+    {MENU_LANG_EN, {"English", "English"}, {"F10", "F10"}, MENU_MARK_RADIO, NULL},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 static const MenuItem menu_settings[] = {
-    {MENU_NONE, {"Sprache", "Language"}, NULL, MENU_MARK_NONE, menu_lang},
-    {MENU_FULLSCREEN, {"Vollbild", "Fullscreen"}, "F11", MENU_MARK_CHECK, NULL},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_NONE, {"Sprache", "Language"}, {NULL, NULL}, MENU_MARK_NONE, menu_lang},
+    {MENU_FULLSCREEN, {"Vollbild", "Fullscreen"}, {"F11", "F11"}, MENU_MARK_CHECK, NULL},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 static const MenuItem menu_help[] = {
-    {MENU_ABOUT, {"Über Mad TV Recompiled", "About Mad TV Recompiled"}, NULL, MENU_MARK_NONE, NULL},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_ABOUT, {"Über Mad TV Recompiled", "About Mad TV Recompiled"}, {NULL, NULL}, MENU_MARK_NONE, NULL},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 const MenuItem menu_bar[] = {
-    {MENU_NONE, {"Spiel", "Game"}, NULL, MENU_MARK_NONE, menu_game},
-    {MENU_NONE, {"Einstellungen", "Settings"}, NULL, MENU_MARK_NONE, menu_settings},
-    {MENU_NONE, {"Hilfe", "Help"}, NULL, MENU_MARK_NONE, menu_help},
-    {0, {NULL, NULL}, NULL, 0, NULL},
+    {MENU_NONE, {"Spiel", "Game"}, {NULL, NULL}, MENU_MARK_NONE, menu_game},
+    {MENU_NONE, {"Einstellungen", "Settings"}, {NULL, NULL}, MENU_MARK_NONE, menu_settings},
+    {MENU_NONE, {"Hilfe", "Help"}, {NULL, NULL}, MENU_MARK_NONE, menu_help},
+    {0, {NULL, NULL}, {NULL, NULL}, 0, NULL},
 };
 
 const char *menu_text(const MenuItem *it, int lang)
 {
     return it->text[lang == 1 ? 1 : 0];
+}
+
+const char *menu_key(const MenuItem *it, int lang)
+{
+    return it->key[lang == 1 ? 1 : 0];
 }
 
 int menu_speed(int cmd)
@@ -130,7 +135,7 @@ const char *menu_about_text(int lang, const char *platform)
                          "https://github.com/dennisbohn/madtv-recompiled\n\n"
                          "Tasten:\n"
                          "F10\tSprache wechseln\n"
-                         "P\tPause\n"
+                         "Leertaste\tPause\n"
                          "F11\tVollbild ein/aus (auch Alt+Enter)\n"
                          "Alt\tMenüleiste im Vollbild\n\n"
                          "Mad TV © 1991 Rainbow Arts."
@@ -142,7 +147,7 @@ const char *menu_about_text(int lang, const char *platform)
                          "https://github.com/dennisbohn/madtv-recompiled\n\n"
                          "Keys:\n"
                          "F10\tSwitch language\n"
-                         "P\tPause\n"
+                         "Space\tPause\n"
                          "F11\tToggle fullscreen (also Alt+Enter)\n"
                          "Alt\tMenu bar in fullscreen\n\n"
                          "Mad TV © 1991 Rainbow Arts.",

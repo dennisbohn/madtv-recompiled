@@ -42,7 +42,7 @@ enum MenuMark { MENU_MARK_NONE, MENU_MARK_CHECK, MENU_MARK_RADIO };
 typedef struct MenuItem {
     int cmd;                    /* MENU_NONE bei Untermenüs */
     const char *text[2];        /* Deutsch, Englisch; text[0] == NULL beendet die Liste */
-    const char *key;            /* angezeigtes Tastenkürzel oder NULL */
+    const char *key[2];         /* angezeigtes Tastenkürzel (Deutsch, Englisch) oder NULL */
     int mark;                   /* enum MenuMark */
     const struct MenuItem *sub; /* Untermenü oder NULL */
 } MenuItem;
@@ -52,6 +52,7 @@ extern const MenuItem menu_bar[];
 
 /* Text in der Sprache lang (0 Deutsch, 1 Englisch; -1 = noch keine gewählt, dann Deutsch) */
 const char *menu_text(const MenuItem *it, int lang);
+const char *menu_key(const MenuItem *it, int lang);
 /* Häkchen bzw. Auswahlpunkt gesetzt? Eintrag wählbar? */
 int menu_checked(int cmd, const MenuState *s);
 int menu_enabled(int cmd, const MenuState *s);

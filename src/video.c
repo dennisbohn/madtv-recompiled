@@ -295,8 +295,8 @@ static void menu_update_items(HMENU m, const MenuItem *items, const MenuState *s
             continue;
         char utf8[160];
         wchar_t text[160];
-        if (it->key)
-            snprintf(utf8, sizeof utf8, "%s\t%s", menu_text(it, g_lang_shown), it->key);
+        if (menu_key(it, g_lang_shown))
+            snprintf(utf8, sizeof utf8, "%s\t%s", menu_text(it, g_lang_shown), menu_key(it, g_lang_shown));
         else
             snprintf(utf8, sizeof utf8, "%s", menu_text(it, g_lang_shown));
         widen(utf8, text, (int)(sizeof text / sizeof *text));

@@ -69,7 +69,7 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | schedule_room_refresh | 1054:3bb6 | 1054:4135 | screen_update dupliziert statt gemeinsamem Ende | Rauschen |
 | schedule_hover_editable | 1054:22de | 1054:256e | return 1 dupliziert | Rauschen |
 | room_reload | 1054:0bfc | 1054:0d03 | Wert doppelt gestapelt | Rauschen |
-| room_leave | 1054:2490 | 1054:2741 | Neu: Hinweistafel (Raum 0xd) mit gehaltenem Schild verlassen setzt markierte Plätze zurück (Etage aus DS:79ac, wie im Original); sonst Code an gemeinsamen Enden dupliziert | übernommen |
+| room_leave | 1054:2490 | 1054:2741 | Neu: Hinweistafel (Raum 0xd) mit gehaltenem Schild verlassen setzt markierte Plätze zurück; sonst Code an gemeinsamen Enden dupliziert | übernommen; PORT: Etage aus DS:79a8 (gehaltenes Schild) statt DS:79ac (zuletzt getauschtes), das Original konnte so ein falsches Schild ersetzen |
 | room_click_auction | 1581:0345 | 15ff:0359 | Eigenes Programm versteigern: zusätzlich Bit 0x20 löschen | übernommen |
 | room_click_movie_agency | 1581:088c | 15ff:090a | Code an gemeinsamen Enden dupliziert | Rauschen |
 | room_click_schedule | 1581:0c78 | 15ff:0d0e | Code an gemeinsamen Enden dupliziert | Rauschen |
@@ -163,6 +163,8 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | hover_dispatch | 239a:1568 | 24e1:16bb | Endstücke dupliziert; Rollen-Tooltip wie im Port | Rauschen |
 | intro_play | 4301:03ad | 465f:03f2 | Titelbild 100 Takte (2 s) fest stehen lassen | übernommen (ersetzt die bisherige Port-Haltezeit von bis zu 3 s) |
 | room_click_supermarket_shelves | 19e6:0f78 | 1aa4:10cc | Code an gemeinsamen Enden dupliziert | Rauschen |
+| production_plan_panel | 340d:393b | 36a7:3b04 | Rollenliste endet beim ersten Typ 0 (Beta: leerer Rahmen weiter gezeichnet; nur über den Sprungvergleich gefunden) | übernommen |
+| ai_sell_old_programmes | 3b0a:2bb9 | 3dd9:2e72 | Serienschleife `<` statt `<=` (Beta: ein Eintrag zu viel; nur über den Sprungvergleich gefunden) | übernommen |
 
 ## Ohne Gegenstück in der Release-Fassung
 
@@ -173,6 +175,6 @@ room_load_tail (Teil von room_load, über die Sprungtabelle erreicht), stub_21bf
 ## Stand
 
 Alle Funktionen mit Abweichung sind geprüft (re/notes/v1v2_map.tsv). Prüfwerkzeug:
-re/tools/v1v2_map.py vergleicht Datenzugriffe, Konstanten, Strukturversätze und Aufrufe; nicht
-erfasst werden Sprungarten (jl/jle) und Registerwahl. Unterschiede, die nur daraus bestehen,
-würden also nicht auffallen.
+re/tools/v1v2_map.py vergleicht Datenzugriffe, Konstanten, Strukturversätze, Aufrufe und
+Sprungarten (jl/jle/jb/jbe/je); nicht erfasst wird die Registerwahl. Im Port sind die
+übernommenen Stellen nicht eigens markiert, der Code entspricht der Release-Fassung.

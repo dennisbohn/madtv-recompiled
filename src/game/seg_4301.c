@@ -184,7 +184,7 @@ void intro_play(void)
     bmp_fill(g_intro_canvas, 0, 0, 0x1a, 0x90, 0);
     DS_SET_PTR(0x160e, NULL);
     DS_SET_PTR(0x1612, NULL);
-    /* Release-Fassung: Titelbild 100 Takte (2 Sekunden) stehen lassen, nicht abbrechbar.
+    /* Titelbild 100 Takte (2 Sekunden) stehen lassen, nicht abbrechbar.
      * PORT: eine vom Anklicken der Sprache noch gedrückte Maustaste soll das Intro nicht
      * überspringen – erst loslassen. */
     ticks_set(0);

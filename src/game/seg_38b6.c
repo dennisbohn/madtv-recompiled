@@ -122,7 +122,7 @@ void genre_menu_dialog(int16_t xcol, int16_t yrow, int16_t mode)
         if (g_local_player == DS_I16(0x7a16)) {
             for (int16_t i = 0; i < DS_I16(0x732a); i++) {
                 int16_t prog = DS_I16(0x2463 + i * 2);
-                /* Release-Fassung: nur ein volles Fach (4) zeigt 5 (Beta: jedes) */
+                /* nur ein volles Fach (4) zeigt 5 */
                 if (((g < 0xb && prog <= 999 && (int8_t)DS_PTR(uint8_t, 0x2489)[prog * 0x17] == g) ||
                      (g == 0xb && prog > 1000)) && cnt[g] == 4) {
                     cnt[g] = 5;

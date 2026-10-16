@@ -16,7 +16,7 @@ void game_main(int argc, char **argv)
 {
     int16_t click_handled = 0;
 
-    /* Release-Fassung: 1. Argument d/D bzw. e/E wählt die Sprache (dann keine Abfrage),
+    /* 1. Argument d/D bzw. e/E wählt die Sprache (dann keine Abfrage),
      * 2. Argument: Anzahl führender "*" (höchstens 10) vervielfacht das Startkapital der
      * Computergegner (room_click_new_game_setup). PORT: Das Original liest das 2. Argument auch,
      * wenn es fehlt (Nullzeiger); hier gilt dann 0. */
@@ -294,9 +294,8 @@ void hotkey_handle(int16_t key)
             figure_sprites_load_all();
             return;
         }
-        /* Release-Fassung: Leertaste wie ein Klick auf das Uhrzeitfeld (Pause bzw. Pause beenden;
-         * room_click geht mit gesetztem DS:7a7a direkt dorthin). Die Cheat-Eingabe der Beta
-         * (M-A-D-R-I-S-Enter, setzte DS:7a7e) gibt es dort nicht mehr. */
+        /* Leertaste wie ein Klick auf das Uhrzeitfeld (Pause bzw. Pause beenden; room_click geht
+         * mit gesetztem DS:7a7a direkt dorthin) */
         if (key == 0x20 && DS_I16(0x012c) == 0) {
             DS_I16(0x7a7a) = 1;
             room_click();
@@ -1047,7 +1046,7 @@ void day_begin(void)
     production_market_update();
     actors_market_shuffle();
     event_npc_init();
-    news_values_decay(0, 0); /* Release-Fassung: Nachrichten vom Vortag wertlos (Beta: 35 % / 25 %) */
+    news_values_decay(0, 0); /* Nachrichten vom Vortag wertlos */
     news_update(5, 3);
     programmes_topicality_recover();
     if (g_day > 1)
@@ -1193,7 +1192,7 @@ void archive_find_selected(void)
         DS_I16(0x79aa) = 0;
         DS_I16(0x79a8) = 0;
     } else if (sel <= 1000) {
-        for (int16_t g = 1; g < 0xb; g++) /* Release-Fassung: Genre 11 (Serienregal) nicht mehr */
+        for (int16_t g = 1; g < 0xb; g++) /* ohne Genre 11 (Serienregal) */
             for (int16_t k = 0; k < 4; k++)
                 if (DS_I16(0x6ef9 + owner * 0x6c + g * 8 + k * 2) == sel) {
                     DS_I16(0x79a8) = k;
@@ -1422,17 +1421,17 @@ subdialog:
             player_tabs_panel(1);
             player_flags_draw(DS_I16(0x7a16));
         } else if (room == 0xd) {
-            /* Release-Fassung: Hinweistafel mit gehaltenem Schild verlassen: als leer markierte
-             * Plätze (Tür >= 100) zurücksetzen. Als Etage nimmt das Original DS:79ac (Etage des
-             * zuletzt getauschten Schilds), nicht DS:79a8 – übernommen wie dort. Die Beta ließ die
-             * Markierung stehen. */
+            /* Hinweistafel mit gehaltenem Schild verlassen: als leer markierte Plätze (Tür >= 100)
+             * mit dem gehaltenen Schild füllen. PORT: Das Original nimmt als Etage DS:79ac (Etage des zuletzt getauschten
+             * Schilds) statt DS:79a8 (Etage des gehaltenen) und konnte so ein falsches Schild
+             * erzeugen. */
             if (d == 1) {
                 for (int16_t r = 0; r <= 0xc; r++)
                     for (int16_t c = 0; c <= 4; c++) {
                         int8_t *cell = DS_ADDR(int8_t, 0x8a40 + r * 8 + c * 2);
                         if (cell[1] >= 100) {
                             cell[1] = (int8_t)DS_I16(0x79aa);
-                            cell[0] = (int8_t)DS_I16(0x79ac);
+                            cell[0] = (int8_t)DS_I16(0x79a8);
                         }
                     }
                 cursor_drop_item();
@@ -1966,7 +1965,7 @@ void tv_anim_setup(int16_t force)
         }
         layers++;
     }
-    if (force != 2) { /* Release-Fassung: mit 2 ohne diese Zuweisung */
+    if (force != 2) { /* mit 2 ohne diese Zuweisung */
         DS_I16(0x79d4) = 7;
         DS_I16(0x79d6) = 2;
     }
@@ -2064,7 +2063,7 @@ static void language_select_menu(void);
 void language_select(void)
 {
     int lang = platform_setting_get("language", -1);
-    /* Release-Fassung: Sprache aus der Kommandozeile (game_main), keine Abfrage. Sie gilt nur für
+    /* Sprache aus der Kommandozeile (game_main), keine Abfrage. Sie gilt nur für
      * diesen Start, die gespeicherte Einstellung bleibt. */
     int from_args = g_language == 0 || g_language == 1;
     if (from_args) {

@@ -789,8 +789,7 @@ void npc_update(void)
             /* an der Zieltür angekommen */
             int16_t kind = FLOOR_B(FIG_FLOOR(i), 0x1e + FIG_DOOR(i));
             DS_I16(0x8f8e) = kind;
-            /* Release-Fassung: für die Figur des menschlichen Spielers, die Beta prüfte fest Figur 0
-             * und Spieler 1 */
+            /* für die Figur des menschlichen Spielers */
             if (i == g_local_player - 1 && kind >= 1 && kind <= 5 &&
                 FLOOR_B(FIG_FLOOR(i), 0x46 + FIG_DOOR(i)) != i + 1 && player_flag((int16_t)(i + 1), 0) == 0) {
                 DS_I16(0x79ca) = 0x15c; /* fremdes Büro: Zutritt verweigert */
@@ -988,7 +987,7 @@ void building_hover_draw(void)
         }
     }
 
-    /* Meldung (z. B. Zutritt verweigert); Release-Fassung: 1 = still verweigert (room_entry_check) */
+    /* Meldung (z. B. Zutritt verweigert); 1 = still verweigert (room_entry_check) */
     if (DS_I16(0x79ca) > 1) {
         char *s;
         if (DS_I16(0x79ca) == 0x12a || DS_I16(0x79ca) == 0x12e)
@@ -1149,16 +1148,16 @@ void player_eliminated_sequence(void)
     } else {
         /* Computerspieler: Besitz freigeben */
         PLAYER_OUT(player) = 1;
-        DS_I32(0x6e09 + player * 0x3c + 0x14) = 0; /* Release-Fassung */
+        DS_I32(0x6e09 + player * 0x3c + 0x14) = 0;
         for (int16_t i = 0; i < DS_I16(0x7688 + player * 2); i++)
             DS_U8(0x3f3e + DS_I16(0x1b50 + player * 0x46 + i * 7) * 0x18) = 0; /* Werbeverträge */
         DS_I16(0x7688 + player * 2) = 0;
-        if (player == DS_I16(0x79de)) /* Release-Fassung: Fernseher auf den eigenen Sender */
+        if (player == DS_I16(0x79de)) /* Fernseher auf den eigenen Sender */
             DS_I16(0x79de) = g_local_player;
         for (int16_t g = 1; g < 0xb; g++)
             for (int16_t k = 0; k < DS_I8(0x6f59 + player * 0x6c + g); k++)
                 DS_PTR(uint8_t, 0x2489)[DS_I16(0x6ef9 + player * 0x6c + g * 8 + k * 2) * 0x17 + 5] = 0; /* Filme */
-        for (int16_t k = 0; k < DS_I8(0x6f59 + player * 0x6c + 0xb); k++) /* Release-Fassung: Serien */
+        for (int16_t k = 0; k < DS_I8(0x6f59 + player * 0x6c + 0xb); k++) /* Serien freigeben */
             DS_PTR(uint8_t, 0x2626)[DS_I16(0x6ef9 + player * 0x6c + 0xb * 8 + k * 2) * 0x39 + 0x24] = 0;
         DS_I16(0x8bc8 + player * 0x17) = 0;
         for (int16_t s = 1; s < 0xd; s++) { /* Studios */

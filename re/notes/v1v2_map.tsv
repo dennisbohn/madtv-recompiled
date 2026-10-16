@@ -8,27 +8,27 @@
 1000:042f	1000:042f	?	gleich	1.00
 1000:050a	1000:050a	?	gleich	1.00
 1000:0529	1000:0529	?	gleich	1.00
-1054:0005	1054:0005	game_main	anders	0.95
-1054:076c	1054:085e	hotkey_handle	anders	0.93
+1054:0005	1054:0005	game_main	anders	0.94
+1054:076c	1054:085e	hotkey_handle	anders	0.92
 1054:0927	1054:0a0b	init_tables	anders	0.97
 1054:0bd3	1054:0cda	config_read	gleich	1.00
-1054:0bfc	1054:0d03	room_reload	anders	0.98
+1054:0bfc	1054:0d03	room_reload	anders	0.99
 1054:0d49	1054:0e5f	room_enter	anders	0.98
-1054:0e4c	1054:0f79	room_load	anders	0.98
+1054:0e4c	1054:0f79	room_load	anders	0.97
 1054:1149		room_load_frag_1149	fehlt	
 1054:1527		room_load_frag_1527	fehlt	
 1054:15fb		room_load_tail	fehlt	
 1054:1bb9	1054:1db7	room_free_resources	gleich	1.00
 1054:1ce0	1054:1eec	room_load_background	anders	0.95
-1054:1d57	1054:1f6f	day_begin	anders	0.98
+1054:1d57	1054:1f6f	day_begin	anders	0.99
 1054:1ea5	1054:20e0	clock_update	anders	0.98
 1054:21bf		stub_21bf	fehlt	
 1054:21c4	1054:242a	archive_find_selected	anders	0.97
 1054:2276	1054:24e0	schedule_remove_hour	gleich	1.00
-1054:2298	1054:2505	schedule_clear_programme	anders	0.82
-1054:22de	1054:256e	schedule_hover_editable	anders	0.95
-1054:2386	1054:2632	info_board_build	anders	0.91
-1054:2490	1054:2741	room_leave	anders	0.92
+1054:2298	1054:2505	schedule_clear_programme	anders	0.84
+1054:22de	1054:256e	schedule_hover_editable	anders	0.96
+1054:2386	1054:2632	info_board_build	anders	0.88
+1054:2490	1054:2741	room_leave	anders	0.93
 1054:2e1c	1054:32b6	day_end_walk_home	gleich	1.00
 1054:2e60	1054:32fc	player_walk_to_exit	gleich	1.00
 1054:2efb	1054:33b3	player_walk_to_boss	gleich	1.00
@@ -43,7 +43,7 @@
 1054:3a53	1054:3fc1	savegame_names_load	gleich	1.00
 1054:3ab1	1054:4021	savegame_names_save	gleich	1.00
 1054:3b34	1054:40a6	sprite_pool_load	gleich	1.00
-1054:3bb6	1054:4135	schedule_room_refresh	anders	0.98
+1054:3bb6	1054:4135	schedule_room_refresh	anders	0.99
 1054:3c59	1054:41e2	movie_agency_reload_texts	gleich	1.00
 1054:3ca4	1054:4233	language_select	gleich	1.00
 1433:0002	148c:0007	text_cache_news	anders	0.99
@@ -63,25 +63,25 @@
 1433:1373	148c:15a2	text_cache_load_show	gleich	1.00
 1433:148c	148c:16c8	text_cache_series_free	gleich	1.00
 1433:14a0	148c:16eb	text_cache_show_free_slot	gleich	1.00
-1581:0009	15ff:000a	room_click	anders	0.95
-1581:0345	15ff:0359	room_click_auction	anders	0.97
+1581:0009	15ff:000a	room_click	anders	0.92
+1581:0345	15ff:0359	room_click_auction	anders	0.98
 1581:088c	15ff:090a	room_click_movie_agency	anders	0.99
 1581:0c78	15ff:0d0e	room_click_schedule	anders	0.99
 1581:19f0	15ff:1b1d	room_click_building	anders	0.99
 1581:1bbd	15ff:1d23	room_click_info_board	anders	0.99
 1581:201c	15ff:21c0	room_click_elevator_board	gleich	1.00
-1581:2220	15ff:23d8	room_click_office	anders	0.91
+1581:2220	15ff:23d8	room_click_office	anders	0.87
 1581:23ca	15ff:25a4	room_click_news_studio	anders	1.00
 1581:25b9		room_click_news_studio_frag	fehlt	
 1581:29fc	15ff:2c02	room_click_station_map	anders	0.98
 1581:3156	15ff:33f6	room_click_ad_agency	anders	1.00
 1581:353d	15ff:380b	room_click_screenplay_agency	gleich	1.00
-1581:37d8	15ff:3ab7	room_click_real_estate	anders	0.95
+1581:37d8	15ff:3ab7	room_click_real_estate	anders	0.96
 1581:3aaf	15ff:3ddf	room_click_studio	anders	0.96
 1581:4112	15ff:44cf	save_menu_refresh	gleich	1.00
 1581:4135	15ff:44f4	room_click_save_menu	anders	0.98
 1581:454e	15ff:4957	room_click_porter	gleich	1.00
-19e6:0004	1aa4:000e	room_click_boss	anders	0.96
+19e6:0004	1aa4:000e	room_click_boss	anders	0.97
 19e6:09f7	1aa4:0ac5	room_click_new_game_setup	anders	0.95
 19e6:0c29	1aa4:0d65	room_click_supermarket	anders	1.00
 19e6:0f78	1aa4:10cc	room_click_supermarket_shelves	anders	0.99
@@ -96,8 +96,8 @@
 19e6:1eb8	1aa4:20c1	shoplist_redraw	gleich	1.00
 19e6:1ec3	1aa4:20cc	news_item_draw	gleich	1.00
 19e6:1f8c	1aa4:2197	hotspot_at_mouse	gleich	1.00
-19e6:2022	1aa4:2243	station_next_valid	anders	0.93
-19e6:207c	1aa4:22ab	station_prev_valid	anders	0.93
+19e6:2022	1aa4:2243	station_next_valid	anders	0.92
+19e6:207c	1aa4:22ab	station_prev_valid	anders	0.92
 19e6:20d6	1aa4:2313	programme_sell_selected	gleich	1.00
 19e6:2174	1aa4:23b5	adcontract_offers_commit	gleich	1.00
 19e6:21f1	1aa4:2439	screenplay_offers_commit	gleich	1.00
@@ -132,7 +132,7 @@
 1c74:0260	1d5e:0280	clock_suspend	gleich	1.00
 1c74:0291	1d5e:02b1	clock_resume	gleich	1.00
 1c74:02b5	1d5e:02d6	clock_get_cached	gleich	1.00
-1c74:02c3	1d5e:02e4	clock_get_seconds	anders	0.94
+1c74:02c3	1d5e:02e4	clock_get_seconds	anders	0.95
 1c74:0384	1d5e:03ad	spritebank_fix_pointers	gleich	1.00
 1c74:03e4	1d5e:0416	far_free_ptr	gleich	1.00
 1c74:0408	1d5e:043a	figure_frame_bytes	gleich	1.00
@@ -174,13 +174,13 @@
 1d41:0874	1e35:0901	text_fit_width	gleich	1.00
 1d41:08d7	1e35:0989	text_width	gleich	1.00
 1d41:0927		str_is_prefix	fehlt	
-1dd5:000f	1ed7:0004	game_tick	anders	0.99
-1dd5:0884	1ed7:08b8	screen_update	anders	0.99
+1dd5:000f	1ed7:0004	game_tick	anders	1.00
+1dd5:0884	1ed7:08b8	screen_update	anders	1.00
 1dd5:0a44	1ed7:0a8c	lower_screen_present	gleich	1.00
 1dd5:0b74	1ed7:0bbe	cursor_reset	gleich	1.00
 1dd5:0b8d	1ed7:0bd7	text_input	gleich	1.00
 1dd5:0d83	1ed7:0de2	set_cursor_shape	gleich	1.00
-1dd5:0dcb	1ed7:0e2e	tetris_tick	anders	1.00
+1dd5:0dcb	1ed7:0e2e	tetris_tick	anders	0.99
 1dd5:169a	1ed7:1752	draw_tile_box	gleich	1.00
 1dd5:16bd	1ed7:1775	draw_tile_box_to	anders	0.99
 1f51:0003	205e:000e	mouse_show	gleich	1.00
@@ -233,7 +233,7 @@
 1f51:16dd	205e:17ab	mouse_update	gleich	1.00
 1f51:1703	205e:17d1	room_animate	anders	0.99
 1f51:2c36	205e:2dd2	anim_step_every	gleich	1.00
-1f51:2c53	205e:2def	room_region_restore	anders	0.91
+1f51:2c53	205e:2def	room_region_restore	anders	0.93
 1f51:2e46	205e:3002	popup_box_create	anders	0.98
 1f51:3060	205e:3247	popup_box_present	gleich	1.00
 1f51:3099	205e:3280	tv_picture_update	gleich	1.00
@@ -273,9 +273,9 @@
 27bb:0756	293d:07bb	building_elevator_draw	gleich	1.00
 27bb:0a3b	293d:0aaf	building_sides_draw	gleich	1.00
 27bb:0b9e	293d:0c1c	building_animate	gleich	1.00
-27bb:0ce1	293d:0d62	figures_update	anders	0.97
-27bb:11fb	293d:12fa	npc_update	anders	0.97
-27bb:198f	293d:1b63	elevator_update	anders	0.96
+27bb:0ce1	293d:0d62	figures_update	anders	0.98
+27bb:11fb	293d:12fa	npc_update	anders	0.98
+27bb:198f	293d:1b63	elevator_update	anders	0.97
 27bb:1be9	293d:1df9	building_hover_draw	anders	0.98
 27bb:21dd	293d:2424	door_label_text	gleich	1.00
 27bb:231e	293d:257a	player_eliminated_sequence	anders	0.95
@@ -314,13 +314,13 @@
 2bd1:012f	2da8:0146	newscast_quality_sum	gleich	1.00
 2bd1:016c	2da8:0187	channel_value_sum	gleich	1.00
 2bd1:01ac	2da8:01cb	show_episode_count	gleich	1.00
-2bd1:01f6	2da8:0217	programmes_topicality_recover	anders	0.97
+2bd1:01f6	2da8:0217	programmes_topicality_recover	anders	0.96
 2bd1:0301	2da8:034e	hour_start	gleich	1.00
 2bd1:0668	2da8:06ea	archive_capacity_check	gleich	1.00
 2bd1:07c2	2da8:085d	programme_genre_get	gleich	1.00
 2bd1:07fb	2da8:0899	ad_spots_remaining	gleich	1.00
 2bd1:08f0	2da8:099c	ad_contracts_expire	gleich	1.00
-2bd1:0a80	2da8:0b53	special_film_check	anders	0.98
+2bd1:0a80	2da8:0b53	special_film_check	anders	0.99
 2bd1:0bc8	2da8:0cb3	auction_lot_set	gleich	1.00
 2bd1:0d6e	2da8:0e74	player_message_push	gleich	1.00
 2bd1:0e2f	2da8:0f5b	loan_interest_pay	gleich	1.00
@@ -328,13 +328,13 @@
 2bd1:10d6	2da8:1227	market_daily_cleanup	gleich	1.00
 2bd1:11e3	2da8:135d	licenses_expire	gleich	1.00
 2bd1:12cc	2da8:1451	actors_market_shuffle	gleich	1.00
-2bd1:13b0	2da8:1538	start_programmes_assign	anders	0.97
+2bd1:13b0	2da8:1538	start_programmes_assign	anders	0.98
 2bd1:1637	2da8:17e3	station_reach_at	gleich	1.00
 2bd1:1729	2da8:18e0	map_cell_value	gleich	1.00
 2bd1:175f	2da8:1918	map_population_sum	gleich	1.00
 2bd1:1847	2da8:1a03	stations_reach_update	gleich	1.00
 2bd1:1906	2da8:1acb	coverage_map_build	gleich	1.00
-2bd1:1af5	2da8:1cc2	building_map_door_pos	anders	0.80
+2bd1:1af5	2da8:1cc2	building_map_door_pos	anders	0.74
 2bd1:1b88	2da8:1d4e	door_name_text	gleich	1.00
 2bd1:1cd9		seg2bd1_unk_1cd9	fehlt	
 2bd1:1cef	2da8:1ec6	hour_index	gleich	1.00
@@ -363,19 +363,19 @@
 2bd1:31a0	2da8:3554	episode_descr_get	gleich	1.00
 2bd1:31f4	2da8:35b2	show_text_title_get	gleich	1.00
 2bd1:322e	2da8:35f6	show_text_get	gleich	1.00
-2bd1:3271	2da8:3643	room_entry_check	anders	0.76
-2bd1:363d	2da8:395a	ratings_rank_update	anders	0.96
+2bd1:3271	2da8:3643	room_entry_check	anders	0.77
+2bd1:363d	2da8:395a	ratings_rank_update	anders	0.97
 2bd1:379e		seg2bd1_unk_379e	fehlt	
 2bd1:3803		seg2bd1_unk_3803	fehlt	
-2bd1:3895	2da8:3be8	image_distribute	anders	0.97
+2bd1:3895	2da8:3be8	image_distribute	anders	0.96
 2bd1:399e		seg2bd1_unk_399e	fehlt	
 2bd1:3b5d	2da8:3f0d	price_step_next	gleich	1.00
 2bd1:3b6f		seg2bd1_unk_3b6f	fehlt	
 2bd1:3b96	2da8:3f48	genre_value_get	gleich	1.00
-2bd1:3ba7	2da8:3f5b	film_price	anders	0.93
+2bd1:3ba7	2da8:3f5b	film_price	anders	0.94
 2bd1:3c6e	2da8:4035	series_price	gleich	1.00
 2bd1:3d63	2da8:412f	fmt_money	gleich	1.00
-2bd1:3e86	2da8:4258	ad_genre_allowed	anders	0.96
+2bd1:3e86	2da8:4258	ad_genre_allowed	anders	0.98
 2bd1:3f0b	2da8:42e5	news_count_by_category	gleich	1.00
 2bd1:3f4f	2da8:432d	news_find_next	gleich	1.00
 2bd1:3fa2	2da8:4384	image_at_least	gleich	1.00
@@ -396,8 +396,8 @@
 300f:0286	322a:02a1	stations_settle	gleich	1.00
 300f:03a5	322a:03d1	production_clear_first	gleich	1.00
 300f:03c2	322a:03ee	case_remove	gleich	1.00
-300f:03f8	322a:0424	production_costs_update	anders	0.93
-300f:0599	322a:061e	case_store_to_archive	anders	0.86
+300f:03f8	322a:0424	production_costs_update	anders	0.91
+300f:0599	322a:061e	case_store_to_archive	anders	0.88
 3077:0049	329e:004a	player_toggle_flag	gleich	1.00
 3077:0087	329e:0088	trade_item_toggle	gleich	1.00
 3077:0195	329e:01bb	schedule_place_ad	gleich	1.00
@@ -405,7 +405,7 @@
 3077:0415	329e:0465	schedule_clear_slot	gleich	1.00
 3077:0453	329e:04a3	schedule_remove_programme	gleich	1.00
 3077:04c2	329e:051f	programme_check_sellable	gleich	1.00
-3077:0781	329e:0828	broadcast_hour_tick	anders	0.95
+3077:0781	329e:0828	broadcast_hour_tick	anders	0.96
 3077:087b	329e:0948	money_check	gleich	1.00
 3077:08d7	329e:09af	studio_prepare_episode	gleich	1.00
 3077:0a98	329e:0b98	studio_produce_episode	anders	0.98
@@ -416,17 +416,17 @@
 3077:11be	329e:1386	savegame_load	gleich	1.00
 3077:11d2	329e:139a	savegame_serialize	gleich	1.00
 3077:1d69	329e:200d	savegame_save	gleich	1.00
-3077:1d7c	329e:2020	savegame_io	anders	0.93
+3077:1d7c	329e:2020	savegame_io	anders	0.95
 3077:1e75	329e:2140	archive_contains	gleich	1.00
 3264:0001	34b8:000c	ad_market_update	gleich	1.00
 3264:0274	34b8:02c1	production_market_update	gleich	1.00
-3264:0438	34b8:04b9	market_update_prices	anders	0.86
+3264:0438	34b8:04b9	market_update_prices	anders	0.84
 3264:0717	34b8:0905	auction_day_end	anders	0.68
 3264:08ce	34b8:0c4a	ratings_calc	anders	0.97
 3264:1759	34b8:1b5c	daily_topic_pick	gleich	1.00
 3264:17e2	34b8:1bfd	schedule_get_programme	gleich	1.00
 3264:1825	34b8:1c4c	name_table_get	gleich	1.00
-3264:185a	34b8:1c8c	day_check_players	anders	0.99
+3264:185a	34b8:1c8c	day_check_players	anders	1.00
 340d:0002	36a7:000d	show_message_text	gleich	1.00
 340d:0050	36a7:005d	show_message	gleich	1.00
 340d:006a	36a7:0077	show_info_overlay	gleich	1.00
@@ -467,7 +467,7 @@
 340d:359d	36a7:3749	studio_cast_preview	gleich	1.00
 340d:372f	36a7:38ea	studio_production_dialog	gleich	1.00
 340d:386f	36a7:3a31	confirm_bubble_dialog	anders	0.99
-340d:393b	36a7:3b04	production_plan_panel	gleich	1.00
+340d:393b	36a7:3b04	production_plan_panel	anders	1.00
 340d:40c6	36a7:42b2	people_select_dialog	gleich	1.00
 340d:41be	36a7:43ad	player_ranking_panel	gleich	1.00
 340d:440b	36a7:4611	statistics_panel	anders	0.98
@@ -483,7 +483,7 @@
 38b6:0cb4	3b74:0d03	bubble_text_dialog	gleich	1.00
 38b6:0cfa	3b74:0d49	bubble_text_dialog_small	gleich	1.00
 38b6:0d45	3b74:0d96	speech_bubble	gleich	1.00
-38b6:0dc5	3b74:0e17	speech_bubble_text52	anders	0.92
+38b6:0dc5	3b74:0e17	speech_bubble_text52	anders	0.93
 38b6:0e0a	3b74:0e63	options_panel	gleich	1.00
 38b6:1059	3b74:10b8	option_switch_draw	gleich	1.00
 38b6:10f0	3b74:114f	bubble_dialog_8820	gleich	1.00
@@ -509,28 +509,28 @@
 3b0a:138e	3dd9:1498	ai_plan_schedule	gleich	1.00
 3b0a:150e	3dd9:162a	ai_place_ad_contract	gleich	1.00
 3b0a:1864	3dd9:1990	ai_place_ad_range	gleich	1.00
-3b0a:190e	3dd9:1a3f	ai_choose_films	anders	0.96
+3b0a:190e	3dd9:1a3f	ai_choose_films	anders	0.97
 3b0a:1c47	3dd9:1dda	ai_buy_films	gleich	1.00
 3b0a:1ef1	3dd9:20ba	ai_auction_bid	gleich	1.00
 3b0a:2194	3dd9:2386	ai_auction_overbid	gleich	1.00
-3b0a:24cc	3dd9:26ea	ai_budget_plan	anders	0.99
+3b0a:24cc	3dd9:26ea	ai_budget_plan	anders	0.98
 3b0a:2900	3dd9:2b8d	ai_eval_ratings	gleich	1.00
 3b0a:2a7f	3dd9:2d26	ai_sell_programme	gleich	1.00
-3b0a:2bb9	3dd9:2e72	ai_sell_old_programmes	gleich	1.00
+3b0a:2bb9	3dd9:2e72	ai_sell_old_programmes	anders	0.99
 3b0a:2dbc	3dd9:3085	series_avg_quality	gleich	1.00
 3b0a:2e4d	3dd9:311d	ai_choose_ad_contracts	gleich	1.00
-3b0a:30bd	3dd9:33cb	ai_can_take_contract	anders	0.97
+3b0a:30bd	3dd9:33cb	ai_can_take_contract	anders	0.96
 3b0a:323f	3dd9:3576	archive_total_length	gleich	1.00
 3b0a:32f0	3dd9:362d	ai_genre_total_length	gleich	1.00
-3b0a:3410	3dd9:3754	ai_ad_spots_per_day	anders	0.97
+3b0a:3410	3dd9:3754	ai_ad_spots_per_day	anders	0.95
 3b0a:34c6	3dd9:381e	ai_ad_target_ok	gleich	1.00
 3b0a:361d	3dd9:3985	ai_check_arrival	anders	0.96
-3b0a:3854	3dd9:3c0d	ai_goto_next	anders	0.96
+3b0a:3854	3dd9:3c0d	ai_goto_next	anders	0.97
 3b0a:3cb4	3dd9:4115	ai_switch_player	gleich	1.00
 3b0a:3cc5	3dd9:4126	ai_figure_goto	gleich	1.00
-3b0a:3d84	3dd9:41ff	ai_choose_studio_action	anders	0.96
+3b0a:3d84	3dd9:41ff	ai_choose_studio_action	anders	0.94
 3b0a:3ea3	3dd9:434f	production_avg_quality	gleich	1.00
-3b0a:3f21	3dd9:43d6	ai_unfinished_avg_quality	anders	0.89
+3b0a:3f21	3dd9:43d6	ai_unfinished_avg_quality	anders	0.76
 3b0a:3f93	3dd9:4460	ai_day_plan	gleich	1.00
 3b0a:4219	3dd9:4719	ai_schedule_live	gleich	1.00
 3b0a:4344	3dd9:4862	ai_state_news_event	gleich	1.00
@@ -550,7 +550,7 @@
 3f95:1131	42ba:11ae	ai_choose_gift	gleich	1.00
 3f95:12a1	42ba:1331	ai_give_gift	gleich	1.00
 3f95:1390	42ba:1432	ai_schedule_programmes	gleich	1.00
-3f95:174b	42ba:1800	ai_pick_destination	anders	0.93
+3f95:174b	42ba:1800	ai_pick_destination	anders	0.94
 3f95:19f7	42ba:1b17	find_event_door	anders	0.99
 3f95:1b31	42ba:1c6b	building_find_door	gleich	1.00
 4151:0002	448b:0003	ai_count_short_programmes	gleich	1.00
@@ -561,16 +561,16 @@
 4151:0553	448b:059f	ai_init_new_game	gleich	1.00
 4151:06a8	448b:070c	ai_ad_spot_count	gleich	1.00
 4151:0786	448b:07ff	ai_ad_contract_init	gleich	1.00
-4151:080a	448b:0895	ai_archive_avg_quality	anders	0.97
+4151:080a	448b:0895	ai_archive_avg_quality	anders	0.96
 4151:08e8	448b:098d	ai_rent_studio	gleich	1.00
 4151:09fd	448b:0aaf	ai_buy_production	gleich	1.00
-4151:0d1a	448b:0df7	ai_produce_episode	anders	0.93
+4151:0d1a	448b:0df7	ai_produce_episode	anders	0.92
 4151:0e28	448b:0f05	ai_prepare_episode	anders	0.99
 4151:0f75	448b:1087	ai_cast_episode	anders	0.97
 42a0:0001	45f1:000a	bit_set	gleich	1.00
 42a0:0016	45f1:0028	bit_clear	gleich	1.00
 42a0:002d	45f1:0048	bit_test	gleich	1.00
-42a5:0002	45f8:0003	snd_init	anders	0.82
+42a5:0002	45f8:0003	snd_init	anders	0.83
 42a5:01a8	45f8:024c	music_load_play	anders	0.96
 42a5:027f	45f8:0330	music_free	gleich	1.00
 42a5:028f	45f8:0341	music_start	gleich	1.00
@@ -580,7 +580,6 @@
 42a5:04dd	45f8:058f	music_on_leave	gleich	1.00
 42a5:0582	45f8:0636	para_align	gleich	1.00
 42a5:059a		timer_init	fehlt	
-42fe:000a	4736:0007	?	anders	0.50
 42fe:000e	465d:0006	ticks_reset	gleich	1.00
 42fe:0015	465d:000d	timer_shutdown	gleich	1.00
 42fe:0016	465d:000e	ticks_get	gleich	1.00
@@ -594,7 +593,7 @@
 438d:0002	46f4:0009	?	anders	0.92
 438d:00d8	46f4:010c	?	gleich	1.00
 438d:0119	46f4:015e	?	gleich	1.00
-438d:01b7	46f4:0205	?	anders	0.77
+438d:01b7	46f4:0205	?	anders	0.79
 43ae:0024	471e:0024	?	gleich	1.00
 43ae:0083	471e:0083	?	gleich	1.00
 43ae:0092	471e:0092	?	gleich	1.00
@@ -624,7 +623,7 @@
 44e4:000d	483e:0007	?	gleich	1.00
 44ef:000a	4859:0002	?	gleich	1.00
 4519:0010	48c0:0008	?	gleich	1.00
-451d:0003	48c3:000b	?	anders	0.78
+451d:0003	48c3:000b	?	anders	0.80
 4520:0002	48c6:000a	?	gleich	1.00
 4568:0004	4962:0001	?	gleich	1.00
 4568:0088	4962:0085	?	gleich	1.00

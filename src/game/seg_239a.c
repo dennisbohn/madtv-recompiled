@@ -125,7 +125,7 @@ void room_hover(void)
         if (g_cur_dialog == 2) { /* Archiv */
             if (g_hotspot != 0x18)
                 goto dispatch;
-            /* Release-Fassung: nur belegte Plätze des Fachs (Beta: auch alte Einträge dahinter) */
+            /* nur belegte Plätze des Fachs */
             if ((g_cursor_y - 0x48) / 10 >= DS_I8(0x6f59 + g_view_player * 0x6c + DS_I16(0x79aa)))
                 goto dispatch;
             int16_t v = DS_I16(0x6ef9 + g_view_player * 0x6c + DS_I16(0x79aa) * 8 + ((g_cursor_y - 0x48) / 10) * 2);
@@ -1238,7 +1238,7 @@ void info_card_film_small(int16_t film)
     } else if (genre == 7 || genre == 8) {
         HV_STR_SET(5, fmt(DS_ADDR(char, 0x1114)));
     } else {
-        /* Release-Fassung: ohne Qualitätswert 40 (die Beta teilte durch 0) */
+        /* ohne Qualitätswert 40 */
         int16_t v = (int8_t)f[1] != 0 ? ((int8_t)f[3] * 0x28) / (int8_t)f[1] : 0x28;
         HV_STR_SET(5, fmt(g_text(0x1a1), v));
     }

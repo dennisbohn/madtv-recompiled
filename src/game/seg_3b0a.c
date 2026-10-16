@@ -101,8 +101,7 @@ void ai_tick(void)
         }
         goto done;
     case 7: /* Studio */
-        /* Release-Fassung: Aktion hier neu bestimmen; eine unbekannte endet ohne Aktion (die
-         * Beta fiel in Fall 8 durch) */
+        /* Aktion hier neu bestimmen; eine unbekannte endet ohne Aktion */
         ai_choose_studio_action(p);
         switch (DS_I8(0x262c + p * 3)) {
         case 0: goto next;
@@ -810,7 +809,7 @@ void ai_sell_old_programmes(void)
     }
     if (ARCHIVE_COUNT(p, 0xb) > 3) {
         int16_t worst = 100, pick = -1;
-        for (int16_t k = 0; k <= ARCHIVE_COUNT(p, 0xb); k++) {
+        for (int16_t k = 0; k < ARCHIVE_COUNT(p, 0xb); k++) {
             uint8_t *s = SERIES(ARCHIVE(p, 0xb, k));
             if (UW(s, 0x26) & 2)
                 continue;
@@ -894,7 +893,7 @@ int8_t ai_can_take_contract(int16_t advertiser_id)
         left += (int8_t)AD(AD_CONTRACT_ID(p, c))[9] - DS_I8(0x1b54 + p * 0x46 + c * 7);
     }
     int16_t rate = a[8] == 0 ? 1 : (int8_t)a[9] / (int8_t)a[8];
-    ok = per_day + rate < 6 && left < 0xf && AD_CONTRACT_COUNT(p) < 8; /* Release-Fassung: höchstens 8 */
+    ok = per_day + rate < 6 && left < 0xf && AD_CONTRACT_COUNT(p) < 8; /* höchstens 8 */
     if (ok == 1) {
         ok = 0;
         for (int16_t k = 1; k < 4; k++)
@@ -943,7 +942,7 @@ int8_t ai_ad_spots_per_day(int16_t contract_idx, int8_t player)
         return 0;
     int16_t left = (int8_t)AD(AD_CONTRACT_ID(player, contract_idx))[9] - c[4];
     int16_t days = DS_I16(0x1b55 + player * 0x46 + contract_idx * 7) - g_day + 1;
-    if (days == 0) /* Release-Fassung: keine Division durch 0 */
+    if (days == 0) /* keine Division durch 0 */
         days = 1;
     return (int8_t)(left / days);
 }
@@ -1023,7 +1022,7 @@ int8_t ai_check_arrival(void)
             ai_goto_next();
         }
     }
-    /* Release-Fassung: Zutritt prüfen wie beim Menschen (z. B. Chef eines anderen Spielers);
+    /* Zutritt prüfen wie beim Menschen (z. B. Chef eines anderen Spielers);
      * verwehrt, dann nächstes Ziel */
     if (free == 1 && room_entry_check((int16_t)(p - 1), 0) != 0) {
         ai_goto_next();
@@ -1150,8 +1149,7 @@ void ai_choose_studio_action(int8_t player)
         if (W(st, 0) == 0) {
             free++;
         } else if (episode_cast_complete(W(st, 0), (int8_t)st[4]) == 1) {
-            /* Release-Fassung: produzieren nur, wenn das Studio frei ist (+0xa, +0xe); fehlende
-             * Besetzung (5) unabhängig davon. Die Beta prüfte +0xa für beide, +0xe gar nicht. */
+            /* produzieren nur, wenn das Studio frei ist (+0xa, +0xe); sonst fehlende Besetzung (5) */
             if (W(st, 0xa) == 0 && st[0xe] == 0) {
                 s[2] = 6;
                 s[0] = (uint8_t)i;
@@ -1195,8 +1193,7 @@ int8_t production_avg_quality(int16_t prod_id)
 /* 3b0a:3f21 – mittlere Qualität der gekauften, noch nicht produzierten Shows (ein Eintrag zu viel) */
 int16_t ai_unfinished_avg_quality(int8_t player)
 {
-    /* Release-Fassung: ohne Einträge 0, sonst Durchschnitt über genau die n Einträge (die Beta
-     * zählte einen zu viel mit) */
+    /* ohne Einträge 0, sonst Durchschnitt über die n Einträge */
     int16_t sum = 0, n = DS_I16(0x7652 + player * 2);
     if (n == 0)
         return 0;

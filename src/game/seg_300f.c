@@ -107,9 +107,8 @@ void production_costs_update(int16_t player)
         for (int16_t r = 1; r < 0xb; r++) {
             uint8_t *role = sh + (ep - 1) * 0x23 + r * 3;
             int16_t actor = (int8_t)role[0xb];
-            /* Release-Fassung (322a:0424): ohne Darsteller keine Gage, Typ 0xf aus der ersten
-             * Tabelle mit Index sh[Typ + 0x1a3] - 1 (Beta: Typ < 0xf, sh[Typ + 0x1a4]), Gage mal
-             * Byte 0xa der Folge */
+            /* ohne Darsteller keine Gage, Typ <= 0xf aus der ersten Tabelle mit Index
+             * sh[Typ + 0x1a3] - 1, Gage mal Byte 0xa der Folge */
             if (player == g_local_player && actor != (int8_t)pr[r + 4] && actor != 0) {
                 int16_t type = (int8_t)role[9];
                 int32_t fee;
@@ -136,7 +135,7 @@ void case_store_to_archive(void)
     int16_t p = g_local_player;
     for (int16_t i = 0; i < SUITCASE_COUNT; i++) {
         int16_t prog = SUITCASE(i), genre;
-        /* Release-Fassung: Besitzer auf den Spieler setzen (auch wenn das Fach voll ist) */
+        /* Besitzer auf den Spieler setzen (auch wenn das Fach voll ist) */
         if (prog < 1000) {
             FILM(prog)[5] = (uint8_t)p;
             genre = (int8_t)FILM(prog)[0];

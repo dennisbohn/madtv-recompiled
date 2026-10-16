@@ -473,7 +473,7 @@ void room_click_auction(void)
                     *(int32_t *)(lot + 2) = prog_price(p);
                     ME_MONEY += prog_price(p);
                     money_add(p < 1000 ? 0xb : 0xc, prog_price(p));
-                    /* Release-Fassung: zusätzlich Bit 0x20 löschen (in der Auktion, nicht auf dem
+                    /* zusätzlich Bit 0x20 löschen (in der Auktion, nicht auf dem
                      * Markt; auction_day_end setzt es zurück, wenn das Los unverkauft bleibt) */
                     if (p < 1000) {
                         FILM(p)[5] = 0;
@@ -1595,9 +1595,8 @@ void room_click_studio(void)
         return;
     }
     case 0x24:
-        /* Release-Fassung: nur bei vorbereiteter Folge; den Eintrag dieser Show aus der
-         * Produktionsliste nehmen (Suche ab dem Index "Anzahl", wie im Original) und eine Folge
-         * weniger vorbereitet. Die Beta zählte nur die Liste herunter. */
+        /* nur bei vorbereiteter Folge: den Eintrag dieser Show aus der Produktionsliste nehmen
+         * (Suche ab dem Index "Anzahl", wie im Original) und eine Folge weniger vorbereitet */
         if ((int8_t)st[5] >= (int8_t)st[4]) {
             for (int16_t i = DS_I16(0x7460 + g_local_player * 2); i >= 0; i--)
                 if (DS_I16(0x732c + g_local_player * 0x4b + i * 0xf) == *(int16_t *)st) {
@@ -1710,7 +1709,7 @@ void save_menu_load(int16_t slot)
         if (g_minute > 4 && g_minute < 0x37)
             tv_anim_setup(1);
         else
-            tv_anim_setup(2); /* Release-Fassung: auch außerhalb der Sendung */
+            tv_anim_setup(2); /* auch außerhalb der Sendung */
     }
     tv_show_current_programme();
     figure_sprites_load_all();
@@ -1768,7 +1767,7 @@ void room_click_save_menu(void)
                     if (DS_I16(0x7a78) != 0) { /* Schreibfehler */
                         save_menu_refresh();
                         show_message(0x1ab);
-                    } else { /* Release-Fassung: nach dem Speichern zurück ins Spiel */
+                    } else { /* nach dem Speichern zurück ins Spiel */
                         g_dialog = 0;
                         room_leave();
                     }

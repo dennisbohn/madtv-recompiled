@@ -854,8 +854,7 @@ void auction_panel(int16_t mode)
             char *s = prog < 1000 ? fmt(DS_ADDR(char, 0x143a), film_title_get(prog))
                                   : fmt(DS_ADDR(char, 0x1440), series_title_get(prog - 1000));
             text_draw_free((int16_t)(x + 0x26), (int16_t)(i * 0x13 - 0xe), s);
-            /* Release-Fassung: Gebotsschritt immer aufschlagen (Beta: nicht beim eigenen Gebot),
-             * ohne Bieter ein zweites Mal */
+            /* Gebotsschritt immer aufschlagen, ohne Bieter ein zweites Mal */
             int16_t bidder = DS_I8(0x1af3 + lot * 9);
             int32_t price = auction_bid_increment(lot) + DS_I32(0x1aef + lot * 9);
             if (bidder < 0) {
@@ -1092,6 +1091,8 @@ void production_plan_panel(void)
         draw_sprite(BANK_BMP(RBANK(0x108), 0x7a), 0xc, 0x5e);
     for (int16_t r = roles + 1; r <= roles + 3; r++) {
         int16_t type = (int8_t)e[r * 3 + 1], cast = (int8_t)e[r * 3 + 3];
+        if (type == 0) /* keine weitere Rolle, auch kein leerer Rahmen */
+            return;
         int16_t x = (int16_t)((r - roles) * 0x58);
         draw_sprite(BANK_BMP(RBANK(0x108), 0x82), (int16_t)(x - 0x30), 0x66);
         if (type >= 1 && type <= 0xf) { /* Rolle: Darstellergruppe */
@@ -1171,8 +1172,7 @@ void player_ranking_panel(void)
     }
 }
 
-/* Balkenhöhe. Release-Fassung: (Wert / 1000) * 15 / (Maßstab * 1000); die Beta rechnete
- * Wert * 15 / (Maßstab * 1 000 000) und lief bei großen Werten über */
+/* Balkenhöhe: (Wert / 1000) * 15 / (Maßstab * 1000) */
 static int16_t stat_bar_height(int32_t v)
 {
     int32_t div = (int32_t)DS_I16(0x79dc) * 1000;

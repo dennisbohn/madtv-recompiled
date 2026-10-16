@@ -12,7 +12,7 @@
 
 /* ---- Segment 1054 ---- */
 void game_main(int argc, char **argv); /* 1054:0005 */
-extern int16_t g_opponent_stars; /* Release-Fassung: DS:0580, Sternchen im 2. Argument */
+extern int16_t g_opponent_stars; /* DS:0580, Sternchen im 2. Argument */
 void hotkey_handle(int16_t key); /* 1054:076c, med */
 void init_tables(void); /* 1054:0927 */
 void config_read(void *dst, uint16_t n); /* 1054:0bd3 */

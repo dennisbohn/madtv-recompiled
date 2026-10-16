@@ -7,7 +7,7 @@
  *   madtv.exe [-window] [D|E [*...]]
  * Startet beim ersten Mal im Fenster, danach im zuletzt gewählten Modus; -window (oder
  * MADTV_WINDOWED=1) erzwingt das Fenster. Alt+Enter/F11 oder das Menü schaltet um.
- * D/E und Sternchen wertet das Spiel aus wie die Release-Fassung von MTV.EXE (game_main). */
+ * D/E und Sternchen wertet das Spiel aus wie MTV.EXE (game_main). */
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>

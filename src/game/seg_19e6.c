@@ -47,7 +47,7 @@ void room_click_new_game_setup(void)
                 ai_count++;
                 DS_ADDR(int16_t, 0x7b3c)[(p - 1) * 15] = 3;
                 PLAYER_MONEY(p) = g_difficulty < 3 ? 300000 : 750000;
-                PLAYER_MONEY(p) *= g_opponent_stars + 1; /* Release-Fassung: Sterne aus der Kommandozeile */
+                PLAYER_MONEY(p) *= g_opponent_stars + 1; /* Sterne aus der Kommandozeile */
             }
         }
         g_player_idx = (int16_t)(g_local_player - 1);

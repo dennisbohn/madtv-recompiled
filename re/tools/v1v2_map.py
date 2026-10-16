@@ -70,6 +70,10 @@ def ds_v2_to_v1(x):
     return x
 
 
+JCLASS = {'jl': 'lt', 'jge': 'lt', 'jle': 'le', 'jg': 'le', 'jb': 'ult', 'jae': 'ult',
+          'jbe': 'ule', 'ja': 'ule', 'je': 'eq', 'jne': 'eq'}
+
+
 class Func:
     """Funktion ab seg:off (Segment relativ zum Ladeabbild): Befehle in Adressreihenfolge"""
 
@@ -134,7 +138,7 @@ class Func:
 
     def normalize(self, ds_map):
         """Inhaltliche Merkmale in Adressreihenfolge: Datensegment-Zugriffe (D), Konstanten außer 0 (I),
-        Versätze in Strukturen (O), Aufrufe (call). Registerwahl, Stapelrahmen, Sprünge und Stapelaufräumen nach Aufrufen
+        Versätze in Strukturen (O), Art bedingter Sprünge (J), Aufrufe (call). Registerwahl, Stapelrahmen, Sprünge und Stapelaufräumen nach Aufrufen
         hängen vom Compiler ab und entfallen."""
         toks, addrs = [], []
         for a in sorted(self.ins):
@@ -142,6 +146,12 @@ class Func:
             m = ins.mnemonic
             if m in ('call', 'lcall'):
                 toks.append('call' if a in self.calls else 'call*')
+                addrs.append(a)
+                continue
+            if m in JCLASS:
+                # Art des Vergleichs; ein Sprung und sein Gegenteil (der Compiler vertauscht gern
+                # die Zweige) gelten als gleich, < und <= nicht
+                toks.append('J' + JCLASS[m])
                 addrs.append(a)
                 continue
             if m.startswith('j') or m.startswith('loop'):

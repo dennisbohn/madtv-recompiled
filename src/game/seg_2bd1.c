@@ -90,6 +90,8 @@ int16_t show_episode_count(int16_t show)
 /* 2bd1:01f6 – Aktualität erholt sich: Filme in Fünfteln, Serienfolgen in Zwanzigsteln */
 void programmes_topicality_recover(void)
 {
+    if (g_day % 2 != 0) /* Release-Fassung: nur an geraden Tagen */
+        return;
     for (int16_t i = 1; i < 0xc9; i++) {
         uint8_t *f = FILM(i);
         int8_t max = (int8_t)f[1], cur = (int8_t)f[3];
@@ -791,6 +793,8 @@ void programme_buy(int16_t prog, int16_t player, int32_t price)
             SUITCASE_COUNT++;
         } else {
             f[5] = 0;
+            if (f[0] == 8) /* Release-Fassung: Genre 8 dann nicht mehr auf dem Markt */
+                UW(f, 6) &= ~0x20;
         }
         if (player == g_local_player)
             money_add(1, price);
@@ -1020,9 +1024,13 @@ void random_events(void)
     } else if (*state == 0x22 && W(f, 4) == W(f, 0) && W(f, 2) == W(f, 6) && W(f, 0x16) == 0 && W(f, 0xe) == 0) {
         W(f, 0x10) = 0;
         if (g_event_type <= 2)
-            EVT_STATE(g_event_type) = DS_I16(0x7a4a) != 0 ? 0 : 1;
+            EVT_STATE(g_event_type) = 1;
         else
             DS_I16(0x7a3a) = 1;
+        /* Release-Fassung: DS:7a4a ist hier der Zustandsindex des Ereignisses, dessen Zielraum
+         * (0x13 bzw. 0x12) zur Ruine wurde (event_npc_strike); dieses Ereignis endet */
+        if (DS_I16(0x7a4a) != 0)
+            DS_I16(0x79a6 + DS_I16(0x7a4a) * 2) = 0;
     } else if (*state >= 1000) {
         W(f, 0x12) = *state % 1000;
         if (room_entry_check(4, 1) == 0)
@@ -1076,6 +1084,7 @@ void event_npc_strike(void)
     uint8_t room = FLOOR_B(fl, sl + 0x1e);
     uint16_t studio = FLOOR_B(fl, sl + 0x6e);
     uint16_t owner = FLOOR_B(fl, sl + 0x46);
+    DS_I16(0x7a4a) = 0; /* Release-Fassung */
     if (room < 0x10 || room > 0x18) {
         if (g_event_type < 3) {
             news_add_special(0xa8, 0x10, g_event_type);
@@ -1091,6 +1100,13 @@ void event_npc_strike(void)
                 DS_I16(0x7a4a) = 0;
             }
         }
+        /* Release-Fassung: Zustandsindex des Ereignisses, das diesen Raum zum Ziel hat
+         * (random_events beendet es); unabhängig davon, wer zugeschlagen hat */
+        DS_I16(0x7a4a) = 0;
+        if (room == 0x13)
+            DS_I16(0x7a4a) = 0x48;
+        if (room == 0x12)
+            DS_I16(0x7a4a) = 0x49;
         FLOOR_B(fl, sl + 0x1e) = 0x36; /* Ruine */
         FLOOR_B(fl, sl + 0x28) = 0x89;
         FLOOR_B(fl, sl + 0x32) = 0x8a;
@@ -1314,8 +1330,10 @@ void ratings_rank_update(void)
     for (p = 1; p <= 3; p++)
         if (PLAYER_OUT(p) == 0)
             active++;
-    if (active == 1)
+    if (active == 1) {
+        DS_U8(0x5533 + g_local_player * 8 + hour_index()) = 1; /* Release-Fassung */
         return;
+    }
     for (p = 1; p < 4; p++)
         RANK_SCORE(p) = DS_I16(0x2495 + p * 10) == 0 ? DS_I16(0x248d + p * 10) : 0;
     int16_t tie = 0;
@@ -1362,7 +1380,12 @@ void ratings_rank_update(void)
  * die Summe bleibt 100 */
 void image_distribute(int16_t *deltas)
 {
-    int16_t neg_sum = 0, neg_n = 0, pos_sum = 0, pos_n = 0, p;
+    int16_t neg_sum = 0, neg_n = 0, pos_sum = 0, pos_n = 0, p, active = 0;
+    for (p = 1; p <= 3; p++) /* Release-Fassung: mit nur einem Spieler im Spiel nichts verteilen */
+        if (PLAYER_OUT(p) == 0)
+            active++;
+    if (active == 1)
+        return;
     for (p = 1; p <= 3; p++) {
         if (deltas[p] < 0) {
             if (PLAYER_OUT(p) != 0)
@@ -1428,7 +1451,7 @@ int32_t film_price(int16_t film)
     uint8_t *f = FILM(film);
     int32_t price = L(f, 8), v;
     if (price == 0 || f[1] == 0)
-        v = 0;
+        v = price; /* Release-Fassung: Grundpreis (Beta: 0) */
     else
         v = (int32_t)((uint32_t)price * (uint32_t)(int32_t)(int8_t)f[3]) / ((int8_t)f[1] * 2) + price / 2;
     return round_to_step(v, 1000);

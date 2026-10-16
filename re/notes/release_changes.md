@@ -97,3 +97,13 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | screen_update | 1dd5:0884 | 1ed7:08b8 | zusätzlicher Aufruf der Laufzeitbibliothek beim Bildaufbau | entfällt (Plattformschicht) |
 | draw_tile_box_to | 1dd5:16bd | 1ed7:1775 | Schleife anders aufgebaut, gleiche Wirkung | Rauschen |
 | window_open | 1f51:057c | 205e:058c | Vergleich mit Konstante statt Register | Rauschen |
+| programme_buy | 2bd1:20e4 | 2da8:22f6 | Film ohne Platz im Archiv: bei Genre 8 zusätzlich Bit 0x20 löschen | übernommen |
+| film_price | 2bd1:3ba7 | 2da8:3f5b | Ohne Qualitätswert (f[1] == 0) Grundpreis statt 0 | übernommen |
+| case_store_to_archive | 300f:0599 | 322a:061e | Besitzer von Film/Serie auf den Spieler setzen | übernommen |
+| event_npc_strike | 2bd1:2a41 | 2da8:2d3b | DS:7a4a = 0x48 bzw. 0x49, wenn Raum 0x13 bzw. 0x12 zur Ruine wird (Index des Ereigniszustands) | übernommen |
+| random_events | 2bd1:266b | 2da8:2905 | Bombenereignis endet immer mit Zustand 1; danach Zustand DS:79a6 + 7a4a·2 = 0 | übernommen |
+| programmes_topicality_recover | 2bd1:01f6 | 2da8:0217 | Aktualität erholt sich nur an geraden Tagen | übernommen |
+| image_distribute | 2bd1:3895 | 2da8:3be8 | Mit nur einem Spieler im Spiel nichts verteilen | übernommen |
+| ratings_rank_update | 2bd1:363d | 2da8:395a | Mit nur einem Spieler: Rang 1 für den lokalen Spieler in der Stunde eintragen | übernommen |
+| production_costs_update | 300f:03f8 | 322a:0424 | Gage nur mit Darsteller; Typ 0xf aus der ersten Tabelle, Index sh[Typ+0x1a3]−1; Gage × Byte 0xa der Folge | übernommen |
+| ai_choose_studio_action | 3b0a:3d84 | 3dd9:41ff | Produktion (6) nur bei freiem Studio (+0xa, +0xe), fehlende Besetzung (5) immer | übernommen |

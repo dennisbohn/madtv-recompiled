@@ -107,13 +107,17 @@ void production_costs_update(int16_t player)
         for (int16_t r = 1; r < 0xb; r++) {
             uint8_t *role = sh + (ep - 1) * 0x23 + r * 3;
             int16_t actor = (int8_t)role[0xb];
-            if (player == g_local_player && actor != (int8_t)pr[r + 4]) {
+            /* Release-Fassung (322a:0424): ohne Darsteller keine Gage, Typ 0xf aus der ersten
+             * Tabelle mit Index sh[Typ + 0x1a3] - 1 (Beta: Typ < 0xf, sh[Typ + 0x1a4]), Gage mal
+             * Byte 0xa der Folge */
+            if (player == g_local_player && actor != (int8_t)pr[r + 4] && actor != 0) {
                 int16_t type = (int8_t)role[9];
                 int32_t fee;
-                if (type < 0xf)
-                    fee = DS_I32(0x4ff3 + (int8_t)sh[type + 0x1a4] * 0xc0 + actor * 0xc + 2);
+                if (type <= 0xf)
+                    fee = DS_I32(0x4ff3 + ((int8_t)sh[type + 0x1a3] - 1) * 0xc0 + actor * 0xc + 2);
                 else
                     fee = DS_I32(0x6215 + (type - 0xf) * 0x10 + actor * 4);
+                fee *= (int8_t)sh[(ep - 1) * 0x23 + 0xa];
                 money_add(7, fee);
             }
             pr[r + 4] = role[0xb];
@@ -132,7 +136,9 @@ void case_store_to_archive(void)
     int16_t p = g_local_player;
     for (int16_t i = 0; i < SUITCASE_COUNT; i++) {
         int16_t prog = SUITCASE(i), genre;
+        /* Release-Fassung: Besitzer auf den Spieler setzen (auch wenn das Fach voll ist) */
         if (prog < 1000) {
+            FILM(prog)[5] = (uint8_t)p;
             genre = (int8_t)FILM(prog)[0];
             if (prog == 0x1d) {
                 DS_I16(0x7a22) = 3;
@@ -142,6 +148,7 @@ void case_store_to_archive(void)
                 special_film_bb_tick();
             }
         } else {
+            (DS_PTR(uint8_t, 0x2626) + (prog - 1000) * 0x39)[0x24] = (uint8_t)p;
             genre = 0xb;
         }
         int8_t *count = DS_ADDR(int8_t, 0x6f59 + p * 0x6c + genre);

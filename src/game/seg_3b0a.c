@@ -1139,8 +1139,15 @@ void ai_choose_studio_action(int8_t player)
             continue;
         if (W(st, 0) == 0) {
             free++;
-        } else if (W(st, 0xa) == 0) {
-            s[2] = episode_cast_complete(W(st, 0), (int8_t)st[4]) == 1 ? 6 : 5;
+        } else if (episode_cast_complete(W(st, 0), (int8_t)st[4]) == 1) {
+            /* Release-Fassung: produzieren nur, wenn das Studio frei ist (+0xa, +0xe); fehlende
+             * Besetzung (5) unabhängig davon. Die Beta prüfte +0xa für beide, +0xe gar nicht. */
+            if (W(st, 0xa) == 0 && st[0xe] == 0) {
+                s[2] = 6;
+                s[0] = (uint8_t)i;
+            }
+        } else {
+            s[2] = 5;
             s[0] = (uint8_t)i;
         }
     }

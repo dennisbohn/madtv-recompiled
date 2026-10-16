@@ -134,7 +134,7 @@ class Func:
 
     def normalize(self, ds_map):
         """Inhaltliche Merkmale in Adressreihenfolge: Datensegment-Zugriffe (D), Konstanten außer 0 (I),
-        Aufrufe (call). Registerwahl, Stapelrahmen, Sprünge und Stapelaufräumen nach Aufrufen
+        Versätze in Strukturen (O), Aufrufe (call). Registerwahl, Stapelrahmen, Sprünge und Stapelaufräumen nach Aufrufen
         hängen vom Compiler ab und entfallen."""
         toks, addrs = [], []
         for a in sorted(self.ins):
@@ -165,8 +165,18 @@ class Func:
                 elif op.type == x86.X86_OP_MEM:
                     seg = ins.reg_name(op.mem.segment) if op.mem.segment else ''
                     base = ins.reg_name(op.mem.base) if op.mem.base else ''
-                    if base == 'bp' or seg not in ('', 'ds'):
+                    if base == 'bp':
                         continue
+                    idx = op.mem.index
+                    if (base or idx) and seg not in ('', 'ds'):
+                        # Versatz in einer Struktur (es:[bx+0x1a4] ...): hängt nicht vom Compiler ab
+                        if op.mem.disp & 0xffff:
+                            toks.append('O%x' % (op.mem.disp & 0xffff))
+                            addrs.append(a)
+                        continue
+                    if seg not in ('', 'ds'):
+                        continue
+                    # ohne es: eine Variable oder Tabelle im Datensegment ([bx+Tabelle])
                     toks.append('D%x' % ds_map(op.mem.disp & 0xffff))
                     addrs.append(a)
         return toks, addrs

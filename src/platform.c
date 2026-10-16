@@ -1003,6 +1003,15 @@ void platform_mouse_confine(int16_t x, int16_t y)
     }
 }
 
+void platform_mouse_detach(void)
+{
+    g_abs_new = g_abs_seen = 0;
+    if (g_rel_mode) {
+        g_rel_synced = 0;
+        g_rel_pend_x = g_rel_pend_y = 0;
+    }
+}
+
 int platform_mouse_abs(int16_t cur_x, int16_t cur_y, int16_t *x, int16_t *y)
 {
     if (g_rel_mode && !g_rel_synced) { /* virtuellen Zeiger am Spielzeiger ansetzen */

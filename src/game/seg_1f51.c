@@ -460,6 +460,7 @@ int16_t input_poll(void)
         case 4: DS_I16(0x7a28) += DS_I16(0x0d38); break; /* rechts */
         default: break;
         }
+        platform_mouse_detach(); /* PORT: Zeiger-Overlay folgt sonst dem Windows-Zeiger */
     }
     return DS_I16(0x7a2c);
 }

@@ -35,6 +35,9 @@ int platform_mouse_abs(int16_t cur_x, int16_t cur_y, int16_t *x, int16_t *y);
  * (relative Maus) wird so der virtuelle Zeiger begrenzt; im Fenster bleibt der Windows-Zeiger
  * frei, damit man das Fenster verlassen kann. */
 void platform_mouse_confine(int16_t x, int16_t y);
+/* PORT: das Spiel hat seinen Zeiger selbst bewegt (Pfeiltasten): bis zur nächsten Mausbewegung
+ * gilt der Spielzeiger, im Vollbild setzt der virtuelle Zeiger danach dort an */
+void platform_mouse_detach(void);
 
 /* Zeiger-Overlay: Das Spiel liefert über diese Funktion bei jedem angezeigten Bild das aktuelle
  * Zeigerbild (Palettenindizes, 0 = transparent; NULL = kein Zeiger). x und y enthalten beim Aufruf

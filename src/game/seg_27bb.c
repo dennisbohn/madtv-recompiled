@@ -447,9 +447,15 @@ void building_render_smooth(void)
     if (platform_debug_env("MADTV_FAKEFRAC")) /* Testhilfe: Feinverschiebung im Stand erzwingen */
         scroll_fine = (scroll_fine & ~0xff) | (platform_debug_env("MADTV_FAKEFRAC") & 0xff);
     g_scroll = (int16_t)(scroll_fine >> 8);
-    if (platform_debug_env("MADTV_FRAMELOG"))
-        platform_debug_log("R %llu %ld %llu", (unsigned long long)when, (long)scroll_fine, (unsigned long long)time_us());
     int16_t pos = snap_lerp(sa->elev_pos, sb->elev_pos, num, den);
+    /* Fährt die eigene Figur mit, folgt der Scroll der Kabine (gleicher Abstand in beiden
+     * Schritten). Die Kabine liegt dann fest zum ganzzahligen Scroll und wird mit dem Gebäude
+     * fein verschoben – sonst wackelte sie bis zu einem Pixel gegen den Ausschnitt. */
+    if (sb->scroll != sa->scroll && sb->elev_pos - sb->scroll == sa->elev_pos - sa->scroll)
+        pos = (int16_t)(g_scroll + (sb->elev_pos - sb->scroll));
+    if (platform_debug_env("MADTV_FRAMELOG"))
+        platform_debug_log("R %llu %ld %d %llu", (unsigned long long)when, (long)scroll_fine, pos,
+                           (unsigned long long)time_us());
     int16_t logic_pos = (int16_t)(elev_floor * 0x1e - elev_offset);
     if (pos != logic_pos) {
         /* Richtung aus dem dargestellten Abschnitt; steht die Kabine dort noch (Logik ist schon

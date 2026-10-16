@@ -115,8 +115,11 @@ void video_set_cursor(const uint8_t *px, int w, int h, int stride, int x, int y)
 
 int video_refresh_rate(void)
 {
+    /* Desktopmodus des Monitors, auf dem das Fenster liegt (SDL_GetWindowDisplayMode liefert den
+     * Modus für exklusives Vollbild, meist 60 Hz, auch wenn der Monitor schneller läuft) */
     SDL_DisplayMode m;
-    if (g_win && SDL_GetWindowDisplayMode(g_win, &m) == 0 && m.refresh_rate > 0)
+    int display = g_win ? SDL_GetWindowDisplayIndex(g_win) : -1;
+    if (display >= 0 && SDL_GetDesktopDisplayMode(display, &m) == 0 && m.refresh_rate > 0)
         return m.refresh_rate;
     return 60;
 }

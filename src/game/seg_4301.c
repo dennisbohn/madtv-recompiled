@@ -180,25 +180,18 @@ void intro_play(void)
     }
     scr_blit(title, 0, 0);
     far_free(title);
-    /* PORT: im Original blieb das Titelbild während der Ladezeit der ersten Szene stehen; ohne
-     * Diskettenzugriffe wäre es sofort verdeckt – daher bis zu 3 Sekunden halten. Eine noch
-     * gedrückte Maustaste vom Anklicken der Sprache soll weder Titel noch Intro überspringen:
-     * erst loslassen, dann zählt nur ein neuer Klick. */
-    ticks_set(0);
-    int16_t held = mouse_poll();
-    while (ticks_get() < 0x96 && kbd_getkey() == -1) {
-        int16_t b = mouse_poll();
-        if (b != 0 && held == 0)
-            break;
-        held = b;
-    }
-    while (held != 0 && (held = mouse_poll()) != 0)
-        ;
-
     DS_SET_PTR(0x9036, bitmap_alloc(0xd0, 0x90));
     bmp_fill(g_intro_canvas, 0, 0, 0x1a, 0x90, 0);
     DS_SET_PTR(0x160e, NULL);
     DS_SET_PTR(0x1612, NULL);
+    /* Release-Fassung: Titelbild 100 Takte (2 Sekunden) stehen lassen, nicht abbrechbar.
+     * PORT: eine vom Anklicken der Sprache noch gedrückte Maustaste soll das Intro nicht
+     * überspringen – erst loslassen. */
+    ticks_set(0);
+    while (ticks_get() < 100)
+        ;
+    while (mouse_poll() != 0)
+        ;
     while (kbd_getkey() != -1)
         ;
     g_intro_abort = 0;

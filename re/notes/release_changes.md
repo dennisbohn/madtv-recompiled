@@ -146,3 +146,20 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | statistics_panel | 340d:440b | 36a7:4611 | Balkenhöhe (Wert/1000)·15/(Maßstab·1000) statt Wert·15/(Maßstab·1.000.000) (kein Überlauf) | übernommen |
 | genre_menu_dialog | 38b6:0253 | 3b74:0267 | Fachanzeige 5 nur bei vollem Fach (4) und passendem Titel im Koffer | übernommen |
 | player_message_dialog | 38b6:17fd | 3b74:1875 | Text-Cache je Zweig freigegeben | schon im Port |
+| channel_info_card_draw | 239a:3228 | 24e1:3502 | Text nach dem Zeichnen freigegeben | schon im Port |
+| ad_requirements_text_build | 239a:3a2f | 24e1:3d66 | Text je Zweig freigegeben | schon im Port |
+| info_card_film_small | 239a:3e0f | 24e1:4172 | Ohne Qualitätswert Anzeige 40 (Beta: Division durch 0) | übernommen |
+| building_draw | 27bb:000b | 293d:000f | Wandzeichnung in beiden Zweigen | schon im Port |
+| facade_draw | 27bb:2951 | 293d:2c8a | Konstante erneut geladen | Rauschen |
+| tv_picture_bg_draw | 1f51:38b1 | 205e:3b14 | Konstante erneut geladen | Rauschen |
+| figures_update | 27bb:0ce1 | 293d:0d62 | Bildfolge als switch statt Tabelle | Rauschen |
+| elevator_update | 27bb:198f | 293d:1b63 | Nullsetzen am gemeinsamen Ende dupliziert | Rauschen |
+| player_eliminated_sequence | 27bb:231e | 293d:257a | Computerspieler scheidet aus: Budget +0x14 auf 0, Fernseher auf den eigenen Sender, Besitzer seiner Serien freigeben | übernommen |
+| room_region_restore | 1f51:2c53 | 205e:2def | Zeiger nur ausblenden, wenn er über dem Bereich liegt | schon im Port |
+| room_animate | 1f51:1703 | 205e:17d1 | Code an gemeinsamen Enden dupliziert | Rauschen |
+| tv_picture_compose | 1f51:3105 | 205e:32ed | Verzweigung umgestellt, gleiche Wirkung | Rauschen |
+| game_end_sequence | 1f51:41a1 | 205e:447b | Gibt Show-, Serien- und Filmtabellen frei (Platz für die Schlusssequenz unter DOS); danach Programmende | entfällt |
+| room_hover | 239a:000a | 24e1:000e | Archiv: Tooltip nur für belegte Plätze des Fachs; sonst Endstücke dupliziert | übernommen |
+| hover_dispatch | 239a:1568 | 24e1:16bb | Endstücke dupliziert; Rollen-Tooltip wie im Port | Rauschen |
+| intro_play | 4301:03ad | 465f:03f2 | Titelbild 100 Takte (2 s) fest stehen lassen | übernommen (ersetzt die bisherige Port-Haltezeit von bis zu 3 s) |
+| room_click_supermarket_shelves | 19e6:0f78 | 1aa4:10cc | Code an gemeinsamen Enden dupliziert | Rauschen |

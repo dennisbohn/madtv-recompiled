@@ -125,6 +125,9 @@ void room_hover(void)
         if (g_cur_dialog == 2) { /* Archiv */
             if (g_hotspot != 0x18)
                 goto dispatch;
+            /* Release-Fassung: nur belegte Plätze des Fachs (Beta: auch alte Einträge dahinter) */
+            if ((g_cursor_y - 0x48) / 10 >= DS_I8(0x6f59 + g_view_player * 0x6c + DS_I16(0x79aa)))
+                goto dispatch;
             int16_t v = DS_I16(0x6ef9 + g_view_player * 0x6c + DS_I16(0x79aa) * 8 + ((g_cursor_y - 0x48) / 10) * 2);
             if (DS_I16(0x79aa) < 0xb) {
                 id = v;
@@ -1235,8 +1238,9 @@ void info_card_film_small(int16_t film)
     } else if (genre == 7 || genre == 8) {
         HV_STR_SET(5, fmt(DS_ADDR(char, 0x1114)));
     } else {
-        int16_t div = (int8_t)f[1] != 0 ? (int8_t)f[1] : 1; /* PORT: Original teilt ggf. durch 0 */
-        HV_STR_SET(5, fmt(g_text(0x1a1), ((int8_t)f[3] * 0x28) / div));
+        /* Release-Fassung: ohne Qualitätswert 40 (die Beta teilte durch 0) */
+        int16_t v = (int8_t)f[1] != 0 ? ((int8_t)f[3] * 0x28) / (int8_t)f[1] : 0x28;
+        HV_STR_SET(5, fmt(g_text(0x1a1), v));
     }
     HV_STR_SET(6, fmt(g_text(0x1a2), (int16_t)(int8_t)f[4]));
     layout_box(text_line_count(film_title_get(film), 0x10, 1) < 2 ? DS_ADDR(char, 0x1116) : DS_ADDR(char, 0x1146));

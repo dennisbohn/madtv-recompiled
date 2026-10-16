@@ -127,3 +127,22 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | ai_produce_episode | 4151:0d1a | 448b:0df7 | Genre über Film/Serie der Show (Beta: Shownummer); ohne Ausnahme für Bit 4 | übernommen |
 | ai_prepare_episode | 4151:0e28 | 448b:0f05 | anders strukturiert, gleiche Wirkung | Rauschen |
 | ai_cast_episode | 4151:0f75 | 448b:1087 | beide Zweige gleich | Rauschen |
+| episode_cast_complete | 2bd1:22af | 2da8:24ea | Startwert in lokaler Variable | Rauschen |
+| event_npc_init | 2bd1:250c | 2da8:276d | gemeinsam genutztes Register | Rauschen |
+| ad_genre_allowed | 2bd1:3e86 | 2da8:4258 | gemeinsam genutztes Register | Rauschen |
+| game_tick | 1dd5:000f | 1ed7:0004 | Variablen erneut gelesen; tetris_tick am gemeinsamen Ende | Rauschen |
+| room8_items_panel | 340d:0f5b | 36a7:0fe5 | mouse_hide/mouse_show je Zweig ausgeglichen | schon im Port |
+| ad_offers_panel | 340d:144f | 36a7:14fb | mouse_hide/mouse_show je Zweig ausgeglichen | schon im Port |
+| archive_shelf_panel | 340d:155a | 36a7:1613 | mouse_hide/mouse_show je Zweig ausgeglichen | schon im Port |
+| production_offers_panel | 340d:3047 | 36a7:31c3 | mouse_hide/mouse_show je Zweig ausgeglichen | schon im Port |
+| schedule_view | 340d:03a3 | 36a7:03c6 | Konstante erneut geladen | Rauschen |
+| dialog_frame | 340d:1022 | 36a7:10b9 | Konstante erneut geladen | Rauschen |
+| series_episode_dialog | 340d:167b | 36a7:1742 | Konstante erneut geladen | Rauschen |
+| cursor_attach_item | 340d:1aa6 | 36a7:1b87 | Konstante erneut geladen | Rauschen |
+| station_map_view | 340d:2a3c | 36a7:2b9d | Konstante erneut geladen | Rauschen |
+| speech_bubble_text52 | 38b6:0dc5 | 3b74:0e17 | Konstante erneut geladen | Rauschen |
+| player_setup_screen | 38b6:1269 | 3b74:12cc | Konstante erneut geladen | Rauschen |
+| auction_panel | 340d:2da7 | 36a7:2f27 | Angezeigter Preis: Gebotsschritt immer aufschlagen, ohne Bieter doppelt | übernommen |
+| statistics_panel | 340d:440b | 36a7:4611 | Balkenhöhe (Wert/1000)·15/(Maßstab·1000) statt Wert·15/(Maßstab·1.000.000) (kein Überlauf) | übernommen |
+| genre_menu_dialog | 38b6:0253 | 3b74:0267 | Fachanzeige 5 nur bei vollem Fach (4) und passendem Titel im Koffer | übernommen |
+| player_message_dialog | 38b6:17fd | 3b74:1875 | Text-Cache je Zweig freigegeben | schon im Port |

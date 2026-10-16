@@ -854,12 +854,16 @@ void auction_panel(int16_t mode)
             char *s = prog < 1000 ? fmt(DS_ADDR(char, 0x143a), film_title_get(prog))
                                   : fmt(DS_ADDR(char, 0x1440), series_title_get(prog - 1000));
             text_draw_free((int16_t)(x + 0x26), (int16_t)(i * 0x13 - 0xe), s);
+            /* Release-Fassung: Gebotsschritt immer aufschlagen (Beta: nicht beim eigenen Gebot),
+             * ohne Bieter ein zweites Mal */
             int16_t bidder = DS_I8(0x1af3 + lot * 9);
-            int32_t inc = bidder == g_local_player ? 0 : auction_bid_increment(lot);
-            if (bidder < 0)
+            int32_t price = auction_bid_increment(lot) + DS_I32(0x1aef + lot * 9);
+            if (bidder < 0) {
                 bidder = g_local_player;
+                price += auction_bid_increment(lot);
+            }
             text_draw_free((int16_t)(x + 0x26), (int16_t)(i * 0x13 - 6),
-                           fmt(DS_ADDR(char, 0x1446), DS_I32(0x1aef + lot * 9) + inc, DS_PTR(char, 0x8bc0 + bidder * 0x17)));
+                           fmt(DS_ADDR(char, 0x1446), price, DS_PTR(char, 0x8bc0 + bidder * 0x17)));
         }
     }
 }
@@ -1167,13 +1171,14 @@ void player_ranking_panel(void)
     }
 }
 
-/* Balkenhöhe: Wert * 15 / (Maßstab * 1 000 000), 32-Bit wie im Original */
+/* Balkenhöhe. Release-Fassung: (Wert / 1000) * 15 / (Maßstab * 1000); die Beta rechnete
+ * Wert * 15 / (Maßstab * 1 000 000) und lief bei großen Werten über */
 static int16_t stat_bar_height(int32_t v)
 {
-    int32_t div = (int32_t)((uint32_t)DS_I16(0x79dc) * 1000000u);
+    int32_t div = (int32_t)DS_I16(0x79dc) * 1000;
     if (div == 0)
         return 0; /* PORT: Original teilt durch 0 */
-    return (int16_t)((int32_t)((uint32_t)v * 15u) / div);
+    return (int16_t)(v / 1000 * 15 / div);
 }
 
 /* 340d:440b – Statistik: Zuschauer (Balkenpaare) gestern/heute/Nachrichten (DS:79d8) eines Senders

@@ -107,3 +107,8 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | ratings_rank_update | 2bd1:363d | 2da8:395a | Mit nur einem Spieler: Rang 1 für den lokalen Spieler in der Stunde eintragen | übernommen |
 | production_costs_update | 300f:03f8 | 322a:0424 | Gage nur mit Darsteller; Typ 0xf aus der ersten Tabelle, Index sh[Typ+0x1a3]−1; Gage × Byte 0xa der Folge | übernommen |
 | ai_choose_studio_action | 3b0a:3d84 | 3dd9:41ff | Produktion (6) nur bei freiem Studio (+0xa, +0xe), fehlende Besetzung (5) immer | übernommen |
+| market_update_prices | 3264:0438 | 34b8:04b9 | Billige Filme nur mit Preis zählen; Kandidaten (Filme mit Preis, Serien) vorher zählen und nur so viele Plätze füllen; Filme brauchen Preis | übernommen |
+| ratings_calc | 3264:08ce | 34b8:0c4a | Phase 1 ohne Anhebung von DS:3f2b über rating_from_viewers; Film 0x3a immer einmalig; Serienfolge mindestens 1 und im Sendeplan (+0x1e) vermerkt; Mindestzuschauer der Werbung auf 100.000 statt 10.000 gerundet | übernommen |
+| broadcast_hour_tick | 3077:0781 | 329e:0828 | Phasenzähler an jeder Stelle dupliziert | Rauschen |
+| studio_produce_episode | 3077:0a98 | 329e:0b98 | Code an gemeinsamen Enden dupliziert | Rauschen |
+| savegame_io | 3077:1d7c | 329e:2020 | umgebaut, gleiche Wirkung | Rauschen |

@@ -134,19 +134,33 @@ void market_update_prices(void)
         for (i = 1; i <= 200; i++) {
             uint8_t *f = FILM(i);
             if (!(UW(f, 6) & 0x40) && (f[5] == 0 || (int8_t)f[5] > 3) && (UW(f, 6) & 0x20) &&
-                film_price(i) <= 60000)
+                film_price(i) <= 60000 && L(f, 8) != 0) /* Release-Fassung: mit Preis */
                 cheap++;
         }
         if (cheap > 3)
             cheap = 3;
+    }
+    /* Release-Fassung: Kandidaten vorher zählen (Filme mit Preis, Serien) und nur so viele Plätze
+     * füllen; die Beta suchte endlos weiter, wenn keiner mehr übrig war */
+    int16_t avail = 0;
+    for (i = 1; i <= 200; i++) {
+        uint8_t *f = FILM(i);
+        if (!(UW(f, 6) & 0x40) && (f[5] == 0 || (int8_t)f[5] > 3) && (UW(f, 6) & 0x20) && L(f, 8) != 0)
+            avail++;
+    }
+    for (i = 1; i <= 50; i++) {
+        uint8_t *s = SERIES(i);
+        if (!(UW(s, 0x25) & 0x40) && (s[0x24] == 0 || (int8_t)s[0x24] > 3) && (UW(s, 0x25) & 0x20))
+            avail++;
     }
     for (i = 1; i <= 10; i++)
         if (DS_I8(0x19cd + i * 8 + 7) < 0)
             DS_I16(0x19cd + i * 8) = 0;
     for (i = 1; i <= 10; i++) {
         uint8_t *e = DS_ADDR(uint8_t, 0x19cd + i * 8);
-        if (W(e, 0) != 0)
+        if (W(e, 0) != 0 || avail <= 0)
             continue;
+        avail--;
         int16_t n = 0;
         while (n == 0) {
             n = rand_range(0xfa, seed++);
@@ -166,7 +180,7 @@ void market_update_prices(void)
             } else {
                 uint8_t *f = FILM(n);
                 if ((UW(f, 6) & 0x40) || (f[5] != 0 && (int8_t)f[5] <= 3) || !(UW(f, 6) & 0x20) ||
-                    (cheap > 0 && film_price(n) > 60000)) {
+                    L(f, 8) == 0 || (cheap > 0 && film_price(n) > 60000)) {
                     n = 0;
                     continue;
                 }
@@ -284,9 +298,7 @@ void ratings_calc(int16_t phase)
         for (p = 1; p < 4; p++) {
             if (PLAYER_OUT(p) != 0)
                 continue;
-            int32_t r = rating_from_viewers(p, DS_I32(0x6da5 + p * 0x20));
-            if (DS_I8(0x3f2b + p) < r)
-                DS_I8(0x3f2b + p) = (int8_t)r;
+            /* Release-Fassung: ohne die Anhebung über rating_from_viewers(p, DS:6da5) */
             total += DS_I8(0x3f2b + p);
         }
         for (p = 1; p < 4; p++) {
@@ -333,6 +345,8 @@ void ratings_calc(int16_t phase)
                             else
                                 once[p] = prog;
                         }
+                        if (prog == 0x3a) /* Release-Fassung: Film 0x3a immer einmalig */
+                            once[p] = 0x3a;
                         if ((UW(f, 7) & 8) && h < 4) { /* Skandalfilm vor 21 Uhr */
                             DS_I16(0x2495 + p * 10) = 1;
                             if (DS_I16(0x7a68) == 1) {
@@ -345,6 +359,11 @@ void ratings_calc(int16_t phase)
                     } else {
                         uint8_t *s = SERIES(prog - 1000);
                         GENRE_NOW(p) = (int8_t)(s[0x21] + 10);
+                        /* Release-Fassung: Folge mindestens 1, im Sendeplan hinter den Stunden
+                         * vermerken */
+                        if (W(s, 0x31) == 0)
+                            W(s, 0x31) = 1;
+                        DS_I16(0x43f7 + p * 0x5a + h * 2 + 0x1e) = W(s, 0x31);
                         *val = (int8_t)s[W(s, 0x31) * 3 + 1];
                         if (p == g_local_player)
                             DS_I16(0x79f4) = *val;
@@ -461,7 +480,7 @@ void ratings_calc(int16_t phase)
             if (a[0xa] == 1) {
                 ok = SCHEDULE(p, h) != 0;
             } else {
-                int32_t v = round_to_step(VIEWERS(p), 10000);
+                int32_t v = round_to_step(VIEWERS(p), 100000); /* Release-Fassung (Beta: 10000) */
                 ok = !(v < REACH_LEVEL((int8_t)a[0xa] - 1)); /* Mindestzuschauer erreicht? */
             }
             if (ok)

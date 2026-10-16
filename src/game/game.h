@@ -13,6 +13,9 @@
 /* ---- Segment 1054 ---- */
 void game_main(int argc, char **argv); /* 1054:0005 */
 extern int16_t g_opponent_stars; /* DS:0580, Sternchen im 2. Argument */
+/* PORT: Anzahl der Filme, Serien und Shows (Einträge 1..n von 201/202/203.HES; im Original fest
+ * 200, 50 und 50, seg_2a62.c) */
+extern int16_t g_film_count, g_series_count, g_show_count;
 void hotkey_handle(int16_t key); /* 1054:076c, med */
 void init_tables(void); /* 1054:0927 */
 void config_read(void *dst, uint16_t n); /* 1054:0bd3 */

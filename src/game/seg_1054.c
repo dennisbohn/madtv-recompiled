@@ -74,10 +74,10 @@ void game_main(int argc, char **argv)
     intro_play();
     music_on_leave(500, 0);
 
-    /* Datenbanken: Filme (201 x 23 Byte), Serien (51 x 57), Folgen (51 x 435) */
-    DS_SET_PTR(0x2489, far_calloc(201, 23));
-    DS_SET_PTR(0x2626, far_calloc(51, 57));
-    DS_SET_PTR(0x713c, far_calloc(51, 435));
+    /* Datenbanken: je Eintrag 0..Anzahl: Filme 23 Byte, Serien 57, Shows mit Folgen 435 */
+    DS_SET_PTR(0x2489, far_calloc((uint16_t)(g_film_count + 1), 23));
+    DS_SET_PTR(0x2626, far_calloc((uint16_t)(g_series_count + 1), 57));
+    DS_SET_PTR(0x713c, far_calloc((uint16_t)(g_show_count + 1), 435));
     db_load_all();
 
     /* Spielpalette */

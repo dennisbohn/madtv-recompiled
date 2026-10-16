@@ -1,12 +1,15 @@
 /* Segment 2a62 – Spieldatenbank laden, Geld, Nachrichten, Programmlisten.
  *
- * Datenbanken (Zeiger im Datensegment, Speicher in game_main angelegt):
- *   DS:2489 Filme   201 x 23 Byte   (201.HES)
- *   DS:2626 Serien   51 x 57 Byte   (202.HES)
- *   DS:713c Folgen   51 x 435 Byte  (203.HES; je Serie 8 Byte Kopf + 10 Folgen à 35 Byte)
+ * Datenbanken (Zeiger im Datensegment, Speicher in game_main angelegt; Einträge 0..Anzahl):
+ *   DS:2489 Filme    23 Byte je Eintrag  (201.HES)
+ *   DS:2626 Serien   57 Byte je Eintrag  (202.HES)
+ *   DS:713c Shows   435 Byte je Eintrag  (203.HES; 8 Byte Kopf + 10 Folgen à 35 Byte)
  * Direkt im Datensegment: Werbekunden DS:3f2f (204.HES), DS:2711 (205.HES),
  * Nachrichtenthemen DS:5573 (206.HES), DS:3a81 (48.HES). */
 #include "game.h"
+
+/* PORT: Anzahl der Einträge; das Original hatte sie an jeder Stelle fest im Code */
+int16_t g_film_count = 200, g_series_count = 50, g_show_count = 50;
 
 #define g_text_pool      DS_PTR(char, 0x8aa8)    /* Texte aus den Sprachdateien */
 #define g_text_pool_pos  DS_U16(0x11e4)
@@ -23,7 +26,7 @@ void db_load_all(void)
     /* PORT: ORIGINAL-BUG in den Spieldaten – alle produzierbaren Shows (Genre 8) haben Länge 0.
      * Im Original zeigen sie "0 blocks" und das Spiel stürzt beim Einplanen ab. Eine Show ist eine
      * Ein-Stunden-Sendung, daher hier Länge 1. Die Länge steht nicht im Spielstand. */
-    for (int16_t i = 1; i < 0xc9; i++) {
+    for (int16_t i = 1; i <= g_film_count; i++) {
         uint8_t *f = DS_PTR(uint8_t, 0x2489) + i * 0x17;
         if (f[0] == 8 && f[4] == 0)
             f[4] = 1;
@@ -93,7 +96,7 @@ void text_pool_take(int16_t len, ptr32 *out)
  * Folgen 1..9 kopieren */
 void episodes_init_from_first(void)
 {
-    for (int16_t i = 1; i < 0x33; i++) {
+    for (int16_t i = 1; i <= g_show_count; i++) {
         uint8_t *series = g_episodes + i * 0x1b3;
         uint16_t flags = *(uint16_t *)(series + 5);
         if (!(flags & 1) && (flags & 4))

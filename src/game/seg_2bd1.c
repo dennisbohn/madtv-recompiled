@@ -34,7 +34,7 @@
 int16_t shows_free_count(void)
 {
     int16_t n = 0;
-    for (int16_t i = 1; i < 0x33; i++)
+    for (int16_t i = 1; i <= g_show_count; i++)
         if (SHOW(i)[4] == 0 && (UW(SHOW(i), 5) & 2))
             n++;
     return n;
@@ -43,9 +43,9 @@ int16_t shows_free_count(void)
 /* 2bd1:004b – Bit "eingeplant" für alle Programme aus den restlichen Tagesplänen neu setzen */
 void programmes_mark_scheduled(void)
 {
-    for (int16_t i = 1; i < 0xc9; i++)
+    for (int16_t i = 1; i <= g_film_count; i++)
         UW(FILM(i), 7) &= ~2;
-    for (int16_t i = 1; i < 0x33; i++)
+    for (int16_t i = 1; i <= g_series_count; i++)
         UW(SERIES(i), 0x26) &= ~2;
     for (int16_t p = 1; p < 4; p++) {
         int16_t h = hour_index_after_min55();
@@ -92,7 +92,7 @@ void programmes_topicality_recover(void)
 {
     if (g_day % 2 != 0) /* nur an geraden Tagen */
         return;
-    for (int16_t i = 1; i < 0xc9; i++) {
+    for (int16_t i = 1; i <= g_film_count; i++) {
         uint8_t *f = FILM(i);
         int8_t max = (int8_t)f[1], cur = (int8_t)f[3];
         if (cur < max && max > 0) {
@@ -102,7 +102,7 @@ void programmes_topicality_recover(void)
             f[3] = (uint8_t)(max * k / 5);
         }
     }
-    for (int16_t i = 1; i < 0x33; i++) {
+    for (int16_t i = 1; i <= g_series_count; i++) {
         uint8_t *s = SERIES(i);
         for (int16_t e = 1; e <= (int8_t)s[0x22]; e++) {
             int8_t *ep = (int8_t *)(s + e * 3);
@@ -508,17 +508,17 @@ void start_programmes_assign(void)
             n = rand_range(3, ++seed) + 0x11;
         programme_buy((int16_t)(n + 1000), p, 0);
         for (int32_t k = 1; k <= 3; k++) { /* drei freie Filme des Genres 6 mit Bit 5 */
-            n = rand_range(200, seed);
+            n = rand_range(g_film_count, seed);
             while (FILM(n)[5] != 0 || FILM(n)[0] != 6 || !(UW(FILM(n), 6) & 0x20))
-                n = rand_range(200, ++seed);
+                n = rand_range(g_film_count, ++seed);
             programme_buy(n, p, 0);
         }
     }
     int16_t h = 1;
     while (h <= 7) {
-        n = rand_range(0xfa, seed++);
+        n = rand_range((int16_t)(g_film_count + g_series_count), seed++);
         int16_t len;
-        if (n <= 200) {
+        if (n <= g_film_count) {
             uint8_t *f = FILM(n);
             if ((int8_t)f[5] != g_local_player)
                 continue;
@@ -531,7 +531,7 @@ void start_programmes_assign(void)
             h += (int8_t)f[4];
             UW(f, 7) |= 2;
         } else {
-            n -= 200;
+            n -= g_film_count;
             uint8_t *s = SERIES(n);
             if ((int8_t)s[0x24] != g_local_player)
                 continue;

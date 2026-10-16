@@ -109,15 +109,15 @@ void savegame_serialize(int16_t hes_no)
 
     uint8_t *films = DS_PTR(uint8_t, 0x2489), *series_db = DS_PTR(uint8_t, 0x2626), *eps = DS_PTR(uint8_t, 0x713c);
     if (g_save_mode == 1) {
-        for (int16_t i = 1; i < 0xc9; i++) {
+        for (int16_t i = 1; i <= g_film_count; i++) {
             savegame_io(film, 0x12);
             film_unpack(films + i * 0x17, film);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_series_count; i++) {
             savegame_io(series, 0x29);
             series_unpack(series_db + i * 0x39, series);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_show_count; i++) {
             savegame_io(episodes, 0x161);
             eps[i * 0x1b3 + 4] = episodes[0];
             for (int16_t e = 0; e < 10; e++)
@@ -128,15 +128,15 @@ void savegame_serialize(int16_t hes_no)
             DS_U8(0x3f3e + i * 0x18) = ad[0];
         }
     } else {
-        for (int16_t i = 1; i < 0xc9; i++) {
+        for (int16_t i = 1; i <= g_film_count; i++) {
             film_pack(film, films + i * 0x17);
             savegame_io(film, 0x12);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_series_count; i++) {
             series_pack(series, series_db + i * 0x39);
             savegame_io(series, 0x29);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_show_count; i++) {
             episodes[0] = eps[i * 0x1b3 + 4];
             for (int16_t e = 0; e < 10; e++)
                 memcpy(episodes + 1 + e * 0x23, eps + i * 0x1b3 + e * 0x23 + 8, 0x23);

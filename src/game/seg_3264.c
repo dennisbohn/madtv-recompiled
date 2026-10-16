@@ -86,7 +86,7 @@ void ad_market_update(void)
 /* 3264:0274 – Showangebote (DS:194a, 5 x 9 B) erneuern; Show 24 ist immer im Angebot */
 void production_market_update(void)
 {
-    for (int16_t s = 1; s < 0x33; s++) {
+    for (int16_t s = 1; s <= g_show_count; s++) {
         uint8_t *sh = SHOW(s);
         if (sh[4] == 99 && (UW(sh, 5) & 2) && !(UW(sh, 5) & 1) && (UW(FILM(W(sh, 6)), 7) & 4)) {
             sh[4] = 0; /* Film ist abgelaufen: Show wieder frei, Besetzung löschen */
@@ -112,7 +112,7 @@ void production_market_update(void)
         int16_t s;
         uint8_t *sh;
         do {
-            s = rand_range(0x32, i);
+            s = rand_range(g_show_count, i);
             sh = SHOW(s);
         } while (sh[4] != 0 || !(UW(sh, 5) & 2));
         W(e, 0) = s;
@@ -131,7 +131,7 @@ void market_update_prices(void)
         if ((int32_t)((uint32_t)STATION_REACH(p) * 0x9a0u) > 12000000)
             break;
     if (p > 3) {
-        for (i = 1; i <= 200; i++) {
+        for (i = 1; i <= g_film_count; i++) {
             uint8_t *f = FILM(i);
             if (!(UW(f, 6) & 0x40) && (f[5] == 0 || (int8_t)f[5] > 3) && (UW(f, 6) & 0x20) &&
                 film_price(i) <= 60000 && L(f, 8) != 0) /* mit Preis */
@@ -142,12 +142,12 @@ void market_update_prices(void)
     }
     /* Kandidaten vorher zählen (Filme mit Preis, Serien) und nur so viele Plätze füllen */
     int16_t avail = 0;
-    for (i = 1; i <= 200; i++) {
+    for (i = 1; i <= g_film_count; i++) {
         uint8_t *f = FILM(i);
         if (!(UW(f, 6) & 0x40) && (f[5] == 0 || (int8_t)f[5] > 3) && (UW(f, 6) & 0x20) && L(f, 8) != 0)
             avail++;
     }
-    for (i = 1; i <= 50; i++) {
+    for (i = 1; i <= g_series_count; i++) {
         uint8_t *s = SERIES(i);
         if (!(UW(s, 0x25) & 0x40) && (s[0x24] == 0 || (int8_t)s[0x24] > 3) && (UW(s, 0x25) & 0x20))
             avail++;
@@ -162,9 +162,9 @@ void market_update_prices(void)
         avail--;
         int16_t n = 0;
         while (n == 0) {
-            n = rand_range(0xfa, seed++);
-            if (n > 200) {
-                n -= 200;
+            n = rand_range((int16_t)(g_film_count + g_series_count), seed++);
+            if (n > g_film_count) {
+                n -= g_film_count;
                 uint8_t *s = SERIES(n);
                 if ((UW(s, 0x25) & 0x40) || (s[0x24] != 0 && (int8_t)s[0x24] <= 3) || !(UW(s, 0x25) & 0x20)) {
                     n = 0;
@@ -218,10 +218,10 @@ void auction_day_end(void)
 {
     /* Kandidaten vorher zählen und höchstens so viele Lose neu füllen */
     int16_t avail = 0;
-    for (int16_t n = 1; n <= 200; n++)
+    for (int16_t n = 1; n <= g_film_count; n++)
         if (auction_film_ok(n))
             avail++;
-    for (int16_t n = 1; n <= 50; n++)
+    for (int16_t n = 1; n <= g_series_count; n++)
         if (auction_series_ok(n))
             avail++;
     for (int16_t i = 1; i <= 10; i++) {
@@ -254,9 +254,9 @@ void auction_day_end(void)
             avail--;
             int16_t n = 0;
             while (n == 0) {
-                n = rand_range(0xfa, i);
-                if (n > 200) {
-                    n -= 200;
+                n = rand_range((int16_t)(g_film_count + g_series_count), i);
+                if (n > g_film_count) {
+                    n -= g_film_count;
                     if (!auction_series_ok(n)) {
                         n = 0;
                         continue;

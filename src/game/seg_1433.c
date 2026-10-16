@@ -12,6 +12,8 @@
 #define SERIES_CACHE(i) DS_ADDR(uint8_t, 0x65af + (i) * 0x5a) /* id, 22 Texte */
 #define SHOW_CACHE(i)   DS_ADDR(uint8_t, 0x6af5 + (i) * 0x42) /* id, 16 Texte */
 #define NEWS_SLOT(i)    DS_ADDR(uint8_t, 0x729a + (i) * 6)    /* id, Text */
+/* Größe der Offsettabelle einer Textdatei mit n Einträgen (Endoffsets für 0..n, je 2 Byte) */
+#define TEXT_INDEX_BYTES(n) ((uint16_t)(((n) + 1) * 2))
 #define g_shows         DS_PTR(uint8_t, 0x713c)
 #define SHOW_IS_SERIES(s) (*(uint16_t *)(g_shows + (s) * 0x1b3 + 5) & 1)
 #define SHOW_PROG(s)    (*(int16_t *)(g_shows + (s) * 0x1b3 + 6))
@@ -118,7 +120,7 @@ static void film_suitcase(int16_t *slot)
 void text_cache_titles(int16_t room, int16_t arg)
 {
     int16_t slot = 3, i, k;
-    open_text_index(0, 0x192, 0x192, 1);
+    open_text_index(0, TEXT_INDEX_BYTES(g_film_count), TEXT_INDEX_BYTES(g_film_count), 1);
     if (room == 0) {
         text_cache_load_film(arg, 0);
     } else if (room == 0x1f) { /* Programmplaner */
@@ -244,7 +246,7 @@ static void series_suitcase(int16_t *slot)
 void text_cache_descr(int16_t room, int16_t arg)
 {
     int16_t slot = 3, i, k;
-    open_text_index(1, 0x66, 0x66, 1);
+    open_text_index(1, TEXT_INDEX_BYTES(g_series_count), TEXT_INDEX_BYTES(g_series_count), 1);
     if (room == 0) {
         text_cache_load_series(arg, 0);
     } else if (room == 0x1f) {
@@ -353,7 +355,7 @@ void text_cache_series_free_slot(int16_t slot)
 void text_cache_series(int16_t room, int16_t arg)
 {
     int16_t slot, i;
-    open_text_index(2, 0x66, 0x33, 2);
+    open_text_index(2, TEXT_INDEX_BYTES(g_show_count), (uint16_t)(g_show_count + 1), 2);
     if (room == 9) {
         text_cache_load_show(0x22, 0);
         slot = 1;
@@ -411,17 +413,17 @@ void text_cache_show_free_slot(int16_t slot)
 void text_cache_reload(void)
 {
     int16_t i;
-    open_text_index(0, 0x192, 0x192, 1);
+    open_text_index(0, TEXT_INDEX_BYTES(g_film_count), TEXT_INDEX_BYTES(g_film_count), 1);
     for (i = 0; i < 0x31; i++)
         if (*(int16_t *)FILM_CACHE(i) > 0)
             load_entry(*(int16_t *)FILM_CACHE(i), (ptr32 *)(FILM_CACHE(i) + 2), 2);
     close_text_index();
-    open_text_index(1, 0x66, 0x66, 1);
+    open_text_index(1, TEXT_INDEX_BYTES(g_series_count), TEXT_INDEX_BYTES(g_series_count), 1);
     for (i = 0; i < 0xf; i++)
         if (*(int16_t *)SERIES_CACHE(i) > 0)
             load_entry(*(int16_t *)SERIES_CACHE(i), (ptr32 *)(SERIES_CACHE(i) + 2), 0x16);
     close_text_index();
-    open_text_index(2, 0x66, 0x33, 2);
+    open_text_index(2, TEXT_INDEX_BYTES(g_show_count), (uint16_t)(g_show_count + 1), 2);
     for (i = 0; i < 10; i++)
         if (*(int16_t *)SHOW_CACHE(i) > 0)
             load_entry(*(int16_t *)SHOW_CACHE(i), (ptr32 *)(SHOW_CACHE(i) + 2), 0x10);

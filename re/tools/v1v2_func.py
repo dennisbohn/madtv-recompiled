@@ -28,6 +28,7 @@ def main():
     a2 = [int(x, 16) for x in row[1].split(':')]
     f1 = M.Func(v1, a1[0] - 0x1000, a1[1], lambda x: x, rel1)
     f2 = M.Func(v2, a2[0] - 0x1000, a2[1], M.ds_v2_to_v1, rel2)
+    f2.tokens = M.resolve(f2.tokens, f1.tokens)
     print('%s  Beta %s  Release %s  %s %s' % (row[2], row[0], row[1], row[3], row[4]))
     if '--ctx' in sys.argv:
         sm = difflib.SequenceMatcher(None, f1.tokens, f2.tokens, autojunk=False)

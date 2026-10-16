@@ -73,9 +73,8 @@ def ds_v2_to_v1(x):
 class Func:
     """Funktion ab seg:off (Segment relativ zum Ladeabbild): Befehle in Adressreihenfolge"""
 
-    def __init__(self, img, seg, off, ds_map, rel=frozenset(), imm_map=None):
+    def __init__(self, img, seg, off, ds_map, rel=frozenset()):
         self.seg, self.off, self.rel = seg, off, rel
-        self.imm_map = imm_map or ds_map
         self.ins = {}
         self.calls = {}  # Befehlsadresse -> ('far', seg, off) | ('near', off)
         todo = [off]
@@ -156,7 +155,10 @@ class Func:
                     if any(lin + k in self.rel for k in range(ins.size)):
                         toks.append('Iseg')  # Segmentwert, hängt von der Lage im Programm ab
                     elif op.imm & 0xffff:
-                        toks.append('I%x' % self.imm_map(op.imm & 0xffff))
+                        x = op.imm & 0xffff
+                        m = ds_map(x)
+                        # Adresse oder Konstante? Entscheidet resolve() je Funktionspaar
+                        toks.append('I%x' % x if m == x else 'I%x|%x' % (x, m))
                     else:
                         continue  # 0 setzt der Compiler mal als Konstante, mal per "xor r, r"
                     addrs.append(a)
@@ -168,6 +170,20 @@ class Func:
                     toks.append('D%x' % ds_map(op.mem.disp & 0xffff))
                     addrs.append(a)
         return toks, addrs
+
+
+def resolve(toks2, toks1):
+    """Zahlenwerte der Release-Fassung, die auch Adressen sein könnten ("Iroh|umgerechnet"):
+    umgerechnet, wenn die Beta-Funktion diesen Wert enthält, sonst roh (Konstanten wie 10000
+    dürfen nicht wie Adressen verschoben werden)"""
+    have = set(toks1)
+    out = []
+    for t in toks2:
+        if '|' in t:
+            raw, mapped = t[1:].split('|')
+            t = 'I' + mapped if 'I' + mapped in have else 'I' + raw
+        out.append(t)
+    return out
 
 
 def v1_functions():
@@ -196,28 +212,9 @@ def main():
             f1_cache[k] = Func(v1, k[0], k[1], lambda x: x, rel1)
         return f1_cache[k]
 
-    # Zahlenwerte sind teils Adressen (Tabellenanfänge), teils Konstanten (9999, 10000 ...). Umgerechnet
-    # wird, wenn nur der umgerechnete Wert in der ersten Fassung vorkommt; kommen beide vor, entscheidet,
-    # ob der umgerechnete Wert dort als Variable angesprochen wird.
-    v1_vars, v1_vals = set(), set()
-    for k in names:
-        for t in func1(k).tokens:
-            if t[0] in 'DI' and t != 'Iseg':
-                v1_vals.add(int(t[1:], 16))
-                if t[0] == 'D':
-                    v1_vars.add(int(t[1:], 16))
-
-    def imm_v2_to_v1(x):
-        m = ds_v2_to_v1(x)
-        if m == x or (m not in v1_vals and x in v1_vals):
-            return x
-        if x not in v1_vals or m in v1_vars:
-            return m
-        return x
-
     def func2(k):
         if k not in f2_cache:
-            f2_cache[k] = Func(v2, k[0], k[1], ds_v2_to_v1, rel2, imm_v2_to_v1)
+            f2_cache[k] = Func(v2, k[0], k[1], ds_v2_to_v1, rel2)
             for c in f2_cache[k].calls.values():
                 v2_targets.add((c[1], c[2]) if c[0] == 'far' else (k[0], c[1]))
         return f2_cache[k]
@@ -228,12 +225,13 @@ def main():
             if k1 in pairs or k2 in used2:
                 continue
             f1, f2 = func1(k1), func2(k2)
-            sm = difflib.SequenceMatcher(None, f1.tokens, f2.tokens, autojunk=False)
+            t2 = resolve(f2.tokens, f1.tokens)
+            sm = difflib.SequenceMatcher(None, f1.tokens, t2, autojunk=False)
             if sm.ratio() < 0.5 and max(len(f1.tokens), len(f2.tokens)) >= 2:
                 continue  # zu verschieden: vermutlich falsch gepaart
             pairs[k1] = k2
             used2.add(k2)
-            results[k1] = (f1.tokens == f2.tokens, sm.ratio(), f1, f2, sm)
+            results[k1] = (f1.tokens == t2, sm.ratio(), f1, f2, sm)
             # Aufrufe in übereinstimmenden Abschnitten paaren
             for tag, i1, i2, j1, j2 in sm.get_opcodes():
                 # nur Abschnitte mit Kontext: "call" allein passt auf jeden anderen Aufruf
@@ -270,7 +268,7 @@ def main():
             scored = []
             for k2 in cands:
                 f2 = func2(k2)
-                sm = difflib.SequenceMatcher(None, f1.tokens, f2.tokens, autojunk=False)
+                sm = difflib.SequenceMatcher(None, f1.tokens, resolve(f2.tokens, f1.tokens), autojunk=False)
                 if sm.real_quick_ratio() < 0.7 or sm.quick_ratio() < 0.7:
                     continue
                 scored.append((sm.ratio(), k2))
@@ -310,7 +308,7 @@ def main():
                     continue
                 for t in f1.tokens[i1:i2]:
                     print('  - ' + t)
-                for t in f2.tokens[j1:j2]:
+                for t in sm.b[j1:j2]:
                     print('  + ' + t)
 
 

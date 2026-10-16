@@ -31,16 +31,18 @@ SAVES = range(0xd1, 0xdc)  # 209.HES (Namen) und 210..219.HES (Spielstände)
 # über deren Adressen an (DS_*-Makros). Die Release-Fassung ist neu übersetzt; ihr Datensegment
 # enthält dieselben Spieldaten, aber ab DS:057d um einige Byte verschoben. Abschnitte (Adresse im
 # Port, Adresse in der Release-Fassung, Länge), ermittelt durch Abgleich beider Segmente:
-SECTIONS = [(0x0000, 0x0000, 0x057d), (0x057d, 0x057f, 0x1138), (0x16b6, 0x16b8, 0x00fc),
+SECTIONS = [(0x0000, 0x0000, 0x057d), (0x057d, 0x057f, 0x1235),
             (0x17c3, 0x17b7, 0x005d), (0x182c, 0x1820, 0x0115), (0x1941, 0x1961, 0x0009),
             (0x194a, 0x198a, 0x8ef7)]
 DGROUP_LEN = 0xa841
-# Dazwischen liegen nur Werte der Laufzeitbibliothek, die der Port nicht nutzt (ein Flag, der
-# Dateiname "000.HES" der ersten Fassung, Far-Zeiger der Exit-Hooks). Sie werden wie in der ersten
-# Fassung gesetzt, damit das Ergebnis Byte für Byte dem bisherigen Datensegment entspricht.
-FILLS = [(0x16b5, bytes.fromhex('ff')), (0x17b2, bytes.fromhex("48455300") + b"000.HES" + bytes(6)),
+# Dazwischen liegen nur Werte der Laufzeitbibliothek, die der Port nicht nutzt (der Dateiname
+# "000.HES" der ersten Fassung, Far-Zeiger der Exit-Hooks); sie werden wie in der ersten Fassung
+# gesetzt. Ab etwa DS:1950 ist das Segment genullt (Variablen ohne Startwert); die Abschnitte dort
+# ordnen nur Nullen zu, die Variablen selbst liegen in der Release-Fassung um 0x20 verschoben
+# (re/tools/v1v2_map.py).
+FILLS = [(0x17b2, bytes.fromhex("48455300") + b"000.HES" + bytes(6)),
          (0x1820, bytes.fromhex('0f0019350f0019350f001935'))]
-DGROUP_SHA256 = '994137498f000727396563fc1a5a272c9902994d413a9691db31877fa98ac1de'
+DGROUP_SHA256 = '157de2f22618bdba30fd462f9f794b71eb0e92f417ad50e58aeda094eaad6522'
 
 
 def dgroup_from_exe(exe):

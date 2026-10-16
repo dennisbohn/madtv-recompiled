@@ -254,8 +254,8 @@ void game_main(int argc, char **argv)
     screen_transition(1, 2, 4);
 }
 
-/* 1054:076c – Tastenkürzel: Steuerung des Büro-Tetris, Figur umschalten (J) und die
- * Cheat-Eingabe M-A-D-R-I-S-Enter (setzt DS:7a7e) */
+/* 1054:076c (Release 1054:085e) – Tastenkürzel: Steuerung des Büro-Tetris, Figur umschalten (J),
+ * Leertaste Pause */
 void hotkey_handle(int16_t key)
 {
     int16_t tetris = g_cur_room == 1 && g_cur_dialog == 2;
@@ -294,17 +294,12 @@ void hotkey_handle(int16_t key)
             figure_sprites_load_all();
             return;
         }
-        if (key != 0x32) /* 'M' leitet die Cheat-Eingabe ein */
-            return;
-        int16_t pos = 1;
-        while (pos != 0) {
-            int16_t k;
-            do {
-                k = kbd_getkey();
-            } while (k == -1);
-            pos = DS_ADDR(int16_t, 0x058c)[pos] == k ? (int16_t)(pos + 1) : 0;
-            if (pos == 7)
-                DS_I16(0x7a7e) = 1; /* Eingabe läuft weiter, bis eine falsche Taste kommt */
+        /* Release-Fassung: Leertaste wie ein Klick auf das Uhrzeitfeld (Pause bzw. Pause beenden;
+         * room_click geht mit gesetztem DS:7a7a direkt dorthin). Die Cheat-Eingabe der Beta
+         * (M-A-D-R-I-S-Enter, setzte DS:7a7e) gibt es dort nicht mehr. */
+        if (key == 0x20 && DS_I16(0x012c) == 0) {
+            DS_I16(0x7a7a) = 1;
+            room_click();
         }
         return;
     }
@@ -1052,7 +1047,7 @@ void day_begin(void)
     production_market_update();
     actors_market_shuffle();
     event_npc_init();
-    news_values_decay(0x23, 0x19);
+    news_values_decay(0, 0); /* Release-Fassung: Nachrichten vom Vortag wertlos (Beta: 35 % / 25 %) */
     news_update(5, 3);
     programmes_topicality_recover();
     if (g_day > 1)
@@ -1198,7 +1193,7 @@ void archive_find_selected(void)
         DS_I16(0x79aa) = 0;
         DS_I16(0x79a8) = 0;
     } else if (sel <= 1000) {
-        for (int16_t g = 1; g < 0xc; g++)
+        for (int16_t g = 1; g < 0xb; g++) /* Release-Fassung: Genre 11 (Serienregal) nicht mehr */
             for (int16_t k = 0; k < 4; k++)
                 if (DS_I16(0x6ef9 + owner * 0x6c + g * 8 + k * 2) == sel) {
                     DS_I16(0x79a8) = k;
@@ -1426,6 +1421,26 @@ subdialog:
             news_slots_panel(DS_I16(0x7a16), 1);
             player_tabs_panel(1);
             player_flags_draw(DS_I16(0x7a16));
+        } else if (room == 0xd) {
+            /* Release-Fassung: Hinweistafel mit gehaltenem Schild verlassen: als leer markierte
+             * Plätze (Tür >= 100) zurücksetzen. Als Etage nimmt das Original DS:79ac (Etage des
+             * zuletzt getauschten Schilds), nicht DS:79a8 – übernommen wie dort. Die Beta ließ die
+             * Markierung stehen. */
+            if (d == 1) {
+                for (int16_t r = 0; r <= 0xc; r++)
+                    for (int16_t c = 0; c <= 4; c++) {
+                        int8_t *cell = DS_ADDR(int8_t, 0x8a40 + r * 8 + c * 2);
+                        if (cell[1] >= 100) {
+                            cell[1] = (int8_t)DS_I16(0x79aa);
+                            cell[0] = (int8_t)DS_I16(0x79ac);
+                        }
+                    }
+                cursor_drop_item();
+                building_directory_panel();
+                screen_update();
+                g_cur_dialog = 0;
+            }
+            return;
         } else if (room == 0x40) {
             if (d == 1) {
                 bubble_text_dialog_small(1, NULL);
@@ -1951,8 +1966,10 @@ void tv_anim_setup(int16_t force)
         }
         layers++;
     }
-    DS_I16(0x79d4) = 7;
-    DS_I16(0x79d6) = 2;
+    if (force != 2) { /* Release-Fassung: mit 2 ohne diese Zuweisung */
+        DS_I16(0x79d4) = 7;
+        DS_I16(0x79d6) = 2;
+    }
     set_cursor_shape(0);
 }
 

@@ -13,6 +13,9 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 - Neue Variable `DS:0580` (Release) zwischen Beta-Adressen 057e und 0580; dahinter liegt alles um
   2 Byte verschoben (siehe VAR_SHIFT in v1v2_map.py).
 
+- Tastentabelle DS:16ac (ASCII → Spieltaste): Tabulator ergibt in der Release-Fassung 0x40, in
+  der Beta nichts. Kein Programmteil wertet 0x40 aus; übernommen (tools/make_bundle.py).
+
 ## Funktionen
 
 | Funktion | Beta | Release | Änderung | Status |
@@ -29,3 +32,42 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | building_map_door_pos | 2bd1:1af5 | 2da8:1cc2 | switch als Vergleichskette, gleiche Fälle | Rauschen |
 | info_board_build | 1054:2386 | 1054:2632 | switch als Vergleichskette, gleiche Fälle | Rauschen |
 | schedule_clear_programme | 1054:2298 | 1054:2505 | while statt do-while, gleiche Wirkung | Rauschen |
+| init_tables | 1054:0927 | 1054:0a0b | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_enter | 1054:0d49 | 1054:0e5f | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_load_background | 1054:1ce0 | 1054:1eec | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| text_cache_news | 1433:0002 | 148c:0007 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| text_cache_titles | 1433:021b | 148c:025b | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| text_cache_descr | 1433:0a45 | 148c:0b69 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| text_cache_series | 1433:11cf | 148c:13c6 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_click_building | 1581:19f0 | 15ff:1b1d | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_click_info_board | 1581:1bbd | 15ff:1d23 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_click_ad_agency | 1581:3156 | 15ff:33f6 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| room_click_betty | 19e6:1be9 | 1aa4:1dc0 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| adcontract_sign | 19e6:246d | 1aa4:26cd | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| studio_screenplay_remove | 19e6:26b9 | 1aa4:2950 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| tetris_tick | 1dd5:0dcb | 1ed7:0e2e | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| popup_box_create | 1f51:2e46 | 205e:3002 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| channel_programme_title_load | 239a:3849 | 24e1:3b5b | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| db_load_all | 2a62:000c | 2c18:000c | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| special_film_check | 2bd1:0a80 | 2da8:0b53 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| special_film_1d_tick | 2bd1:24a5 | 2da8:26fc | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| special_film_bb_tick | 2bd1:24d9 | 2da8:2735 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| contest_tick | 2bd1:408e | 2da8:4481 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| day_check_players | 3264:185a | 34b8:1c8c | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| find_event_door | 3f95:19f7 | 42ba:1b17 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| music_load_play | 42a5:01a8 | 45f8:024c | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| intro_scene_setup | 4301:0090 | 465f:00a5 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| intro_tick | 4301:0212 | 465f:0244 | Variable erneut gelesen statt im Register gehalten | Rauschen |
+| hotkey_handle | 1054:076c | 1054:085e | Leertaste (0x20) = Klick aufs Uhrzeitfeld (Pause/weiter) außerhalb des Tageswechsels; Cheat M-A-D-R-I-S-Enter (DS:7a7e) entfernt | übernommen (P bleibt als Port-Taste) |
+| room_click | 1581:0009 | 15ff:000a | switch als Vergleichskette; Raum 0x42 ruft room_leave direkt | Rauschen |
+| day_begin | 1054:1d57 | 1054:1f6f | news_values_decay(0, 0) statt (0x23, 0x19): Nachrichten vom Vortag verlieren ihren ganzen Wert | übernommen |
+| clock_update | 1054:1ea5 | 1054:20e0 | statistics_panel/screen_update an den Stellen, an die die Beta springt | Rauschen (Port entspricht schon der Release-Fassung) |
+| archive_find_selected | 1054:21c4 | 1054:242a | Filmsuche nur Genres 1–10; Genre 11 wäre schon das Serienregal | übernommen |
+| tv_show_current_programme | 1054:3240 | 1054:3738 | Nachrichtenstunde ohne Nachricht: Bild 0xee | schon im Port |
+| tv_show_picture | 1054:3357 | 1054:3855 | – | Rauschen |
+| tv_anim_setup | 1054:34c2 | 1054:39cf | DS:79d4/79d6 nur setzen, wenn das Argument nicht 2 ist | übernommen (Aufrufer mit 2 noch zu suchen) |
+| schedule_room_refresh | 1054:3bb6 | 1054:4135 | screen_update dupliziert statt gemeinsamem Ende | Rauschen |
+| schedule_hover_editable | 1054:22de | 1054:256e | return 1 dupliziert | Rauschen |
+| room_reload | 1054:0bfc | 1054:0d03 | Wert doppelt gestapelt | Rauschen |
+| room_leave | 1054:2490 | 1054:2741 | Neu: Hinweistafel (Raum 0xd) mit gehaltenem Schild verlassen setzt markierte Plätze zurück (Etage aus DS:79ac, wie im Original); sonst Code an gemeinsamen Enden dupliziert | übernommen |
+

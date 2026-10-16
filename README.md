@@ -30,9 +30,11 @@ fixes for a few out-of-bounds reads of the original.
 
 ## Building
 
-The repository contains no game data. Put these files from the release version of Mad TV into
-`gamedata/`: `MTV.EXE`, `SOURCE1.RSC`, `SOURCE2.RSC`. Every build embeds them
-(`tools/make_bundle.py`).
+The repository contains no game data. Put the two archives from the release version of Mad TV into
+`gamedata/`: `SOURCE1.RSC`, `SOURCE2.RSC`. Every build embeds them (`tools/make_bundle.py`). The
+tables and texts of the original data segment are part of the source (`src/game/ds_init.c`);
+`MTV.EXE` is only needed for `mingw32-make dscheck`, which compares them byte by byte with the
+original.
 
 **Windows** – MSYS2 with `mingw-w64-i686-gcc`, `-SDL2`, `-cmake`, `-ninja` and Python 3:
 
@@ -53,11 +55,11 @@ sh tools/build_linux.sh  # build/ubuntu2204/linux/MadTV-Recompiled-<version>-lin
 
 | Path | Content |
 |---|---|
-| `src/game/` | translated original code (`seg_XXXX.c` = code segment of `MTV.EXE`) |
+| `src/game/` | translated original code (`seg_XXXX.c` = code segment of `MTV.EXE`, `ds_init.c` = its data segment) |
 | `src/` | platform layer, runtime library, sound driver, menu bar |
 | `tools/` | data bundling, SDL build scripts, tests |
 | `res/` | icon and version resource |
-| `re/` | reverse engineering notes and tools (refer to the first release of `MTV.EXE`) |
+| `re/` | reverse engineering notes and tools (beta/release comparison, data segment extraction) |
 | `third_party/` | Nuked-OPL3, tinf, stb_truetype, Noto Sans |
 
 Source comments are in German; `TRANSLATION.md` describes the translation rules.

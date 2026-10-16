@@ -14,7 +14,7 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
   2 Byte verschoben (siehe VAR_SHIFT in v1v2_map.py).
 
 - Tastentabelle DS:16ac (ASCII → Spieltaste): Tabulator ergibt in der Release-Fassung 0x40, in
-  der Beta nichts. Kein Programmteil wertet 0x40 aus; übernommen (tools/make_bundle.py).
+  der Beta nichts. Kein Programmteil wertet 0x40 aus; übernommen (src/game/ds_init.c).
 
 ## Funktionen
 

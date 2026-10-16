@@ -6,22 +6,23 @@ SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
 SDL_LIBS   := $(shell pkg-config --libs sdl2 2>/dev/null) -lole32 -ldwmapi
 
 BUILD := build
-# Ordner mit dem Originalspiel (Release-Fassung: MTV.EXE, SOURCE1.RSC, SOURCE2.RSC). Die Daten
-# werden in jedes Programm eingebettet, aber nie ins Repository übernommen.
+# Ordner mit den Spieldaten-Archiven des Originals (Release-Fassung: SOURCE1.RSC, SOURCE2.RSC). Sie
+# werden in jedes Programm eingebettet, aber nie ins Repository übernommen. MTV.EXE braucht nur
+# "make dscheck" (Prüfung von src/game/ds_init.c).
 GAMEDATA ?= gamedata
 DATA := $(BUILD)/data
 
 PLATFORM := src/hes.c src/video.c src/menu.c src/unpack.c src/platform.c src/inflate.c
-RUNTIME  := src/dgroup.c src/rtlib.c
+RUNTIME  := src/dgroup.c src/game/ds_init.c src/rtlib.c
 OPL      := third_party/nuked-opl3/opl3.c
 HEADERS  := $(wildcard src/*.h)
 
-GAME_SRC := $(wildcard src/game/*.c)
+GAME_SRC := $(filter-out src/game/ds_init.c,$(wildcard src/game/*.c))
 
 all: $(BUILD)/madtv.exe $(BUILD)/SDL2.dll
 
 # Spieldaten, Programmsymbol und Versionsangaben als Windows-Ressourcen (tools/make_bundle.py)
-$(DATA)/bundle.rc: tools/make_bundle.py tools/unlzexe.py res/madtv.ico $(GAMEDATA)/MTV.EXE $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
+$(DATA)/bundle.rc: tools/make_bundle.py res/madtv.ico $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
 	python -I tools/make_bundle.py $(GAMEDATA) $(DATA)
 
 $(DATA)/bundle_res.o: $(DATA)/bundle.rc res/version.rc
@@ -49,16 +50,24 @@ $(BUILD)/SDL2.dll: | $(BUILD)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-# Testprogramme lesen DGROUP.bin und die Archive aus $(DATA)
+# Testprogramme lesen die Archive aus $(DATA)
 test: $(BUILD)/unpacktest.exe $(BUILD)/rttest.exe $(BUILD)/fmttest.exe $(BUILD)/SDL2.dll $(DATA)/bundle.rc
 	$(BUILD)/unpacktest.exe $(DATA) > $(BUILD)/unpacktest.log && tail -1 $(BUILD)/unpacktest.log
 	$(BUILD)/rttest.exe $(DATA) $(BUILD)/rttest.bmp
 	$(BUILD)/fmttest.exe $(DATA)
 
+# Startwerte des Datensegments (src/game/ds_init.c) Byte für Byte gegen MTV.EXE prüfen
+dscheck: $(BUILD)/dscheck.exe
+	python -I re/tools/dgroup_extract.py $(GAMEDATA)/MTV.EXE $(BUILD)/DGROUP.bin
+	$(BUILD)/dscheck.exe $(BUILD)/DGROUP.bin
+
+$(BUILD)/dscheck.exe: tools/dscheck.c src/dgroup.c src/game/ds_init.c src/dgroup.h | $(BUILD)
+	$(CC) $(CFLAGS) -Isrc -o $@ tools/dscheck.c src/dgroup.c src/game/ds_init.c
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test release
+.PHONY: all clean test release dscheck
 
 # ---- Release-EXE (wie madtv.exe, aber SDL statisch und ohne Debug-Infos) ----
 RELEASE  := $(BUILD)/release
@@ -100,7 +109,7 @@ MENUBAR_DEPS := $(MENUBAR) third_party/stb/stb_truetype.h third_party/noto-sans/
 $(SDL_LINUX)/lib/libSDL2.a: tools/build_sdl_linux.sh
 	SDL_LINUX_DIR=$(BUILD)/sdl-linux sh tools/build_sdl_linux.sh
 
-$(LINUX)/bundle.S: tools/make_bundle.py tools/unlzexe.py res/madtv.ico $(GAMEDATA)/MTV.EXE $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
+$(LINUX)/bundle.S: tools/make_bundle.py res/madtv.ico $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
 	python3 -I tools/make_bundle.py $(GAMEDATA) $(LINUX)
 
 $(LINUX_BIN): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(MENUBAR_DEPS) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a

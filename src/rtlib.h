@@ -116,6 +116,8 @@ uint16_t ticks_peek(void);
 void ticks_set(uint16_t n);
 
 /* ---- NNN.HES-Dateien ---- */
+/* PORT: beide Archive SOURCE1/SOURCE2.RSC vorhanden (eingebettet oder im Spielordner)? */
+int rsc_available(void);
 int32_t hes_filesize(int16_t no);
 int32_t hes_load(int16_t no, void *buf);
 int32_t hes_read(int16_t no, void *buf, uint16_t ofs, uint16_t len);

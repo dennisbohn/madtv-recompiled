@@ -543,6 +543,12 @@ static void rsc_init(void)
     }
 }
 
+int rsc_available(void)
+{
+    rsc_init();
+    return g_rsc[1] && g_rsc[2] && g_rsc_size[1] >= RSC_ENTRIES * 6 && g_rsc_size[2] >= RSC_ENTRIES * 6;
+}
+
 /* Datei no aus einem der Archive (SOURCE1 vor SOURCE2) oder NULL */
 static const uint8_t *rsc_entry(int16_t no, long *len)
 {

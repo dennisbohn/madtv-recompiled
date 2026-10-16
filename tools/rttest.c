@@ -1,6 +1,7 @@
 /* Integrationstest der Laufzeitbibliothek (Original-API) ohne Fenster:
  *   rttest [Datenordner, Standard build/data] [ausgabe.bmp]
- * Lädt DGROUP.bin und die Archive aus dem Datenordner (tools/make_bundle.py), prüft
+ * Füllt das Datensegment (src/game/ds_init.c), lädt die Archive aus dem Datenordner
+ * (tools/make_bundle.py), prüft
  * Tabellen, entpackt eine Sprite-Bank im Originallayout,
  * blittet sie auf den Bildschirm und speichert das Ergebnis als BMP. */
 #include <SDL.h>
@@ -29,8 +30,7 @@ int main(int argc, char **argv)
     hes_set_dir(dir);
     platform_set_game_dir(dir);
 
-    CHECK(dgroup_load(dir) == 0);
-    CHECK(strcmp((char *)DS_ADDR(char, 0x17b0), "*.HES") == 0);
+    dgroup_init();
     CHECK(strcmp((char *)DS_ADDR(char, 0x1398), "Fehler aufgetreten!") == 0);
     CHECK(DS_U16(0x1690) == 0xff); /* LZW-Maskentabelle */
 

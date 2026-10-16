@@ -1,8 +1,8 @@
 /* Programmstart des MadTV-Ports.
  *
- * Ersetzt den Turbo-C-Startcode (MTV.EXE 1000:0000): eingebettetes Datensegment laden, Fenster
- * öffnen und die übersetzte Original-main (1054:0005) aufrufen. Alle Spieldaten stecken im
- * Programm (tools/make_bundle.py).
+ * Ersetzt den Turbo-C-Startcode (MTV.EXE 1000:0000): Datensegment mit den Startwerten füllen
+ * (src/game/ds_init.c), Fenster öffnen und die übersetzte Original-main (1054:0005) aufrufen. Die
+ * Spieldaten-Archive stecken im Programm (tools/make_bundle.py).
  *
  *   madtv.exe [-window] [D|E [*...]]
  * Startet beim ersten Mal im Fenster, danach im zuletzt gewählten Modus; -window (oder
@@ -103,9 +103,8 @@ int main(int argc, char **argv)
         CloseHandle(CreateThread(NULL, 0, stackdump_thread, getenv("MADTV_STACKDUMP"), 0, NULL));
     }
 #endif
-    size_t dg_len = 0;
-    const uint8_t *dg = platform_resource("DGROUP", &dg_len);
-    if (!dg || dgroup_load_mem(dg, dg_len) != 0)
+    dgroup_init();
+    if (!rsc_available())
         fail("Die eingebetteten Spieldaten fehlen oder sind beschädigt.");
     int windowed = getenv("MADTV_WINDOWED") != NULL;
     for (int i = 1; i < argc; i++)

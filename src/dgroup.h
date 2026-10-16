@@ -1,8 +1,8 @@
 /* Das Datensegment (DGROUP) des Originalspiels.
  *
  * MTV.EXE adressiert alle globalen Variablen über feste Offsets in DS (Segment 45d4).
- * Der Port behält dieses Layout bei: g_ds ist ein 64-KB-Block, der beim Start mit den
- * initialisierten Daten aus MTV.EXE gefüllt wird (Tabellen, Texte, Startwerte).
+ * Der Port behält dieses Layout bei: g_ds ist ein 64-KB-Block, in den dgroup_init beim Start die
+ * vorbelegten Daten des Originals schreibt (Tabellen, Texte, Startwerte; src/game/ds_init.c).
  * Spielstände sind Abzüge dieses Blocks, daher bleiben sie mit dem Original kompatibel.
  *
  * Far-Pointer im Datensegment und in den Datenblöcken des Spiels belegen wie im Original 4 Byte.
@@ -58,9 +58,9 @@ extern uint8_t g_ds[DGROUP_SIZE];
 /* Offset eines Zeigers in g_ds (Umkehrung von DS_ADDR), -1 wenn außerhalb */
 int32_t ds_offset_of(const void *p);
 
-/* Lädt DGROUP.bin (von tools/make_bundle.py) aus dem Ordner; für Testprogramme. 0 = Erfolg */
-int dgroup_load(const char *dir);
-/* DGROUP aus einem Speicherabbild (z. B. ins Programm eingebettet, siehe tools/make_bundle.py) */
-int dgroup_load_mem(const uint8_t *data, size_t len);
+/* Datensegment mit den Startwerten des Spiels füllen, alles übrige 0 */
+void dgroup_init(void);
+/* Startwerte an ihre Adressen schreiben (src/game/ds_init.c) */
+void ds_init_data(void);
 
 #endif

@@ -8,7 +8,8 @@ der Ghidra-Export (`re/out/decompiled.c`), bei Zweifeln der Assembler (`re/scrip
 | Pfad | Inhalt |
 |---|---|
 | `src/game/seg_XXXX.c` | ein Originalmodul (= ein Code-Segment von MTV.EXE) |
-| `src/game/game.h` | Prototypen aller Spielfunktionen (generiert aus `re/notes/sigs/*.tsv`) |
+| `src/game/ds_init.c` | Startwerte des Datensegments (Tabellen, Formatvorlagen) an ihren DS-Adressen |
+| `src/game/game.h` | Prototypen aller Spielfunktionen (von Hand gepflegt) |
 | `src/game/globals.h` | benannte globale Variablen im Datensegment |
 | `src/rtlib.h` | Ersatz der Assembler-Bibliothek und der Turbo-C-Laufzeit (Original-API) |
 | `src/dgroup.h` | Datensegment `g_ds` und Zugriffsmakros `DS_*` |

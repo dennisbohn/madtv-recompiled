@@ -20,11 +20,9 @@ static void expect(const char *got, const char *want, size_t n, const char *what
 
 int main(int argc, char **argv)
 {
-    const char *dir = argc >= 2 ? argv[1] : "build/data";
-    if (dgroup_load(dir) != 0) {
-        printf("DGROUP.bin nicht gefunden\n");
-        return 1;
-    }
+    (void)argc;
+    (void)argv;
+    dgroup_init();
     char *s;
 
     s = fmt("#02d:#02d", 7, 5);

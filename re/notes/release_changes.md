@@ -26,7 +26,7 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | auction_day_end | 3264:0717 | 34b8:0905 | (1) Unverkaufte Lose (3 Runden ohne Gebot): Film/Serie zurück auf den Markt (Besitzer 0, Bit 0x20); die Beta verliert sie für immer. (2) Kandidaten (Filme 1–200 mit Bit 0x40, Besitzer 0 oder > 3, Bit 0x20, Preis ≠ 0; Serien 1–50 ebenso ohne Preis) vorher zählen und höchstens so viele Lose neu füllen; die Beta hängt, wenn es keinen Kandidaten mehr gibt. (3) Filme brauchen Preis ≠ 0 | übernommen |
 | room_entry_check | 2bd1:3271 | 2da8:3643 | Neu: Tür zum Chef (Raum 3) eines anderen Spielers → Rückgabe 1 (Meldung g_text(1), kein Eintritt; bei Abfrage 0). Ein neuer Fall „Abfrage 1 → 2“ bei Bombe/Ruine ist toter Code | übernommen |
 | npc_update | 27bb:11fb | 293d:12fa | „Fremdes Büro: Zutritt verweigert“ gilt für die Figur des lokalen Spielers (DS:8b88 − 1) und dessen Spielernummer (Besitzer, player_flag) statt fest Figur 0 / Spieler 1; sonst Rauschen | übernommen |
-| snd_init | 42a5:0002 | 45f8:0003 | Liest die Musiktabelle anders (Einträge mit Langwert bei +4c, Suche nach +2 == 0) – passt zum Datenformat der Release-Fassung; der Port hat einen eigenen Treiber | zu prüfen |
+| snd_init | 42a5:0002 | 45f8:0003 | Soundkarten-Erkennung unter DOS: Konfigurationsdatei lesen, Treiber wählen und laden | entfällt (der Port hat einen eigenen AdLib-Treiber) |
 | building_hover_draw | 27bb:1be9 | 293d:1df9 | Meldung DS:79ca erst ab 2 anzeigen (1 = still verweigert, room_entry_check) | übernommen |
 | ticks_set | 42fe:001a | 465d:0014 | – | Rauschen |
 | building_map_door_pos | 2bd1:1af5 | 2da8:1cc2 | switch als Vergleichskette, gleiche Fälle | Rauschen |
@@ -163,3 +163,16 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | hover_dispatch | 239a:1568 | 24e1:16bb | Endstücke dupliziert; Rollen-Tooltip wie im Port | Rauschen |
 | intro_play | 4301:03ad | 465f:03f2 | Titelbild 100 Takte (2 s) fest stehen lassen | übernommen (ersetzt die bisherige Port-Haltezeit von bis zu 3 s) |
 | room_click_supermarket_shelves | 19e6:0f78 | 1aa4:10cc | Code an gemeinsamen Enden dupliziert | Rauschen |
+
+## Ohne Gegenstück in der Release-Fassung
+
+room_load_tail (Teil von room_load, über die Sprungtabelle erreicht), stub_21bf, str_is_prefix
+(Kleinstfunktionen), snd_shutdown, timer_init (DOS-Treiber, im Port ersetzt) sowie Bruchstücke
+(_frag/_unk), die Ghidra in der Beta als eigene Funktionen angelegt hatte.
+
+## Stand
+
+Alle Funktionen mit Abweichung sind geprüft (re/notes/v1v2_map.tsv). Prüfwerkzeug:
+re/tools/v1v2_map.py vergleicht Datenzugriffe, Konstanten, Strukturversätze und Aufrufe; nicht
+erfasst werden Sprungarten (jl/jle) und Registerwahl. Unterschiede, die nur daraus bestehen,
+würden also nicht auffallen.

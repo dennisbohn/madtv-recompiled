@@ -51,6 +51,10 @@ for releases in an Ubuntu 22.04 container (podman/docker) so that it runs with o
 sh tools/build_linux.sh  # build/ubuntu2204/linux/MadTV-Recompiled-<version>-linux
 ```
 
+**Without embedded game data** – add `EMBED=0` to any of the commands above (no `gamedata/` needed;
+file names end in `-nodata`). The program then reads `SOURCE1.RSC` and `SOURCE2.RSC` from its own
+folder and tells the player if they are missing.
+
 ## Layout
 
 | Path | Content |

@@ -500,8 +500,9 @@ static FILE *hes_open(int16_t no, const char *mode)
 /* ---- Spieldaten-Archive ----
  * Die Release-Fassung von Mad TV liefert alle HES-Dateien in zwei Archiven SOURCE1.RSC und
  * SOURCE2.RSC: Verzeichnis aus 600 Einträgen zu 6 Byte (u32 Offset, u16 Länge), Eintrag n =
- * Datei n.HES. Die Archive sind ins Programm eingebettet (tools/make_bundle.py); nur die
- * Testprogramme lesen sie aus einem Ordner (platform_game_dir). Spielstände (209–219) werden nie
+ * Datei n.HES. Normalerweise sind die Archive ins Programm eingebettet (tools/make_bundle.py); ein
+ * Build ohne Spieldaten (EMBED=0) und die Testprogramme lesen sie aus einem Ordner
+ * (platform_game_dir, beim Spiel der Ordner der Programmdatei). Spielstände (209–219) werden nie
  * aus den Archiven gelesen. */
 enum { RSC_ENTRIES = 600 };
 static const uint8_t *g_rsc[3];
@@ -526,6 +527,10 @@ static void rsc_init(void)
         char path[600];
         snprintf(path, sizeof path, "%s/SOURCE%d.RSC", platform_game_dir(), k);
         FILE *f = fopen(path, "rb");
+        if (!f) { /* von DOS-Datenträgern oft klein geschrieben kopiert (Linux unterscheidet) */
+            snprintf(path, sizeof path, "%s/source%d.rsc", platform_game_dir(), k);
+            f = fopen(path, "rb");
+        }
         if (!f)
             continue;
         fseek(f, 0, SEEK_END);

@@ -104,8 +104,23 @@ int main(int argc, char **argv)
     }
 #endif
     dgroup_init();
-    if (!rsc_available())
-        fail("Die eingebetteten Spieldaten fehlen oder sind beschädigt.");
+    /* Spieldaten-Archive: eingebettet, sonst neben der Programmdatei (Build ohne Spieldaten) */
+    char *base = SDL_GetBasePath();
+    if (base) {
+        size_t n = strlen(base);
+        if (n > 1 && (base[n - 1] == '/' || base[n - 1] == '\\'))
+            base[n - 1] = 0;
+        platform_set_game_dir(base);
+        SDL_free(base);
+    }
+    if (!rsc_available()) {
+        char msg[700];
+        snprintf(msg, sizeof msg,
+                 "Die Spieldaten fehlen. Kopiere SOURCE1.RSC und SOURCE2.RSC aus Mad TV in diesen Ordner.\n"
+                 "Game data missing. Copy SOURCE1.RSC and SOURCE2.RSC from Mad TV into this folder.\n\n%s",
+                 platform_game_dir());
+        fail(msg);
+    }
     int windowed = getenv("MADTV_WINDOWED") != NULL;
     for (int i = 1; i < argc; i++)
         if (strcmp(argv[i], "-window") == 0)

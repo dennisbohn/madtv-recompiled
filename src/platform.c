@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 #endif
 
-static char g_game_dir[512] = "."; /* nur für Testprogramme: Ordner mit SOURCE1/2.RSC */
+static char g_game_dir[512] = "."; /* Ordner mit SOURCE1/2.RSC, falls nicht eingebettet */
 static uint64_t g_last_present_us;
 static uint32_t g_present_count;
 static PlatformCursorFn g_cursor_fn;

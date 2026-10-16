@@ -1,6 +1,9 @@
-"""Spieldaten für die Programmdatei vorbereiten (alle Builds betten sie ein).
+"""Spieldaten und Programmsymbol für die Programmdatei vorbereiten.
 
-Aufruf (aus der Projektwurzel): python -I tools/make_bundle.py GAMEDATA_DIR OUT_DIR
+Aufruf (aus der Projektwurzel): python -I tools/make_bundle.py GAMEDATA_DIR OUT_DIR [--no-game-data]
+
+Mit --no-game-data wird GAMEDATA_DIR nicht gelesen und nur das Symbol eingebettet; das Spiel liest
+SOURCE1.RSC und SOURCE2.RSC dann aus dem Ordner der Programmdatei (Makefile: EMBED=0).
 
 GAMEDATA_DIR enthält SOURCE1.RSC und SOURCE2.RSC der Release-Fassung von Mad TV (die Startwerte
 aus dem Datensegment von MTV.EXE stehen in src/game/ds_init.c).
@@ -76,8 +79,10 @@ def icon_rgba(path, size=64):
 
 def main():
     data_dir, out = sys.argv[1:3]
+    embed = '--no-game-data' not in sys.argv[3:]
+    archives = ('SOURCE1.RSC', 'SOURCE2.RSC') if embed else ()
     os.makedirs(out, exist_ok=True)
-    for k in (1, 2):
+    for k in (1, 2) if embed else ():
         name = 'SOURCE%d.RSC' % k
         data, removed = strip_saves(open(os.path.join(data_dir, name), 'rb').read(), name)
         open(os.path.join(out, name), 'wb').write(data)
@@ -89,15 +94,15 @@ def main():
         # auch für Fenster und Taskleiste
         f.write('1 ICON "%s"\n' % ico)
         f.write('#include "version.rc"\n')
-        for res in ('SOURCE1.RSC', 'SOURCE2.RSC'):
+        for res in archives:
             raw, packed = pack(os.path.join(out, res))
             print('%s: %d -> %d Byte gepackt' % (res, raw, packed))
             f.write('%s RCDATA "%s.z"\n' % (res.split('.')[0], res))
     open(os.path.join(out, 'ICON.rgba'), 'wb').write(icon_rgba('res/madtv.ico'))
     pack(os.path.join(out, 'ICON.rgba'))
     # Linux: Daten per .incbin ins Programm; Tabelle in .data.rel.ro (enthält Adressen, PIE)
-    names = ('SOURCE1', 'SOURCE2', 'ICON')
-    files = ('SOURCE1.RSC', 'SOURCE2.RSC', 'ICON.rgba')
+    files = archives + ('ICON.rgba',)
+    names = tuple(fn.split('.')[0] for fn in files)
     with open(os.path.join(out, 'bundle.S'), 'w', encoding='ascii') as f:
         f.write('/* erzeugt von tools/make_bundle.py */\n')
         f.write('\t.section .data.rel.ro,"aw"\n\t.balign 8\n\t.globl mtv_bundle\nmtv_bundle:\n')

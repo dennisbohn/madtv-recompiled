@@ -10,7 +10,12 @@ BUILD := build
 # werden in jedes Programm eingebettet, aber nie ins Repository übernommen. MTV.EXE braucht nur
 # "make dscheck" (Prüfung von src/game/ds_init.c).
 GAMEDATA ?= gamedata
-DATA := $(BUILD)/data
+# EMBED=0: Spieldaten nicht einbetten (gamedata/ wird nicht gebraucht); das Programm liest
+# SOURCE1.RSC und SOURCE2.RSC aus seinem eigenen Ordner. Dateien dieses Builds enden auf -nodata.
+EMBED ?= 1
+NODATA := $(if $(filter 0,$(EMBED)),-nodata)
+BUNDLE_DEPS := tools/make_bundle.py res/madtv.ico $(if $(NODATA),,$(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC)
+DATA := $(BUILD)/data$(NODATA)
 
 PLATFORM := src/hes.c src/video.c src/menu.c src/unpack.c src/platform.c src/inflate.c
 RUNTIME  := src/dgroup.c src/game/ds_init.c src/rtlib.c
@@ -19,17 +24,17 @@ HEADERS  := $(wildcard src/*.h)
 
 GAME_SRC := $(filter-out src/game/ds_init.c,$(wildcard src/game/*.c))
 
-all: $(BUILD)/madtv.exe $(BUILD)/SDL2.dll
+all: $(BUILD)/madtv$(NODATA).exe $(BUILD)/SDL2.dll
 
 # Spieldaten, Programmsymbol und Versionsangaben als Windows-Ressourcen (tools/make_bundle.py)
-$(DATA)/bundle.rc: tools/make_bundle.py res/madtv.ico $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
-	python -I tools/make_bundle.py $(GAMEDATA) $(DATA)
+$(DATA)/bundle.rc: $(BUNDLE_DEPS)
+	python -I tools/make_bundle.py $(GAMEDATA) $(DATA) $(if $(NODATA),--no-game-data)
 
 $(DATA)/bundle_res.o: $(DATA)/bundle.rc res/version.rc
 	windres -I $(DATA) -I res $(DATA)/bundle.rc -O coff -o $@
 
 # Das Spiel
-$(BUILD)/madtv.exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(DATA)/bundle_res.o | $(BUILD)
+$(BUILD)/madtv$(NODATA).exe: src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(DATA)/bundle_res.o | $(BUILD)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(DATA)/bundle_res.o $(SDL_LIBS)
 
 # Konsolenprogramme
@@ -72,7 +77,7 @@ clean:
 # ---- Release-EXE (wie madtv.exe, aber SDL statisch und ohne Debug-Infos) ----
 RELEASE  := $(BUILD)/release
 VERSION  := $(shell python -I tools/version.py)
-RELEASE_EXE := $(RELEASE)/MadTV-Recompiled-$(VERSION)-windows.exe
+RELEASE_EXE := $(RELEASE)/MadTV-Recompiled-$(VERSION)-windows$(NODATA).exe
 # Release: schlankes, statisches SDL aus tools/build_sdl.sh (nur benutzte Teile); --gc-sections
 # entfernt beim Linken alle nicht aufgerufenen Funktionen
 SDL_SLIM := $(BUILD)/sdl/install
@@ -99,8 +104,8 @@ $(RELEASE):
 # bauen (tools/build_linux.sh), damit sie auch mit älterer glibc läuft.
 # Ohne PIE gelinkt: Code und statische Daten liegen unter 4 GB, damit ihre Adressen in die 4 Byte
 # großen Far-Pointer des Datensegments passen (siehe src/dgroup.h).
-LINUX     := $(BUILD)/linux
-LINUX_BIN := $(LINUX)/MadTV-Recompiled-$(VERSION)-linux
+LINUX     := $(BUILD)/linux$(NODATA)
+LINUX_BIN := $(LINUX)/MadTV-Recompiled-$(VERSION)-linux$(NODATA)
 SDL_LINUX := $(BUILD)/sdl-linux/install
 # selbst gezeichnete Menüleiste (Schrift per .incbin, Pfad relativ zur Projektwurzel)
 MENUBAR   := src/menubar.c src/menufont.S
@@ -109,8 +114,8 @@ MENUBAR_DEPS := $(MENUBAR) third_party/stb/stb_truetype.h third_party/noto-sans/
 $(SDL_LINUX)/lib/libSDL2.a: tools/build_sdl_linux.sh
 	SDL_LINUX_DIR=$(BUILD)/sdl-linux sh tools/build_sdl_linux.sh
 
-$(LINUX)/bundle.S: tools/make_bundle.py res/madtv.ico $(GAMEDATA)/SOURCE1.RSC $(GAMEDATA)/SOURCE2.RSC
-	python3 -I tools/make_bundle.py $(GAMEDATA) $(LINUX)
+$(LINUX)/bundle.S: $(BUNDLE_DEPS)
+	python3 -I tools/make_bundle.py $(GAMEDATA) $(LINUX) $(if $(NODATA),--no-game-data)
 
 $(LINUX_BIN): src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(HEADERS) src/game/*.h $(MENUBAR_DEPS) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a
 	$(CC) $(CFLAGS) -g0 -no-pie -ffunction-sections -fdata-sections -I$(SDL_LINUX)/include/SDL2 -D_REENTRANT -DMADTV_VERSION='"$(VERSION)"' -Isrc -Isrc/game -o $@ src/main.c src/sound.c $(OPL) $(PLATFORM) $(RUNTIME) $(GAME_SRC) $(MENUBAR) $(LINUX)/bundle.S $(SDL_LINUX)/lib/libSDL2.a -pthread -lm -ldl -no-pie -Wl,--gc-sections

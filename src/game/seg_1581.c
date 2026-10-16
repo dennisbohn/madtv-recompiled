@@ -473,10 +473,15 @@ void room_click_auction(void)
                     *(int32_t *)(lot + 2) = prog_price(p);
                     ME_MONEY += prog_price(p);
                     money_add(p < 1000 ? 0xb : 0xc, prog_price(p));
-                    if (p < 1000)
+                    /* Release-Fassung: zusätzlich Bit 0x20 löschen (in der Auktion, nicht auf dem
+                     * Markt; auction_day_end setzt es zurück, wenn das Los unverkauft bleibt) */
+                    if (p < 1000) {
                         FILM(p)[5] = 0;
-                    else
+                        *(uint16_t *)(FILM(p) + 6) &= ~0x20;
+                    } else {
                         SERIES(p - 1000)[0x24] = 0;
+                        *(uint16_t *)(SERIES(p - 1000) + 0x25) &= ~0x20;
+                    }
                     g_dialog = 0;
                     status_money_update();
                     return;
@@ -1590,9 +1595,18 @@ void room_click_studio(void)
         return;
     }
     case 0x24:
-        if (DS_I16(0x7460 + g_local_player * 2) > 0)
-            DS_I16(0x7460 + g_local_player * 2)--;
-        studio_production_dialog(2);
+        /* Release-Fassung: nur bei vorbereiteter Folge; den Eintrag dieser Show aus der
+         * Produktionsliste nehmen (Suche ab dem Index "Anzahl", wie im Original) und eine Folge
+         * weniger vorbereitet. Die Beta zählte nur die Liste herunter. */
+        if ((int8_t)st[5] >= (int8_t)st[4]) {
+            for (int16_t i = DS_I16(0x7460 + g_local_player * 2); i >= 0; i--)
+                if (DS_I16(0x732c + g_local_player * 0x4b + i * 0xf) == *(int16_t *)st) {
+                    production_remove(g_local_player, i);
+                    break;
+                }
+            st[5]--;
+            studio_production_dialog(2);
+        }
         return;
     default:
         return;
@@ -1692,8 +1706,12 @@ void save_menu_load(int16_t slot)
     status_text(s, 0xb4);
     far_free(s);
     DS_I16(0x7a40) = 1;
-    if (DS_I16(0x7a10) == 0 && hour_index() > 0 && g_minute > 4 && g_minute < 0x37)
-        tv_anim_setup(1);
+    if (DS_I16(0x7a10) == 0 && hour_index() > 0) {
+        if (g_minute > 4 && g_minute < 0x37)
+            tv_anim_setup(1);
+        else
+            tv_anim_setup(2); /* Release-Fassung: auch außerhalb der Sendung */
+    }
     tv_show_current_programme();
     figure_sprites_load_all();
     set_cursor_shape(0);
@@ -1750,6 +1768,9 @@ void room_click_save_menu(void)
                     if (DS_I16(0x7a78) != 0) { /* Schreibfehler */
                         save_menu_refresh();
                         show_message(0x1ab);
+                    } else { /* Release-Fassung: nach dem Speichern zurück ins Spiel */
+                        g_dialog = 0;
+                        room_leave();
                     }
                 } else {
                     save_menu_refresh();

@@ -70,4 +70,30 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | schedule_hover_editable | 1054:22de | 1054:256e | return 1 dupliziert | Rauschen |
 | room_reload | 1054:0bfc | 1054:0d03 | Wert doppelt gestapelt | Rauschen |
 | room_leave | 1054:2490 | 1054:2741 | Neu: Hinweistafel (Raum 0xd) mit gehaltenem Schild verlassen setzt markierte Plätze zurück (Etage aus DS:79ac, wie im Original); sonst Code an gemeinsamen Enden dupliziert | übernommen |
-
+| room_click_auction | 1581:0345 | 15ff:0359 | Eigenes Programm versteigern: zusätzlich Bit 0x20 löschen | übernommen |
+| room_click_movie_agency | 1581:088c | 15ff:090a | Code an gemeinsamen Enden dupliziert | Rauschen |
+| room_click_schedule | 1581:0c78 | 15ff:0d0e | Code an gemeinsamen Enden dupliziert | Rauschen |
+| room_click_news_studio | 1581:23ca | 15ff:25a4 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| offer_list_add_selected | 19e6:22f7 | 1aa4:2546 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| clock_get_seconds | 1c74:02c3 | 1d5e:02e4 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| door_draw | 1f51:12ca | 205e:1366 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| daily_costs_pay | 2bd1:0e8b | 2da8:0fb9 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| start_programmes_assign | 2bd1:13b0 | 2da8:1538 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| schedule_panel_open | 340d:0287 | 36a7:02a2 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| confirm_bubble_dialog | 340d:386f | 36a7:3a31 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| disk_request_dialog | 38b6:0a88 | 3b74:0ac8 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| player_info_popup | 38b6:1d91 | 3b74:1e56 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| ai_fill_programme_slots | 3b0a:0cf3 | 3dd9:0dd9 | Wert doppelt gestapelt bzw. erneut geladen | Rauschen |
+| room_click_office | 1581:2220 | 15ff:23d8 | switch als Vergleichskette, gleiche Fälle; screen_update am gemeinsamen Ende | Rauschen |
+| room_click_station_map | 1581:29fc | 15ff:2c02 | Code an gemeinsamen Enden dupliziert | Rauschen |
+| room_click_real_estate | 1581:37d8 | 15ff:3ab7 | Abbruch über Klickbereich 0x25 in Dialog 1 und 2 | schon im Port |
+| room_click_studio | 1581:3aaf | 15ff:3ddf | Klickbereich 0x24 im Produktionsdialog: nur bei vorbereiteter Folge; Eintrag der Show aus der Produktionsliste nehmen (production_remove, Suche ab Index = Anzahl) und Vorbereitungsstand − 1; die Beta zählte nur die Liste herunter | übernommen |
+| room_click_save_menu | 1581:4135 | 15ff:44f4 | Nach erfolgreichem Speichern Dialog 0 und room_leave (zurück ins Spiel); nach dem Laden tv_anim_setup(2) außerhalb der Sendeminuten | übernommen |
+| room_click_boss | 19e6:0004 | 1aa4:000e | Code an gemeinsamen Enden dupliziert (Geld, Anzeige) | Rauschen |
+| room_click_supermarket | 19e6:0c29 | 1aa4:0d65 | screen_update am gemeinsamen Ende | Rauschen |
+| station_next_valid | 19e6:2022 | 1aa4:2243 | Schleife anders aufgebaut, gleicher Umlauf | Rauschen |
+| station_prev_valid | 19e6:207c | 1aa4:22ab | Schleife anders aufgebaut, gleicher Umlauf | Rauschen |
+| fmt | 1d41:0003 | 1e35:0000 | Lage der Sprungtabelle | Rauschen |
+| screen_update | 1dd5:0884 | 1ed7:08b8 | zusätzlicher Aufruf der Laufzeitbibliothek beim Bildaufbau | entfällt (Plattformschicht) |
+| draw_tile_box_to | 1dd5:16bd | 1ed7:1775 | Schleife anders aufgebaut, gleiche Wirkung | Rauschen |
+| window_open | 1f51:057c | 205e:058c | Vergleich mit Konstante statt Register | Rauschen |

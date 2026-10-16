@@ -4,9 +4,10 @@
  * öffnen und die übersetzte Original-main (1054:0005) aufrufen. Alle Spieldaten stecken im
  * Programm (tools/make_bundle.py).
  *
- *   madtv.exe [-window]
+ *   madtv.exe [-window] [D|E [*...]]
  * Startet beim ersten Mal im Fenster, danach im zuletzt gewählten Modus; -window (oder
- * MADTV_WINDOWED=1) erzwingt das Fenster. Alt+Enter/F11 oder das Menü schaltet um. */
+ * MADTV_WINDOWED=1) erzwingt das Fenster. Alt+Enter/F11 oder das Menü schaltet um.
+ * D/E und Sternchen wertet das Spiel aus wie die Release-Fassung von MTV.EXE (game_main). */
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,8 +114,14 @@ int main(int argc, char **argv)
     if (platform_init(windowed) != 0)
         fail(SDL_GetError());
 
-    /* Original: main(argc, argv, envp); Kommandozeilenparameter wertet MadTV nicht aus. */
-    game_main();
+    /* Original: main(argc, argv, envp). Die Argumente des Spiels (Sprache, Gegner-Kapital, siehe
+     * game_main) ohne die Schalter des Ports (beginnen mit "-") */
+    char **game_argv = calloc((size_t)argc + 1, sizeof *game_argv);
+    int game_argc = 0;
+    for (int i = 0; i < argc; i++)
+        if (i == 0 || argv[i][0] != '-')
+            game_argv[game_argc++] = argv[i];
+    game_main(game_argc, game_argv);
 
     platform_shutdown();
     return 0;

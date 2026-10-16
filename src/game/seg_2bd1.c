@@ -1289,6 +1289,9 @@ int16_t room_entry_check(int16_t fig, int16_t query)
             }
         }
     }
+    /* Release-Fassung: zum Chef eines anderen Spielers geht es nicht (1: ohne Meldung umkehren) */
+    if (r == 0 && FLOOR_B(fl, door + 0x1e) == 3 && FLOOR_B(fl, door + 0x46) != fig + 1)
+        r = query == 0 ? 1 : 0;
     if (r == 0 && FLOOR_B(fl, door + 0x1e) == 0x36)
         r = query == 0 ? 0x12f : 2; /* Ruine */
     if (r == 0) {

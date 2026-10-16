@@ -185,15 +185,50 @@ void market_update_prices(void)
     }
 }
 
-/* 3264:0717 – Auktion zum Tagesende: Zuschläge, 3 Tage ohne Gebot = Rückzug, neue Lose */
+/* Release-Fassung: kann Film bzw. Serie n versteigert werden? (Bit 0x40, nicht verkauft oder in
+ * keiner Auktion, Bit 0x20; Filme zusätzlich mit Preis) */
+static int auction_film_ok(int16_t n)
+{
+    uint8_t *f = FILM(n);
+    return (UW(f, 6) & 0x40) && (f[5] == 0 || (int8_t)f[5] > 3) && (UW(f, 6) & 0x20) && L(f, 8) != 0;
+}
+
+static int auction_series_ok(int16_t n)
+{
+    uint8_t *s = SERIES(n);
+    return (UW(s, 0x25) & 0x40) && (s[0x24] == 0 || (int8_t)s[0x24] > 3) && (UW(s, 0x25) & 0x20);
+}
+
+/* 3264:0717 (Release 34b8:0905) – Auktion zum Tagesende: Zuschläge, 3 Tage ohne Gebot = Rückzug,
+ * neue Lose */
 void auction_day_end(void)
 {
+    /* Release-Fassung: Kandidaten vorher zählen und höchstens so viele Lose neu füllen. Die Beta
+     * suchte endlos weiter, wenn kein Film und keine Serie mehr zu versteigern war. */
+    int16_t avail = 0;
+    for (int16_t n = 1; n <= 200; n++)
+        if (auction_film_ok(n))
+            avail++;
+    for (int16_t n = 1; n <= 50; n++)
+        if (auction_series_ok(n))
+            avail++;
     for (int16_t i = 1; i <= 10; i++) {
         uint8_t *l = LOT(i);
         if (W(l, 0) != 0) {
             if (l[6] == 0) {
                 if ((int8_t)++l[8] < 3)
                     goto next;
+                /* Release-Fassung: unverkauft zurück auf den Markt (auction_lot_set hatte einen
+                 * Schein-Besitzer eingetragen und Bit 0x20 gelöscht; die Beta ließ das so stehen,
+                 * der Titel war damit für den Rest des Spiels verloren) */
+                int16_t id = W(l, 0);
+                if (id != 0 && id < 1000) {
+                    FILM(id)[5] = 0;
+                    UW(FILM(id), 6) |= 0x20;
+                } else {
+                    SERIES(id - 1000)[0x24] = 0;
+                    UW(SERIES(id - 1000), 0x25) |= 0x20;
+                }
             } else {
                 if (W(l, 0) < 0x3e9)
                     UW(FILM(W(l, 0)), 6) |= 0x20;
@@ -204,22 +239,21 @@ void auction_day_end(void)
             W(l, 0) = 0;
         }
     next:
-        if (i < 9 && W(l, 0) == 0) {
+        if (i < 9 && W(l, 0) == 0 && avail > 0) {
+            avail--;
             int16_t n = 0;
             while (n == 0) {
                 n = rand_range(0xfa, i);
                 if (n > 200) {
                     n -= 200;
-                    uint8_t *s = SERIES(n);
-                    if (!(UW(s, 0x25) & 0x40) || (s[0x24] != 0 && (int8_t)s[0x24] < 4) || !(UW(s, 0x25) & 0x20)) {
+                    if (!auction_series_ok(n)) {
                         n = 0;
                         continue;
                     }
-                    W(s, 0x31) = 1;
+                    W(SERIES(n), 0x31) = 1;
                     auction_lot_set(i, n, 1);
                 } else {
-                    uint8_t *f = FILM(n);
-                    if (!(UW(f, 6) & 0x40) || (f[5] != 0 && (int8_t)f[5] < 4) || !(UW(f, 6) & 0x20)) {
+                    if (!auction_film_ok(n)) {
                         n = 0;
                         continue;
                     }

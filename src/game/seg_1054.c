@@ -10,9 +10,27 @@ static void debug_autoplan(void);
 void save_menu_load(int16_t slot); /* seg_1581.c */
 
 /* 1054:0005 – Hauptprogramm: Initialisierung, Intro, Laden der Daten, Hauptschleife */
-void game_main(void)
+int16_t g_opponent_stars;
+
+void game_main(int argc, char **argv)
 {
     int16_t click_handled = 0;
+
+    /* Release-Fassung: 1. Argument d/D bzw. e/E wählt die Sprache (dann keine Abfrage),
+     * 2. Argument: Anzahl führender "*" (höchstens 10) vervielfacht das Startkapital der
+     * Computergegner (room_click_new_game_setup). PORT: Das Original liest das 2. Argument auch,
+     * wenn es fehlt (Nullzeiger); hier gilt dann 0. */
+    g_language = -1;
+    if (argc > 1) {
+        if (argv[1][0] == 'd' || argv[1][0] == 'D')
+            g_language = 0;
+        if (argv[1][0] == 'e' || argv[1][0] == 'E')
+            g_language = 1;
+        int16_t n = 0;
+        while (argc > 2 && argv[2][n] == '*')
+            n++;
+        g_opponent_stars = n > 10 ? 10 : n;
+    }
 
     far_memset(DS_ADDR(uint8_t, 0x79a6), 200);
     DS_I16(0x7a2e) = 3;
@@ -2029,13 +2047,19 @@ static void language_select_menu(void);
 void language_select(void)
 {
     int lang = platform_setting_get("language", -1);
-    if (platform_debug_env("MADTV_LANGSELECT")) {
+    /* Release-Fassung: Sprache aus der Kommandozeile (game_main), keine Abfrage. Sie gilt nur für
+     * diesen Start, die gespeicherte Einstellung bleibt. */
+    int from_args = g_language == 0 || g_language == 1;
+    if (from_args) {
+        lang = g_language;
+    } else if (platform_debug_env("MADTV_LANGSELECT")) {
         language_select_menu();
         lang = g_language;
     } else if (lang != 0 && lang != 1) {
         lang = platform_system_language_german() ? 0 : 1;
     }
-    platform_setting_set("language", lang);
+    if (!from_args)
+        platform_setting_set("language", lang);
     g_language = (int16_t)lang;
     platform_language_show(lang);
     g_cur_room = -5; /* Zustand wie nach der Originalauswahl */

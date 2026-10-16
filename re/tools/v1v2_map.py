@@ -59,7 +59,7 @@ def load_v2(path):
 # Lage der Variablen: Verschiebung Release gegenüber erster Fassung je Bereich (Adressen der ersten
 # Fassung), ermittelt aus den Datenzugriffen zugeordneter Funktionen. Im genullten Bereich ab etwa
 # 0x1950 (Variablen ohne Startwert) ist sie +0x20; tools/make_bundle.py ordnet dort nur Nullen zu.
-VAR_SHIFT = [(0x0000, 0x057d, 0), (0x057d, 0x17c4, 2), (0x17c4, 0x1941, -0xc), (0x1941, 0xa540, 0x20)]
+VAR_SHIFT = [(0x0000, 0x0580, 0), (0x0580, 0x17c4, 2), (0x17c4, 0x1941, -0xc), (0x1941, 0xa540, 0x20)]
 
 
 def ds_v2_to_v1(x):
@@ -107,20 +107,30 @@ class Func:
         self.tokens, self.token_addr = self.normalize(ds_map)
 
     def switch_targets(self, img, ins):
-        """jmp cs:[bx+Tabelle]: Grenze aus dem vorangehenden "cmp reg, n" """
+        """Sprungtabellen von Turbo C: jmp cs:[bx+Tabelle] nach "cmp reg, n" (Index) oder nach
+        "mov cx, n; mov bx, Werte; cmp ax, cs:[bx] ...; jmp cs:[bx+2n]" (Wertesuche, Ziele ab Werte + 2n)"""
         op = ins.operands[0]
         if op.type != x86.X86_OP_MEM or ins.reg_name(op.mem.segment) != 'cs':
             return []
-        prev = sorted(a for a in self.ins if a < ins.address)[-6:]
+        disp = op.mem.disp & 0xffff
+        before = [self.ins[a] for a in sorted(self.ins) if a < ins.address]
+        movs = {}
+        for p in before:
+            if p.mnemonic == 'mov' and len(p.operands) == 2 and p.operands[0].type == x86.X86_OP_REG                     and p.operands[1].type == x86.X86_OP_IMM:
+                movs.setdefault(p.reg_name(p.operands[0].reg), []).append(p.operands[1].imm & 0xffff)
+        if op.mem.disp & 0xffff in [2 * n for n in movs.get('cx', [])]:
+            n = disp // 2
+            for v in movs.get('bx', []):
+                t = self.seg * 16 + v + disp
+                return [int.from_bytes(img[t + 2 * i:t + 2 * i + 2], 'little') for i in range(n)]
         n = None
-        for a in reversed(prev):
-            p = self.ins[a]
+        for p in reversed(before[-6:]):
             if p.mnemonic == 'cmp' and len(p.operands) == 2 and p.operands[1].type == x86.X86_OP_IMM:
                 n = p.operands[1].imm + 1
                 break
         if n is None or n > 256:
             return []
-        t = self.seg * 16 + (op.mem.disp & 0xffff)
+        t = self.seg * 16 + disp
         return [int.from_bytes(img[t + 2 * i:t + 2 * i + 2], 'little') for i in range(n)]
 
     def normalize(self, ds_map):

@@ -14,7 +14,7 @@
 1054:0bd3	1054:0cda	config_read	gleich	1.00
 1054:0bfc	1054:0d03	room_reload	anders	0.98
 1054:0d49	1054:0e5f	room_enter	anders	0.98
-1054:0e4c	1054:0f79	room_load	anders	0.72
+1054:0e4c	1054:0f79	room_load	anders	0.98
 1054:1149		room_load_frag_1149	fehlt	
 1054:1527		room_load_frag_1527	fehlt	
 1054:15fb		room_load_tail	fehlt	
@@ -27,7 +27,7 @@
 1054:2276	1054:24e0	schedule_remove_hour	gleich	1.00
 1054:2298	1054:2505	schedule_clear_programme	anders	0.82
 1054:22de	1054:256e	schedule_hover_editable	anders	0.95
-1054:2386	1054:2632	info_board_build	anders	0.84
+1054:2386	1054:2632	info_board_build	anders	0.90
 1054:2490	1054:2741	room_leave	anders	0.92
 1054:2e1c	1054:32b6	day_end_walk_home	gleich	1.00
 1054:2e60	1054:32fc	player_walk_to_exit	gleich	1.00
@@ -63,14 +63,14 @@
 1433:1373	148c:15a2	text_cache_load_show	gleich	1.00
 1433:148c	148c:16c8	text_cache_series_free	gleich	1.00
 1433:14a0	148c:16eb	text_cache_show_free_slot	gleich	1.00
-1581:0009	15ff:000a	room_click	anders	0.86
+1581:0009	15ff:000a	room_click	anders	0.94
 1581:0345	15ff:0359	room_click_auction	anders	0.98
 1581:088c	15ff:090a	room_click_movie_agency	anders	0.99
 1581:0c78	15ff:0d0e	room_click_schedule	anders	0.99
 1581:19f0	15ff:1b1d	room_click_building	anders	0.99
 1581:1bbd	15ff:1d23	room_click_info_board	anders	0.99
 1581:201c	15ff:21c0	room_click_elevator_board	gleich	1.00
-1581:2220		room_click_office	fehlt	
+1581:2220	15ff:23d8	room_click_office	anders	0.91
 1581:23ca	15ff:25a4	room_click_news_studio	anders	1.00
 1581:25b9		room_click_news_studio_frag	fehlt	
 1581:29fc	15ff:2c02	room_click_station_map	anders	0.97
@@ -161,16 +161,16 @@
 1cec:0297	1ddd:02a2	text_box_wrap_free	gleich	1.00
 1cec:02ce	1ddd:02d9	text_box	anders	0.96
 1cec:046d	1ddd:048d	text_line_count	gleich	1.00
-1d41:0003	1e35:0000	fmt	anders	0.97
+1d41:0003	1e35:0000	fmt	anders	0.99
 1d41:049b	1e35:04c0	fmt_count_digits	gleich	1.00
-1d41:04c7		fmt_int	fehlt	
-1d41:05c2		fmt_long	fehlt	
+1d41:04c7	1e35:0504	fmt_int	anders	0.94
+1d41:05c2	1e35:060d	fmt_long	anders	0.94
 1d41:06d7	1e35:0730	str_to_long	gleich	1.00
 1d41:072c	1e35:079a	str_overwrite_prefix	gleich	1.00
 1d41:07ff	1e35:0873	far_memset	gleich	1.00
 1d41:081a	1e35:088e	far_memcpy	gleich	1.00
 1d41:083d	1e35:08b1	str_length	gleich	1.00
-1d41:0857		str_fill	fehlt	
+1d41:0857	1e35:08d6	str_fill	gleich	1.00
 1d41:0874	1e35:0901	text_fit_width	gleich	1.00
 1d41:08d7	1e35:0989	text_width	gleich	1.00
 1d41:0927		str_is_prefix	fehlt	
@@ -334,7 +334,7 @@
 2bd1:175f	2da8:1918	map_population_sum	gleich	1.00
 2bd1:1847	2da8:1a03	stations_reach_update	gleich	1.00
 2bd1:1906	2da8:1acb	coverage_map_build	gleich	1.00
-2bd1:1af5	2da8:1cc2	building_map_door_pos	anders	0.62
+2bd1:1af5	2da8:1cc2	building_map_door_pos	anders	0.80
 2bd1:1b88	2da8:1d4e	door_name_text	gleich	1.00
 2bd1:1cd9		seg2bd1_unk_1cd9	fehlt	
 2bd1:1cef	2da8:1ec6	hour_index	gleich	1.00
@@ -625,6 +625,9 @@
 4519:0010	48c0:0008	?	gleich	1.00
 451d:0003	48c3:000b	?	anders	0.78
 4520:0002	48c6:000a	?	gleich	1.00
+4568:0004	4962:0001	?	gleich	1.00
+4568:0088	4962:0085	?	gleich	1.00
+4568:00d5	4962:00d2	?	gleich	1.00
 4578:0000	4971:000d	?	gleich	1.00
 4579:000b	4973:0008	?	gleich	1.00
 4589:000f	4985:000d	?	gleich	1.00

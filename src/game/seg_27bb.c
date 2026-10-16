@@ -789,8 +789,10 @@ void npc_update(void)
             /* an der Zieltür angekommen */
             int16_t kind = FLOOR_B(FIG_FLOOR(i), 0x1e + FIG_DOOR(i));
             DS_I16(0x8f8e) = kind;
-            if (i == 0 && kind >= 1 && kind <= 5 && FLOOR_B(FIG_FLOOR(i), 0x46 + FIG_DOOR(i)) != 1 &&
-                player_flag(1, 0) == 0) {
+            /* Release-Fassung: für die Figur des menschlichen Spielers, die Beta prüfte fest Figur 0
+             * und Spieler 1 */
+            if (i == g_local_player - 1 && kind >= 1 && kind <= 5 &&
+                FLOOR_B(FIG_FLOOR(i), 0x46 + FIG_DOOR(i)) != i + 1 && player_flag((int16_t)(i + 1), 0) == 0) {
                 DS_I16(0x79ca) = 0x15c; /* fremdes Büro: Zutritt verweigert */
                 FIG_DOOR(i) = -1;
             } else {
@@ -986,8 +988,8 @@ void building_hover_draw(void)
         }
     }
 
-    /* Meldung (z. B. Zutritt verweigert) */
-    if (DS_I16(0x79ca) > 0) {
+    /* Meldung (z. B. Zutritt verweigert); Release-Fassung: 1 = still verweigert (room_entry_check) */
+    if (DS_I16(0x79ca) > 1) {
         char *s;
         if (DS_I16(0x79ca) == 0x12a || DS_I16(0x79ca) == 0x12e)
             s = fmt(g_text(DS_I16(0x79ca)), DS_PTR(char, 0x8bbc + DS_I16(0x79f6) * 0x17), DS_I32(0x7ad2));

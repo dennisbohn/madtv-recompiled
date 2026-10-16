@@ -112,3 +112,18 @@ Port ohne Bedeutung), **Rauschen** (nur Compiler-Unterschiede).
 | broadcast_hour_tick | 3077:0781 | 329e:0828 | Phasenzähler an jeder Stelle dupliziert | Rauschen |
 | studio_produce_episode | 3077:0a98 | 329e:0b98 | Code an gemeinsamen Enden dupliziert | Rauschen |
 | savegame_io | 3077:1d7c | 329e:2020 | umgebaut, gleiche Wirkung | Rauschen |
+| ai_tick | 3b0a:000c | 3dd9:000c | Studio (Aktion 7): ai_choose_studio_action vorher aufrufen; unbekannte Studioaktion endet ohne Aktion (Beta: weiter in Fall 8); sonst Endstücke dupliziert | übernommen |
+| ai_choose_films | 3b0a:190e | 3dd9:1a3f | gleiche Abbuchung in beiden Zweigen | Rauschen |
+| ai_budget_plan | 3b0a:24cc | 3dd9:26ea | Code dupliziert | Rauschen |
+| ai_can_take_contract | 3b0a:30bd | 3dd9:33cb | höchstens 8 Werbeverträge | übernommen |
+| ai_ad_spots_per_day | 3b0a:3410 | 3dd9:3754 | Restlaufzeit 0 → 1 (keine Division durch 0) | übernommen |
+| ai_unfinished_avg_quality | 3b0a:3f21 | 3dd9:43d6 | ohne Einträge 0, Durchschnitt über n statt n + 1 Einträge | übernommen |
+| ai_archive_avg_quality | 4151:080a | 448b:0895 | Anzahl 0 → 1 (keine Division durch 0) | übernommen |
+| ai_calc_bid | 3f95:0000 | 42ba:000a | Rückgabe über lokale Variable | Rauschen |
+| ai_check_arrival | 3b0a:361d | 3dd9:3985 | An der Tür Zutritt prüfen (room_entry_check), verwehrt → nächstes Ziel | übernommen |
+| ai_goto_next | 3b0a:3854 | 3dd9:3c0d | Endstücke dupliziert | Rauschen |
+| ai_pick_destination | 3f95:174b | 42ba:1800 | Zufallssuche höchstens 20 Versuche; Felder der Hinweistafel tauschen statt Etage/Tür des Ziels einzutragen | übernommen |
+| ai_rate_slot | 3f95:037d | 42ba:03bc | Kein Ausgangswert über rating_from_viewers; Genre-Anteil direkt statt Maximum (rate[] im Original sonst uninitialisiert, im Port 0) | übernommen |
+| ai_produce_episode | 4151:0d1a | 448b:0df7 | Genre über Film/Serie der Show (Beta: Shownummer); ohne Ausnahme für Bit 4 | übernommen |
+| ai_prepare_episode | 4151:0e28 | 448b:0f05 | anders strukturiert, gleiche Wirkung | Rauschen |
+| ai_cast_episode | 4151:0f75 | 448b:1087 | beide Zweige gleich | Rauschen |

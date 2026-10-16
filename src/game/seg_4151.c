@@ -214,6 +214,8 @@ int16_t ai_archive_avg_quality(int8_t player)
             n++;
         }
     }
+    if (n == 0) /* Release-Fassung: keine Division durch 0 */
+        n = 1;
     return (int16_t)(sum / n);
 }
 
@@ -288,10 +290,11 @@ void ai_produce_episode(void)
     int16_t slot = AI_STUDIO(p);
     uint8_t *st = STUDIO(slot);
     uint8_t *sh = SHOW(W(st, 0));
-    /* ORIGINAL-BUG: Genre über die Shownummer statt über den Film/die Serie der Show */
-    int16_t genre = (UW(sh, 5) & 1) ? (int8_t)SERIES(W(st, 0))[0x21] + 10 : (int8_t)FILM(W(st, 0))[0];
+    /* Release-Fassung: Genre über den Film bzw. die Serie der Show (die Beta nahm die
+     * Shownummer); ohne die Ausnahme für Bit 4 */
+    int16_t genre = (UW(sh, 5) & 1) ? (int8_t)SERIES(W(sh, 6))[0x21] + 10 : (int8_t)FILM(W(sh, 6))[0];
     if (st[0xe] == 0) {
-        if ((UW(sh, 5) & 1) || (UW(sh, 5) & 4) || archive_contains(p, genre, W(sh, 6)) == 0)
+        if ((UW(sh, 5) & 1) || archive_contains(p, genre, W(sh, 6)) == 0)
             studio_produce_episode(AI_STUDIO(p));
     }
     ai_goto_next();

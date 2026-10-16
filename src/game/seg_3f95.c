@@ -108,7 +108,9 @@ int32_t ai_rate_slot(int16_t hour, int16_t prog_id, int8_t mode)
         return mode == 0 ? DS_I16(0x248d + me * 10) : DS_I32(0x248f + me * 10);
     for (p = 1; p <= 3; p++) {
         int16_t prog;
-        rate[p] = (int16_t)rating_from_viewers(p, DS_I32(0x6da5 + p * 0x20));
+        /* Release-Fassung: kein Ausgangswert über rating_from_viewers(p, DS:6da5); rate[p] wird
+         * nur unten für Stunden <= 7 gesetzt. PORT: Das Original lässt rate[] sonst
+         * uninitialisiert (Stapelinhalt), hier 0. */
         if (p == me && prog_id != 0) {
             prog = prog_id;
         } else {
@@ -155,11 +157,8 @@ int32_t ai_rate_slot(int16_t hour, int16_t prog_id, int8_t mode)
         if (cap < total)
             q[p] = (int16_t)((int16_t)(cap * q[p]) / total);
         q[p] = (int16_t)((int16_t)(q[p] * cap) / 100);
-        if (hour <= 7 && q[p] != 0) {
-            int16_t share = ai_genre_share(p, hour);
-            if (share > rate[p])
-                rate[p] = share;
-        }
+        if (hour <= 7 && q[p] != 0)
+            rate[p] = ai_genre_share(p, hour); /* Release-Fassung: direkt (Beta: Maximum) */
         if (q[p] != 0)
             q[p] += rate[p] / 5;
     }
@@ -428,10 +427,12 @@ void ai_pick_destination(void)
     int16_t floor = 0, door = 0, efloor = 0, edoor = 0;
     int16_t r = rand_range(10, 1);
     if (r >= 1 && r <= 5) {
+        int16_t tries = 0; /* Release-Fassung: höchstens 20 Versuche (Beta: endlos) */
         do {
             floor = 0;
             building_find_door((uint16_t)(rand_range(9, 1) + 0xf), 0, 0, &floor, &door);
-        } while (floor == 0);
+            tries++;
+        } while (floor == 0 && tries < 20);
     } else if (r == 6 || r == 7) {
         building_find_door(4, (uint16_t)g_local_player, 0, &floor, &door);
     } else if (r == 8 || r == 9) {
@@ -464,10 +465,12 @@ void ai_pick_destination(void)
     }
     k2--;
     if (efloor != 0 && (efloor != floor || edoor != door)) {
+        /* Release-Fassung: die beiden Felder tauschen (die Beta schrieb Etage/Tür des Ziels) */
+        int8_t f0 = ELEV_PLAN(floor - 1, k)[0], d0 = ELEV_PLAN(floor - 1, k)[1];
         ELEV_PLAN(floor - 1, k)[0] = ELEV_PLAN(efloor - 1, k2)[0];
         ELEV_PLAN(floor - 1, k)[1] = ELEV_PLAN(efloor - 1, k2)[1];
-        ELEV_PLAN(efloor - 1, k2)[0] = (int8_t)floor;
-        ELEV_PLAN(efloor - 1, k2)[1] = (int8_t)door;
+        ELEV_PLAN(efloor - 1, k2)[0] = f0;
+        ELEV_PLAN(efloor - 1, k2)[1] = d0;
     }
 }
 

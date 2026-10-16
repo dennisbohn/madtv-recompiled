@@ -101,6 +101,9 @@ void ai_tick(void)
         }
         goto done;
     case 7: /* Studio */
+        /* Release-Fassung: Aktion hier neu bestimmen; eine unbekannte endet ohne Aktion (die
+         * Beta fiel in Fall 8 durch) */
+        ai_choose_studio_action(p);
         switch (DS_I8(0x262c + p * 3)) {
         case 0: goto next;
         case 1: ai_rent_studio(); goto done;
@@ -108,10 +111,8 @@ void ai_tick(void)
         case 4: ai_prepare_episode(); goto done;
         case 5: ai_cast_episode(); goto done;
         case 6: ai_produce_episode(); goto done;
-        default: break;
+        default: goto done;
         }
-        /* unbekannte Studioaktion wie Fall 8 */
-        /* fall through */
     case 8:
         ai_schedule_programmes();
         if (++AI_COUNT1 < 0xf)
@@ -893,7 +894,7 @@ int8_t ai_can_take_contract(int16_t advertiser_id)
         left += (int8_t)AD(AD_CONTRACT_ID(p, c))[9] - DS_I8(0x1b54 + p * 0x46 + c * 7);
     }
     int16_t rate = a[8] == 0 ? 1 : (int8_t)a[9] / (int8_t)a[8];
-    ok = per_day + rate < 6 && left < 0xf;
+    ok = per_day + rate < 6 && left < 0xf && AD_CONTRACT_COUNT(p) < 8; /* Release-Fassung: höchstens 8 */
     if (ok == 1) {
         ok = 0;
         for (int16_t k = 1; k < 4; k++)
@@ -941,7 +942,10 @@ int8_t ai_ad_spots_per_day(int16_t contract_idx, int8_t player)
     if (UW(c, 6) & 4)
         return 0;
     int16_t left = (int8_t)AD(AD_CONTRACT_ID(player, contract_idx))[9] - c[4];
-    return (int8_t)(left / (DS_I16(0x1b55 + player * 0x46 + contract_idx * 7) - g_day + 1));
+    int16_t days = DS_I16(0x1b55 + player * 0x46 + contract_idx * 7) - g_day + 1;
+    if (days == 0) /* Release-Fassung: keine Division durch 0 */
+        days = 1;
+    return (int8_t)(left / days);
 }
 
 /* 3b0a:34c6 – passt die Zielgruppe des Werbekunden zum Programm (bzw. zur Sendung der Stunde)? */
@@ -1018,6 +1022,12 @@ int8_t ai_check_arrival(void)
             free = 0;
             ai_goto_next();
         }
+    }
+    /* Release-Fassung: Zutritt prüfen wie beim Menschen (z. B. Chef eines anderen Spielers);
+     * verwehrt, dann nächstes Ziel */
+    if (free == 1 && room_entry_check((int16_t)(p - 1), 0) != 0) {
+        ai_goto_next();
+        free = 0;
     }
     if (free == 1) {
         if (DS_I8(0x24e8 + AI_IDX) == 0) { /* einmal 300 Sekunden im Raum verweilen */
@@ -1185,10 +1195,14 @@ int8_t production_avg_quality(int16_t prod_id)
 /* 3b0a:3f21 – mittlere Qualität der gekauften, noch nicht produzierten Shows (ein Eintrag zu viel) */
 int16_t ai_unfinished_avg_quality(int8_t player)
 {
-    int16_t sum = 0;
-    for (int8_t i = 0; i <= DS_I16(0x7652 + player * 2); i++)
+    /* Release-Fassung: ohne Einträge 0, sonst Durchschnitt über genau die n Einträge (die Beta
+     * zählte einen zu viel mit) */
+    int16_t sum = 0, n = DS_I16(0x7652 + player * 2);
+    if (n == 0)
+        return 0;
+    for (int8_t i = 0; i < n; i++)
         sum += production_avg_quality(DS_I16(0x1a25 + player * 0x32 + i * 5));
-    return (int8_t)(sum / (DS_I16(0x7652 + player * 2) + 1));
+    return (int8_t)(sum / n);
 }
 
 /* 3b0a:3f93 – Tagesbeginn der KI: Budgets, Vertragsziele, Abos */

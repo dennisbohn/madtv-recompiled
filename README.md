@@ -3,7 +3,8 @@
 A native Windows and Linux port of the DOS game *Mad TV* (Rainbow Arts, 1991), without DOSBox.
 All 557 functions of the original `MTV.EXE` were decompiled and translated into C; graphics, input,
 timer and the AdLib sound driver run on SDL2 and the Nuked-OPL3 emulator. Game logic, AI and the
-savegame format are the original's.
+savegame format follow the release version of Mad TV (its changes over the first version are
+listed in `re/notes/release_changes.md`).
 
 This is an AI-assisted port: analysis, translation and most of the debugging were done by Claude
 (Anthropic), goals, decisions and testing by a human. Every deviation from the original is marked
@@ -17,7 +18,9 @@ Single file, game data included, no installation.
 
 - Menu bar: *Game* (new game, pause, speed, Control Center switches, quit), *Settings* (language,
   fullscreen), *Help*. In fullscreen, Alt shows it.
-- Keys: P pause, F10 language, F11 or Alt+Enter fullscreen.
+- Keys: Space or P pause, F10 language, F11 or Alt+Enter fullscreen.
+- Command line as in the original: `D`/`E` picks the language for this start, stars in the second
+  argument multiply the computer players' starting capital (e.g. `MadTV-Recompiled… E ***`).
 - Savegames (original format) and `settings.ini`: `%USERPROFILE%\Saved Games\Mad TV Recompiled`
   on Windows, `~/.local/share/Mad TV Recompiled` on Linux.
 

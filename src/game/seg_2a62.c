@@ -10,6 +10,7 @@
 
 /* PORT: Anzahl der Einträge; das Original hatte sie an jeder Stelle fest im Code */
 int16_t g_film_count = 200, g_series_count = 50, g_show_count = 50;
+int16_t g_ad_count = 50;
 
 #define g_text_pool      DS_PTR(char, 0x8aa8)    /* Texte aus den Sprachdateien */
 #define g_text_pool_pos  DS_U16(0x11e4)
@@ -53,18 +54,18 @@ void db_texts_load(void)
     DS_SET_PTR(0x8aa8, far_calloc(pool, 1));
     g_text_pool_pos = 0;
 
-    /* Werbekunden: zwei Längentabellen (je 51 Wörter), danach die Texte */
+    /* Werbekunden: zwei Längentabellen (je Anzahl + 1 Wörter), danach die Texte */
     g_load_pos = 0;
     DS_SET_PTR(0x8f90, far_calloc((uint16_t)hes_filesize(ad_texts), 1));
     hes_load(ad_texts, g_load_buf);
     int16_t *lengths = (int16_t *)(g_load_buf + g_load_pos);
-    g_load_pos += 0x66;
-    for (int16_t i = 1; i < 0x33; i++)
+    g_load_pos += (uint16_t)((g_ad_count + 1) * 2);
+    for (int16_t i = 1; i <= g_ad_count; i++)
         if (lengths[i] != 0)
             text_pool_take(lengths[i], (ptr32 *)DS_ADDR(uint8_t, 0x3f2f + i * 0x18));
     lengths = (int16_t *)(g_load_buf + g_load_pos);
-    g_load_pos += 0x66;
-    for (int16_t i = 1; i < 0x33; i++)
+    g_load_pos += (uint16_t)((g_ad_count + 1) * 2);
+    for (int16_t i = 1; i <= g_ad_count; i++)
         if (lengths[i] != 0)
             text_pool_take(lengths[i], (ptr32 *)DS_ADDR(uint8_t, 0x3f33 + i * 0x18));
     far_free(g_load_buf);

@@ -44,7 +44,7 @@ void ad_market_update(void)
     for (int16_t p = 1; p < 4; p++)
         for (i = 0; i < AD_CONTRACT_COUNT(p); i++)
             AD(W(AD_CONTRACT(p, i), 0))[0xf] = (uint8_t)(p + 100);
-    for (a = 1; a < 0x33; a++) {
+    for (a = 1; a <= g_ad_count; a++) {
         uint8_t *ad = AD(a);
         if ((int8_t)ad[0xf] < 101)
             ad[0xf] = 0;
@@ -60,7 +60,7 @@ void ad_market_update(void)
             continue;
         uint8_t *ad = NULL;
         if (avail < 6) {
-            for (a = 1; a <= 0x32; a++) {
+            for (a = 1; a <= g_ad_count; a++) {
                 ad = AD(a);
                 if (ad[0xf] == 0 && (int8_t)ad[0xa] <= level && L(ad, 0) != 0) {
                     pick = a;
@@ -69,7 +69,7 @@ void ad_market_update(void)
             }
         } else {
             for (;;) {
-                pick = rand_range(0x32, i);
+                pick = rand_range(g_ad_count, i);
                 ad = AD(pick);
                 if (ad[0xf] == 0 && L(ad, 0x10) != 0 && (int8_t)ad[0xa] <= level && L(ad, 0) != 0)
                     break;

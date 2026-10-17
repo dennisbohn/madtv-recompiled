@@ -16,6 +16,8 @@ extern int16_t g_opponent_stars; /* DS:0580, Sternchen im 2. Argument */
 /* PORT: Anzahl der Filme, Serien und Shows (Einträge 1..n von 201/202/203.HES; im Original fest
  * 200, 50 und 50, seg_2a62.c) */
 extern int16_t g_film_count, g_series_count, g_show_count;
+/* PORT: Anzahl der Werbekunden (204.HES); ihre Tabelle DS:3f2f hat Platz für 50 */
+extern int16_t g_ad_count;
 /* Programme mit Sonderrolle (Nummern der Original-Datenbanken; Mods müssen sie beibehalten) */
 enum {
     FILM_NFL = 0x1d,           /* "Football-Übertragung": Live-Rechte für 3 NFL-Spiele mit Terminen */

@@ -123,7 +123,7 @@ void savegame_serialize(int16_t hes_no)
             for (int16_t e = 0; e < 10; e++)
                 memcpy(eps + i * 0x1b3 + e * 0x23 + 8, episodes + 1 + e * 0x23, 0x23);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_ad_count; i++) {
             savegame_io(ad, 1);
             DS_U8(0x3f3e + i * 0x18) = ad[0];
         }
@@ -142,7 +142,7 @@ void savegame_serialize(int16_t hes_no)
                 memcpy(episodes + 1 + e * 0x23, eps + i * 0x1b3 + e * 0x23 + 8, 0x23);
             savegame_io(episodes, 0x161);
         }
-        for (int16_t i = 1; i < 0x33; i++) {
+        for (int16_t i = 1; i <= g_ad_count; i++) {
             ad[0] = DS_U8(0x3f3e + i * 0x18);
             savegame_io(ad, 1);
         }

@@ -95,13 +95,13 @@ void production_market_update(void)
                     sh[e * 0x23 + r * 3 + 0xb] = 0;
         }
     }
-    uint8_t *s24 = SHOW(0x18);
+    uint8_t *s24 = SHOW(SHOW_VIEWER_POLL);
     if (s24[4] == 0) {
         uint8_t *e = DS_ADDR(uint8_t, 0x1953);
-        W(e, 0) = 0x18;
+        W(e, 0) = SHOW_VIEWER_POLL;
         e[3] = 0;
         L(e, 4) = L(s24, 0);
-        e[8] = (uint8_t)show_role_count(0x18);
+        e[8] = (uint8_t)show_role_count(SHOW_VIEWER_POLL);
         s24[4] = 4;
     }
     int16_t n = shows_free_count();
@@ -334,14 +334,14 @@ void ratings_calc(int16_t phase)
                             DS_I16(0x79f4) = *val;
                         GENRE_NOW(p) = (int8_t)f[0];
                         if (((UW(f, 7) & 4) || f[0] == 7) && (int8_t)f[4] == hours) {
-                            if (prog == 0x1d)
-                                special_film_1d_tick();
-                            else if (prog == 0xbb)
-                                special_film_bb_tick();
+                            if (prog == FILM_NFL)
+                                film_nfl_tick();
+                            else if (prog == FILM_OLYMPICS)
+                                film_olympics_tick();
                             else
                                 once[p] = prog;
                         }
-                        if (prog == 0x3a) /* Film 0x3a immer einmalig */
+                        if (prog == FILM_BETTY_CULTURE) /* Film FILM_BETTY_CULTURE immer einmalig */
                             once[p] = 0x3a;
                         if ((UW(f, 7) & 8) && h < 4) { /* Skandalfilm vor 21 Uhr */
                             DS_I16(0x2495 + p * 10) = 1;
@@ -420,7 +420,7 @@ void ratings_calc(int16_t phase)
                 DS_I16(0x7468 + p * 2) += 10;
         }
         for (p = 1; p < 4; p++) {
-            if (SCHEDULE(p, h) == 0x3a) {
+            if (SCHEDULE(p, h) == FILM_BETTY_CULTURE) {
                 PLAYER_METER(p) += 5;
                 if (PLAYER_IMG(p) < PLAYER_METER(p))
                     PLAYER_METER(p) = PLAYER_IMG(p);

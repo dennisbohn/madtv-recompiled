@@ -1223,9 +1223,9 @@ void info_card_film_small(int16_t film)
         HV_STR_SET(4, g_text(0x28)); /* Genre im Archiv schon reichlich vorhanden */
     int16_t live_day = *(int16_t *)(f + 0xf);
     if (genre == 7 && live_day != 0) { /* Live-Sport mit Termin */
-        if (film == 0x1d)
+        if (film == FILM_NFL)
             HV_STR_SET(6, fmt(g_text(0x19f), 3 - DS_I16(0x7a22), 3));
-        else if (film == 0xbb)
+        else if (film == FILM_OLYMPICS)
             HV_STR_SET(6, fmt(g_text(0x19f), 5 - DS_I16(0x7a7c), 5));
         else
             HV_STR_SET(6, fmt(DS_ADDR(char, 0x1112)));

@@ -1006,7 +1006,7 @@ void room_load_background(int16_t hes_no)
 /* 1054:1d57 – neuer Tag: Abrechnungen, Märkte, Nachrichten, KI-Planung, Figuren an den Start */
 void day_begin(void)
 {
-    special_film_check();
+    film_betty_culture_check();
     auction_day_end();
     DS_I16(0x7470)++;
     DS_I16(0x79e6) = 0;

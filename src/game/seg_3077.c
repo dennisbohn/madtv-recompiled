@@ -365,7 +365,7 @@ int16_t programme_check_sellable(int16_t archive_idx, int16_t genre)
         return ok;
     }
     uint8_t *f = FILM(prog);
-    if (L(f, 8) == 0 || prog == 0x3a) {
+    if (L(f, 8) == 0 || prog == FILM_BETTY_CULTURE) {
         show_message(0x36);
         ok = 0;
     } else if (UW(f, 7) & 2) {
@@ -451,7 +451,7 @@ int16_t studio_prepare_episode(int16_t studio)
     uint8_t *pr = PRODUCTION(owner, PRODUCTION_COUNT(owner));
     if (!((int8_t)st[5] < show_episode_count(show) || !(UW(sh, 5) & 1)))
         return 0;
-    if (show == 0x18 && st[5] == 1) {
+    if (show == SHOW_VIEWER_POLL && st[5] == 1) {
         show_message(0x40);
     } else if (PRODUCTION_COUNT(owner) >= 5) {
         show_message(0x41);

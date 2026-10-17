@@ -16,6 +16,15 @@ extern int16_t g_opponent_stars; /* DS:0580, Sternchen im 2. Argument */
 /* PORT: Anzahl der Filme, Serien und Shows (Einträge 1..n von 201/202/203.HES; im Original fest
  * 200, 50 und 50, seg_2a62.c) */
 extern int16_t g_film_count, g_series_count, g_show_count;
+/* Programme mit Sonderrolle (Nummern der Original-Datenbanken; Mods müssen sie beibehalten) */
+enum {
+    FILM_NFL = 0x1d,           /* "Football-Übertragung": Live-Rechte für 3 NFL-Spiele mit Terminen */
+    FILM_BETTY_CULTURE = 0x3a, /* "Kultur Heute": Bettys Sendung, stärkt beim Senden den Image-Balken */
+    FILM_OLYMPICS = 0xbb,      /* "Olympische Sommerspiele": Rechte für 5 Disziplinen mit Terminen */
+    SHOW_VIEWER_POLL = 0x18,   /* "Zuschauer-Befragung": immer im Studio-Angebot */
+    SERIES_START_FIRST = 0x12, /* Startserien 18..20 (Dokumentationen), je Spieler eine */
+    SERIES_START_COUNT = 3,
+};
 void hotkey_handle(int16_t key); /* 1054:076c, med */
 void init_tables(void); /* 1054:0927 */
 void config_read(void *dst, uint16_t n); /* 1054:0bd3 */
@@ -354,7 +363,7 @@ int16_t archive_capacity_check(int16_t player, int16_t prog, int16_t genre); /* 
 void programme_genre_get(int16_t *prog, int16_t *genre); /* 2bd1:07c2 */
 int16_t ad_spots_remaining(int16_t player, int16_t hour); /* 2bd1:07fb, med */
 void ad_contracts_expire(void); /* 2bd1:08f0, med */
-void special_film_check(void); /* 2bd1:0a80, low */
+void film_betty_culture_check(void); /* 2bd1:0a80, low */
 void auction_lot_set(int16_t lot, int16_t prog, int16_t kind); /* 2bd1:0bc8, med */
 void player_message_push(int16_t msg_id, int16_t player, int32_t a1, int32_t a2, int32_t a3, int32_t a4, int32_t a5); /* 2bd1:0d6e */
 void loan_interest_pay(void); /* 2bd1:0e2f, med */
@@ -382,8 +391,8 @@ int16_t episode_cast_complete(int16_t show, int16_t episode); /* 2bd1:22af, med 
 int16_t actor_suitability(int16_t show, int16_t episode, int16_t role, int16_t actor); /* 2bd1:2316, low */
 int32_t round_to_step(int32_t value, int32_t step); /* 2bd1:2404 */
 int32_t rating_from_viewers(int16_t player, int32_t viewers); /* 2bd1:2431, low */
-void special_film_1d_tick(void); /* 2bd1:24a5, med */
-void special_film_bb_tick(void); /* 2bd1:24d9, med */
+void film_nfl_tick(void); /* 2bd1:24a5, med */
+void film_olympics_tick(void); /* 2bd1:24d9, med */
 void event_npc_init(void); /* 2bd1:250c, med */
 void random_events(void); /* 2bd1:266b, med */
 void event_npc_strike(void); /* 2bd1:2a41, med */

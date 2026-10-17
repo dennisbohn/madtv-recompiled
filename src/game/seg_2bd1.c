@@ -152,7 +152,7 @@ void hour_start(void)
                 }
             }
         }
-        if ((is_series && (int8_t)SERIES(W(sh, 6))[0x22] < (int8_t)st[4]) || show == 0x18) {
+        if ((is_series && (int8_t)SERIES(W(sh, 6))[0x22] < (int8_t)st[4]) || show == SHOW_VIEWER_POLL) {
             sh[4] = 99; /* Produktion abgeschlossen */
             studio_slot_release(i);
         }
@@ -269,17 +269,17 @@ void ad_contracts_expire(void)
     }
 }
 
-/* 2bd1:0a80 – Sonderfilm 0x3a: zur Auktion stellen oder nach 3 Tagen ohne Ausstrahlung wegnehmen */
-void special_film_check(void)
+/* 2bd1:0a80 – "Kultur Heute" (FILM_BETTY_CULTURE): zur Auktion stellen oder nach 3 Tagen ohne Ausstrahlung wegnehmen */
+void film_betty_culture_check(void)
 {
     int16_t i;
     for (i = 0; i < 3; i++)
         DS_I16(0x79a6 + (i + 0x3a) * 2) = 0;
-    int16_t owner = (int8_t)FILM(0x3a)[5];
+    int16_t owner = (int8_t)FILM(FILM_BETTY_CULTURE)[5];
     if (owner == 0) {
         for (i = 1; i < 0xb; i++) {
             if (W(LOT(i), 0) == 0) {
-                auction_lot_set(i, 0x3a, -1);
+                auction_lot_set(i, FILM_BETTY_CULTURE, -1);
                 break;
             }
         }
@@ -287,17 +287,17 @@ void special_film_check(void)
         if (g_day <= 0)
             return;
         int16_t h = 1;
-        while (h < 8 && SCHEDULE(owner, h) != 0x3a)
+        while (h < 8 && SCHEDULE(owner, h) != FILM_BETTY_CULTURE)
             h++;
         if (h < 8) {
             DS_I16(0x79a6 + (owner + 0x3a) * 2) = 0x29;
         } else {
             if (++DS_I16(0x2421) < 3)
                 return;
-            programme_remove_from_archives(0x3a);
+            programme_remove_from_archives(FILM_BETTY_CULTURE);
             for (h = 1; h < 0xb; h++) {
                 if (W(LOT(h), 0) == 0) {
-                    auction_lot_set(h, 0x3a, -1);
+                    auction_lot_set(h, FILM_BETTY_CULTURE, -1);
                     break;
                 }
             }
@@ -325,11 +325,11 @@ void auction_lot_set(int16_t lot, int16_t prog, int16_t kind)
             l[7] = f[5];
         f[5] = l[7];
         UW(f, 6) &= ~0x20;
-        if (prog == 0x1d) {
+        if (prog == FILM_NFL) {
             W(f, 0x11) = 4;
             W(f, 0xf) = g_day + 4;
             DS_I16(0x7a22) = 3;
-        } else if (prog == 0xbb) {
+        } else if (prog == FILM_OLYMPICS) {
             W(f, 0x11) = 3;
             W(f, 0xf) = g_day + 4;
             DS_I16(0x7a7c) = 5;
@@ -463,14 +463,14 @@ void licenses_expire(void)
     for (int16_t p = 1; p < 4; p++) {
         for (int16_t k = 0; k < DS_I8(0x6f60 + p * 0x6c); k++) {
             int16_t film = DS_I16(0x6f31 + p * 0x6c + k * 2);
-            if (film != 0x1d && film != 0xbb && W(FILM(film), 0xf) == g_day) {
+            if (film != FILM_NFL && film != FILM_OLYMPICS && W(FILM(film), 0xf) == g_day) {
                 /* ORIGINAL-BUG: k wird nach dem Entfernen nicht zurückgesetzt, der Nachfolger wird übersprungen */
                 programme_remove_from_archives(film);
                 player_message_push(0x113, p, film, 0, 0, 0, 0);
-            } else if (film == 0x1d && W(FILM(0x1d), 0xf) == g_day) {
-                special_film_1d_tick();
-            } else if (film == 0xbb && W(FILM(0xbb), 0xf) == g_day) {
-                special_film_bb_tick();
+            } else if (film == FILM_NFL && W(FILM(FILM_NFL), 0xf) == g_day) {
+                film_nfl_tick();
+            } else if (film == FILM_OLYMPICS && W(FILM(FILM_OLYMPICS), 0xf) == g_day) {
+                film_olympics_tick();
             }
         }
     }
@@ -503,9 +503,9 @@ void start_programmes_assign(void)
 {
     int16_t seed = 1, n;
     for (int16_t p = 1; p <= 3; p++) {
-        n = rand_range(3, seed) + 0x11; /* eine freie Serie 18..20 */
+        n = rand_range(SERIES_START_COUNT, seed) + SERIES_START_FIRST - 1; /* eine freie Startserie */
         while (SERIES(n)[0x24] != 0)
-            n = rand_range(3, ++seed) + 0x11;
+            n = rand_range(SERIES_START_COUNT, ++seed) + SERIES_START_FIRST - 1;
         programme_buy((int16_t)(n + 1000), p, 0);
         for (int32_t k = 1; k <= 3; k++) { /* drei freie Filme des Genres 6 mit Bit 5 */
             n = rand_range(g_film_count, seed);
@@ -860,31 +860,31 @@ int32_t rating_from_viewers(int16_t player, int32_t viewers)
     return (base / 200 + viewers) / div;
 }
 
-/* 2bd1:24a5 – Sonderfilm 0x1d: Lizenz verlängern oder nach Ablauf wegnehmen */
-void special_film_1d_tick(void)
+/* 2bd1:24a5 – NFL-Rechte (FILM_NFL): Lizenz verlängern oder nach Ablauf wegnehmen */
+void film_nfl_tick(void)
 {
     if (DS_I16(0x7a22) < 1) {
         DS_I16(0x7a22)--;
-        programme_remove_from_archives(0x1d);
+        programme_remove_from_archives(FILM_NFL);
         DS_I16(0x7a22) = 3;
     } else {
         DS_I16(0x7a22)--;
-        W(FILM(0x1d), 0xf) = g_day + 3;
-        W(FILM(0x1d), 0x11) = 4;
+        W(FILM(FILM_NFL), 0xf) = g_day + 3;
+        W(FILM(FILM_NFL), 0x11) = 4;
     }
 }
 
-/* 2bd1:24d9 – dasselbe für Sonderfilm 0xbb */
-void special_film_bb_tick(void)
+/* 2bd1:24d9 – dasselbe für die Olympia-Rechte (FILM_OLYMPICS) */
+void film_olympics_tick(void)
 {
     if (DS_I16(0x7a7c) < 1) {
         DS_I16(0x7a7c)--;
-        programme_remove_from_archives(0xbb);
+        programme_remove_from_archives(FILM_OLYMPICS);
         DS_I16(0x7a7c) = 5;
     } else {
         DS_I16(0x7a7c)--;
-        W(FILM(0xbb), 0xf) = g_day + 2;
-        W(FILM(0xbb), 0x11) = 3;
+        W(FILM(FILM_OLYMPICS), 0xf) = g_day + 2;
+        W(FILM(FILM_OLYMPICS), 0x11) = 3;
     }
 }
 

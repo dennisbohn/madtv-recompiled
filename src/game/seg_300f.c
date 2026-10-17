@@ -139,12 +139,12 @@ void case_store_to_archive(void)
         if (prog < 1000) {
             FILM(prog)[5] = (uint8_t)p;
             genre = (int8_t)FILM(prog)[0];
-            if (prog == 0x1d) {
+            if (prog == FILM_NFL) {
                 DS_I16(0x7a22) = 3;
-                special_film_1d_tick();
-            } else if (prog == 0xbb) {
+                film_nfl_tick();
+            } else if (prog == FILM_OLYMPICS) {
                 DS_I16(0x7a7c) = 5;
-                special_film_bb_tick();
+                film_olympics_tick();
             }
         } else {
             (DS_PTR(uint8_t, 0x2626) + (prog - 1000) * 0x39)[0x24] = (uint8_t)p;

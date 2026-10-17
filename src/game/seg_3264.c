@@ -460,8 +460,13 @@ void ratings_calc(int16_t phase)
                 for (i = 0; i < 2 && DS_I8(0xf2 + i) != DS_I16(0x12d2); i++)
                     ;
                 DS_I16(0x12d2) = DS_I8(0xf2 + i);
+                /* PORT: Die Tabelle DS:7888 hat je Computergegner 6 Byte nach KI-Index 0/1 (so liest
+                 * sie ai_rate_slot, so steht sie im Spielstand). ORIGINAL-BUG: Das Original schrieb mit
+                 * der Spielernummer 2/3 und traf bei Spieler 3 die Geschenkauswahl DS:789c; das
+                 * Geschenk "Genre" zerstörte dann in ai_give_gift fremde Daten (Hänger). */
+                int16_t ai = i;
                 for (i = 0; i < 3; i++)
-                    DS_I16(0x7888 + DS_I16(0x12d2) * 6 + i * 2) = TOPIC_GENRE(i);
+                    DS_I16(0x7888 + ai * 6 + i * 2) = TOPIC_GENRE(i);
             }
             DS_I16(0x12d2) = 0;
         }

@@ -1077,6 +1077,19 @@ static int16_t archive_total_bugged(int16_t player)
     return sum;
 }
 
+/* PORT: Gibt es etwas, das archive_random_pick finden kann (Genre 1..10)? ORIGINAL-BUG: Das
+ * Original prüfte nur archive_total_bugged; lagen im Archiv nur noch Serien (Fach 11), würfelte
+ * archive_random_pick endlos und das Spiel hing (z. B. beim Gerichtsvollzieher). */
+static int archive_pickable(int16_t player)
+{
+    if (archive_total_bugged(player) == 0)
+        return 0;
+    for (int16_t g = 1; g <= 10; g++)
+        if (ARCHIVE_COUNT(player, g) > 0)
+            return 1;
+    return 0;
+}
+
 /* 2bd1:2a41 – Ereignisfigur schlägt an der Tür DS:7a46/7a44 zu */
 void event_npc_strike(void)
 {
@@ -1133,13 +1146,13 @@ void event_npc_strike(void)
     } else if (room == 4) {
         if (g_event_type == 4) {
             programme_lose(schedule_get_programme(owner, hour_index()), 0x15b, owner);
-        } else if (archive_total_bugged(owner) != 0) {
+        } else if (archive_pickable(owner)) {
             programme_lose(archive_random_pick(owner, room), g_event_type < 3 ? 0x134 : 0x138, owner);
         }
     } else if (room == 1) {
         if (owner == (uint16_t)g_local_player)
             DS_I16(0x7a04) = 0;
-        if (g_event_type == 3 && archive_total_bugged(owner) != 0)
+        if (g_event_type == 3 && archive_pickable(owner))
             programme_lose(archive_random_pick(owner, room), 0x138, owner);
     }
     if (owner != 0 && g_event_type < 3) { /* Versicherung */

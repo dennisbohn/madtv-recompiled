@@ -330,6 +330,10 @@ void ai_give_gift(void)
     int16_t g = DS_I8(0x789c + AI_IDX);
     if (g == 0)
         return;
+    if (g < 1 || g > 10) { /* PORT: kein gültiges Geschenk (siehe ratings_calc), z. B. aus alten Spielständen */
+        DS_I8(0x789c + AI_IDX) = 0;
+        return;
+    }
     PLAYER_METER(p) += (int8_t)GIFT(g)[4];
     GIFT(g)[4] = (uint8_t)((int8_t)GIFT(g)[4] * 0x46 / 100);
     GIFT(g)[5]++;

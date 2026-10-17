@@ -69,6 +69,46 @@ static DWORD WINAPI stackdump_thread(LPVOID arg)
     }
     return 0;
 }
+
+/* Testhilfe MADTV_WATCH=ds_ofs[:max] (hex Offset): Hardware-Schreibüberwachung (Debugregister DR0)
+ * auf das Wort DS:ds_ofs im Hauptthread. Schreibt er dort einen Wert über max (Standard 0x7fff)
+ * oder unter 0, wird die Rücksprungkette ausgegeben – findet fremde Schreibzugriffe ohne Debugger. */
+static volatile int16_t *g_watch_ptr;
+static int16_t g_watch_max;
+
+static LONG CALLBACK watch_handler(EXCEPTION_POINTERS *e)
+{
+    if (e->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP || !(e->ContextRecord->Dr6 & 1))
+        return EXCEPTION_CONTINUE_SEARCH;
+    int16_t v = *g_watch_ptr;
+    if (v > g_watch_max || v < 0) {
+        fprintf(stderr, "WATCH Wert %d: eip %p base %p\n", v, (void *)e->ContextRecord->Eip,
+                (void *)GetModuleHandleA(NULL));
+        void **fp = (void **)e->ContextRecord->Ebp;
+        for (int i = 0; i < 24 && fp && !IsBadReadPtr(fp, 8); i++) {
+            fprintf(stderr, "  frame %p\n", fp[1]);
+            fp = (void **)fp[0];
+        }
+        fflush(stderr);
+    }
+    e->ContextRecord->Dr6 = 0;
+    return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+static DWORD WINAPI watch_arm_thread(LPVOID arg)
+{
+    (void)arg;
+    CONTEXT ctx = {.ContextFlags = CONTEXT_DEBUG_REGISTERS};
+    SuspendThread(g_main_thread);
+    if (GetThreadContext(g_main_thread, &ctx)) {
+        ctx.Dr0 = (DWORD)(uintptr_t)g_watch_ptr;
+        /* L0 an, RW0 = 01 (Schreiben), LEN0 = 01 (2 Byte) */
+        ctx.Dr7 = (ctx.Dr7 & ~0x000f0003u) | 1u | (1u << 16) | (1u << 18);
+        SetThreadContext(g_main_thread, &ctx);
+    }
+    ResumeThread(g_main_thread);
+    return 0;
+}
 #endif
 
 static void fail(const char *msg)
@@ -97,10 +137,20 @@ int main(int argc, char **argv)
 #endif
 #ifdef _WIN32
     SetUnhandledExceptionFilter(crash_handler);
-    if (getenv("MADTV_STACKDUMP")) {
+    if (getenv("MADTV_STACKDUMP") || getenv("MADTV_WATCH"))
         DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &g_main_thread, 0,
                         FALSE, DUPLICATE_SAME_ACCESS);
+    if (getenv("MADTV_STACKDUMP"))
         CloseHandle(CreateThread(NULL, 0, stackdump_thread, getenv("MADTV_STACKDUMP"), 0, NULL));
+    if (getenv("MADTV_WATCH")) {
+        char *end;
+        unsigned long ofs = strtoul(getenv("MADTV_WATCH"), &end, 16);
+        g_watch_max = *end == ':' ? (int16_t)strtol(end + 1, NULL, 0) : 0x7fff;
+        g_watch_ptr = (volatile int16_t *)(g_ds + (ofs & 0xfffe));
+        AddVectoredExceptionHandler(1, watch_handler);
+        HANDLE t = CreateThread(NULL, 0, watch_arm_thread, NULL, 0, NULL);
+        WaitForSingleObject(t, INFINITE);
+        CloseHandle(t);
     }
 #endif
     dgroup_init();

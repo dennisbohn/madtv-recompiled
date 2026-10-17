@@ -1,5 +1,9 @@
 # Finanzen
 
+**Was man im Spiel sieht:** Kontostand, Kredit und den Finanzbericht mit allen Posten des Tages.
+**Intern** sind die Regeln, nach denen der Chef Kredit gibt, und die Schwelle für den
+Gerichtsvollzieher.
+
 ## Start
 
 Jeder Sender beginnt mit **500.000** und einem Sendemast, der rund 12 Mio. Zuschauer erreicht,
@@ -28,6 +32,8 @@ Auktionsgebote.
 
 ## Kredit (beim Chef)
 
+Im Gespräch sieht man nur die Antworten des Chefs; diese Regeln stehen dahinter:
+
 | Image | erster Kredit | einmalige Erhöhung | mit Sammy |
 |---|---|---|---|
 | unter 10 | keiner, Rauswurf aus dem Büro | – | – |
@@ -43,7 +49,8 @@ und abgerundet auf 50.000. Zinsen: **5 % pro Tag**.
 
 Liegt der Kontostand zum Tagesbeginn unter **−100.000**, kommt der Gerichtsvollzieher. Er pfändet
 einen Film aus dem Archiv (gutgeschrieben wird der halbe Filmpreis) oder die laufende Produktion
-in einem Studio.
+in einem Studio. Vorwarnung gibt es nur über den Flurfunk ("Schon gehört, daß Sie heute Besuch
+vom Gerichtsvollzieher bekommen?").
 
 ---
 Im Code: `daily_costs_pay`, `loan_interest_pay`, `event_npc_init`, `event_npc_strike`

@@ -1,5 +1,8 @@
 # Sendemasten
 
+**Was man im Spiel sieht:** Preis und (neue) Zuschauer im Tooltip auf der Karte, die
+Sender-Gebühren im Finanzbericht. Wie der Preis entsteht, ist intern.
+
 ## Kaufpreis
 
 Es gibt nur vier Preise. Maßgeblich ist, wie viele Menschen **insgesamt** im Sendekreis wohnen:

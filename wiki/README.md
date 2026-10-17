@@ -4,6 +4,10 @@ Spielmechanik von *Mad TV* (Release-Version), abgeleitet aus dem übersetzten Qu
 Ports. Alle Zahlen stammen aus dem Code bzw. den Startwerten der Spieldaten, nicht aus Handbuch
 oder Erfahrung; am Ende jeder Seite steht, wo man es im Code nachlesen kann.
 
+Vieles davon rechnet das Spiel nur intern und zeigt es nirgends an. Jede Seite beginnt deshalb mit
+**Was man im Spiel sieht**; was als *intern* markiert ist, lässt sich im Spiel nicht einsehen –
+man merkt es nur an den Folgen (Quoten, Preise, Antworten).
+
 - [Quoten](Quoten.md) – wie Zuschauerzahlen entstehen, Genre und Uhrzeit, Thema des Tages
 - [Filme und Serien](Filme-und-Serien.md) – Preise, Aktualität und Abnutzung, Filmhändler, Auktion
 - [Nachrichten](Nachrichten.md) – Wert, Preis, Alterung, Abos

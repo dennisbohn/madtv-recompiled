@@ -1,8 +1,11 @@
 # Nachrichten
 
+**Was man im Spiel sieht:** nur den Preis einer Meldung. Ihr Wert und die Qualität der Sendung
+sind intern; der Preis ist der einzige Hinweis darauf.
+
 ## Wert einer Meldung
 
-Jede Meldung hat einen Wert von etwa 0 bis 100. Er entsteht aus dem Grundwert des Ereignisses und
+Jede Meldung hat einen internen Wert von etwa 0 bis 100. Er entsteht aus dem Grundwert des Ereignisses und
 der Qualität der zufällig gewählten Textbausteine: **30 % bis 100 % des Grundwerts**.
 
 - Zu jeder vollen Stunde fällt der Wert auf **85 %**.
@@ -26,7 +29,7 @@ Eine Meldung, die liegen bleibt, wird also von Stunde zu Stunde billiger. Zwei M
 
 ## Qualität der Sendung
 
-Die Sendung hat drei Plätze. Ihre Qualität ist der **Durchschnitt der drei Werte**; ein leerer
+Die Sendung hat drei Plätze. Ihre (interne) Qualität ist der **Durchschnitt der drei Werte**; ein leerer
 Platz zählt als 0 und kostet damit ein Drittel. Daraus wird mit dem Faktor der Stunde die
 Nachrichtenquote (siehe [Quoten](Quoten.md#nachrichten-minute-0)). Außerdem bekommt das Programm
 der Stunde ein Fünftel der Qualität als Bonus auf seinen Wert.
@@ -37,7 +40,8 @@ teure und einen leeren Platz, und frisch gesendet ist besser als lange gelagert.
 ## Abos
 
 Neue Meldungen bekommt man nur aus abonnierten Kategorien. Abos kosten täglich und werden
-gekündigt, wenn das Image unter die Schwelle fällt:
+gekündigt, wenn das Image unter die Schwelle fällt (man erhält dann eine Mitteilung; die
+Schwellen selbst zeigt das Spiel nicht an):
 
 | Kategorie | Kosten pro Tag | nötiges Image |
 |---|---|---|

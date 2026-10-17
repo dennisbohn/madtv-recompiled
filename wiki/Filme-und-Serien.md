@@ -1,9 +1,13 @@
 # Filme und Serien
 
+**Was man im Spiel sieht:** Preis, Kritik, Kinokasse und die aktuelle Aktualität als Balken
+("Aktuell"). **Intern** sind das Maximum der Aktualität, wie stark ein Film pro Ausstrahlung
+verschleißt und wann er sich erholt.
+
 ## Aktualität
 
 Jeder Film hat eine **maximale** und eine **aktuelle Aktualität**. Die aktuelle ist der Grundwert
-für die Quote (siehe [Quoten](Quoten.md)).
+für die Quote (siehe [Quoten](Quoten.md)); man sieht sie als Balken, das Maximum nicht.
 
 - **Abnutzung:** nach jeder Ausstrahlung sinkt sie um *Maximum × Abnutzungsfaktor des Films ÷ 5*,
   höchstens bis 1.
@@ -22,8 +26,8 @@ derselben Formel über die Summe der Folgen.
 ## Filmhändler
 
 - Zehn Angebote, jeden Tag neu gemischt; nicht gekaufte gehen zurück in den Topf.
-- Solange kein Sender mehr als 12 Mio. Zuschauer erreicht, sind bis zu drei billige Filme
-  (höchstens 60.000) dabei.
+- Intern: Solange kein Sender mehr als 12 Mio. Zuschauer erreicht, sind bis zu drei billige
+  Filme (höchstens 60.000) dabei.
 - 77 Filme gibt es nur in der Auktion.
 - Live-Übertragungen müssen zu ihrer festen Uhrzeit laufen und verfallen nach wenigen Tagen
   (das Spiel meldet einen verpassten Termin).
@@ -34,7 +38,7 @@ derselben Formel über die Summe der Folgen.
 - Mindesterhöhung: 10 % des aktuellen Preises, abgerundet auf die erste Stelle
   (z. B. 10 % von 370.000 = 37.000 → 30.000).
 - Ein Los ohne Gebot wird nach drei Tagen zurückgezogen.
-- Mit schlechtem Image darf man nicht mitbieten.
+- Unter Image 10 darf man nicht mitbieten.
 
 ## Sonderprogramme
 

@@ -1,11 +1,15 @@
 # Image und Chef
 
+**Was man im Spiel sieht:** das Image aller Sender als Balken in der Statistik. **Intern** ist, wie es sich verändert und
+welche Schwellen gelten.
+
 ## Image
 
 Das Image (0–100) der drei Sender ergibt **zusammen immer 100** – was einer gewinnt, verlieren
 die anderen.
 
-- Nach jeder Programmquote: Platz 1 +1, Platz 3 −1, bei Gleichstand nichts.
+- Nach jeder Programmquote: Platz 1 +1, Platz 3 −1, bei Gleichstand nichts. Das geschieht still
+  im Hintergrund; man sieht nur, wie sich der Balken über den Abend verschiebt.
 - Ein Skandalfilm vor 21 Uhr zählt als Quote 0.
 - Das Image entscheidet über Werbeverträge, Kredit, Nachrichten-Abos, die Teilnahme an der
   Auktion und darüber, ob Darsteller mitspielen.
@@ -15,7 +19,8 @@ die anderen.
 - Fällt das Image zum Tageswechsel unter **5**, scheidet der Sender aus; beim Menschen folgt die
   Kündigung durch den Chef.
 - Scheidet ein Computergegner aus, wird sein Image verteilt.
-- Der Computergegner mit dem schlechtesten Image bekommt bis Tag 39 jeden Tag 100.000 Zuschuss.
+- Intern: Der Computergegner mit dem schlechtesten Image bekommt bis Tag 39 jeden Tag 100.000
+  Zuschuss.
 
 ## Gespräche mit dem Chef
 

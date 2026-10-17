@@ -11,6 +11,7 @@
 /* PORT: Anzahl der Einträge; das Original hatte sie an jeder Stelle fest im Code */
 int16_t g_film_count = 200, g_series_count = 50, g_show_count = 50;
 int16_t g_ad_count = 50;
+int16_t g_news_topic_count = 50, g_news_part_count = 50;
 
 #define g_text_pool      DS_PTR(char, 0x8aa8)    /* Texte aus den Sprachdateien */
 #define g_text_pool_pos  DS_U16(0x11e4)
@@ -70,13 +71,13 @@ void db_texts_load(void)
             text_pool_take(lengths[i], (ptr32 *)DS_ADDR(uint8_t, 0x3f33 + i * 0x18));
     far_free(g_load_buf);
 
-    /* Nachrichtenthemen: 51 x 11 Längen, je Thema 10 Textvarianten */
+    /* Textbausteine der Nachrichten: (Anzahl + 1) x 11 Längen, je Baustein 10 Varianten */
     DS_SET_PTR(0x8f90, far_calloc((uint16_t)hes_filesize(news_texts), 1));
     g_load_pos = 0;
     hes_load(news_texts, g_load_buf);
     lengths = (int16_t *)g_load_buf;
-    g_load_pos += 0x462;
-    for (int16_t i = 1; i < 0x33; i++)
+    g_load_pos += (uint16_t)((g_news_part_count + 1) * 11 * 2);
+    for (int16_t i = 1; i <= g_news_part_count; i++)
         for (int16_t j = 1; j < 0xb; j++)
             if (lengths[i * 10 + j] != 0)
                 text_pool_take(lengths[i * 10 + j], (ptr32 *)DS_ADDR(uint8_t, i * 0x38 + 0x5573 + j * 4));
@@ -259,16 +260,16 @@ void news_chains_refill(void)
         if (W(ch, 0) != 0)
             continue;
         int16_t t;
-        for (t = 1; t <= 0x32; t++)
+        for (t = 1; t <= g_news_topic_count; t++)
             if (W(TOPIC(t), 0xa) > 0 && TOPIC(t)[0xd] == ch[0x14])
                 break;
-        if (t > 0x32) /* alle Themen der Kategorie verbraucht: wieder freigeben */
-            for (t = 1; t <= 0x32; t++)
+        if (t > g_news_topic_count) /* alle Themen der Kategorie verbraucht: wieder freigeben */
+            for (t = 1; t <= g_news_topic_count; t++)
                 if (TOPIC(t)[0xd] == ch[0x14])
                     W(TOPIC(t), 0xa) += 1000;
         t = 0;
         while (t == 0) {
-            t = rand_range(0x32, c);
+            t = rand_range(g_news_topic_count, c);
             if (W(TOPIC(t), 0xa) < 1)
                 t = 0;
             if (t != 0 && TOPIC(t)[0xd] != ch[0x14])

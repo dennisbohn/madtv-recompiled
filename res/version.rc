@@ -1,6 +1,6 @@
 // Versionsangaben der EXE (Explorer: Eigenschaften -> Details). Version nur hier pflegen.
-#define MADTV_VERSION_NUM 0,4,0,0
-#define MADTV_VERSION_STR "0.4.0"
+#define MADTV_VERSION_NUM 0,4,1,0
+#define MADTV_VERSION_STR "0.4.1"
 
 1 VERSIONINFO
 FILEVERSION MADTV_VERSION_NUM

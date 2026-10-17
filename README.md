@@ -21,6 +21,8 @@ Single file, game data included, no installation.
 - Keys: Space pause, F10 language, F11 or Alt+Enter fullscreen.
 - Command line as in the original: `D`/`E` picks the language for this start, stars in the second
   argument multiply the computer players' starting capital (e.g. `MadTV-Recompiled… E ***`).
+- Game mechanics (ratings, prices, ads, news, transmitters, credit), derived from the code:
+  [wiki/](wiki/README.md) (German).
 - Savegames (original format) and `settings.ini`: `%USERPROFILE%\Saved Games\Mad TV Recompiled`
   on Windows, `~/.local/share/Mad TV Recompiled` on Linux.
 

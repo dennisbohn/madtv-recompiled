@@ -9,6 +9,7 @@
 !/tools/
 !/third_party/
 !/re/
+!/wiki/
 
 # aus dem Originalspiel erzeugte Analysedaten und die erste Fassung (Ghidra-Projekt, Disassembler-
 # Ausgaben, MTV.EXE der Beta)

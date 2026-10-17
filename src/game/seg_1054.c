@@ -5,6 +5,7 @@
 #include "platform.h"
 
 static void debug_room_jump(void);
+static void debug_game_over(void);
 static void debug_autoplan(void);
 void save_menu_load(int16_t slot); /* seg_1581.c */
 
@@ -209,8 +210,10 @@ void game_main(int argc, char **argv)
             DS_SET_PTR(0x8ef9, DS_ADDR(uint8_t, 0x8bbc + g_local_player * 0x17));
             room_click_new_game_setup();
         }
-        if (DS_I16(0x7c58) == 3 && DS_I16(0x012c) == 0 && g_cur_room >= 0)
+        if (DS_I16(0x7c58) == 3 && DS_I16(0x012c) == 0 && g_cur_room >= 0) {
             debug_room_jump();
+            debug_game_over();
+        }
 
         language_poll(); /* PORT: Sprachwechsel aus Fenstermenü/F10 */
         int16_t door = game_tick();
@@ -598,16 +601,10 @@ static void debug_autoplan(void)
     }
 }
 
-/* PORT: Testhilfe – mit MADTV_ROOM=n nach Spielstart einmal in Raum n springen. Die Figur wird
- * dazu an eine passende Tür gesetzt (bevorzugt eine eigene), damit der Raumbesitzer stimmt. */
-static void debug_room_jump(void)
+/* PORT: Testhilfe – Raum direkt betreten. Die Figur wird dazu an eine passende Tür gesetzt
+ * (bevorzugt eine eigene), damit der Raumbesitzer stimmt. */
+static void debug_enter_room(int room)
 {
-    static int next;
-    int room = platform_debug_room(next);
-    if (room < 0)
-        return;
-    if (next++ == 0 && platform_debug_prog() > 0) /* Testhilfe: Programm für 18:00 */
-        DS_I16(0x43f7 + g_local_player * 0x5a + 2) = (int16_t)platform_debug_prog();
     while (g_cur_room > 0) /* z.B. Chefgespräch am Spielanfang */
         room_leave();
     int16_t bf = -1, bd = -1, want = room, door_room = 0;
@@ -630,7 +627,36 @@ static void debug_room_jump(void)
         DS_ADDR(int16_t, 0x7b34)[g_player_idx * 15] = bd;
     }
     room_enter((int16_t)room);
+}
+
+/* PORT: Testhilfe – mit MADTV_ROOM=n nach Spielstart einmal in Raum n springen */
+static void debug_room_jump(void)
+{
+    static int next;
+    int room = platform_debug_room(next);
+    if (room < 0)
+        return;
+    if (next++ == 0 && platform_debug_prog() > 0) /* Testhilfe: Programm für 18:00 */
+        DS_I16(0x43f7 + g_local_player * 0x5a + 2) = (int16_t)platform_debug_prog();
+    debug_enter_room(room);
     platform_debug_log("MADTV_ROOM: Raum %d betreten bei %u ms", room, (unsigned)platform_ms());
+}
+
+/* PORT: Testhilfe – mit MADTV_GAMEOVER=ms frühestens ms Millisekunden nach Programmstart einmal
+ * gefeuert werden: wie die Kündigung im Chefbüro (room_click_boss), mit Sturz und Spielende */
+static void debug_game_over(void)
+{
+    static int done;
+    int ms = platform_debug_env("MADTV_GAMEOVER");
+    if (done || ms <= 0 || platform_ms() < (uint32_t)ms)
+        return;
+    done = 1;
+    debug_enter_room(3);
+    platform_debug_log("MADTV_GAMEOVER: Rauswurf bei %u ms", (unsigned)platform_ms());
+    DS_I16(0x7a34) = g_local_player;
+    music_on_leave(3, 0);
+    g_cur_dialog = 0;
+    player_eliminated_sequence();
 }
 
 /* 1054:0d49 – Raum betreten (aktuellen Raum auf den Stapel legen). Negative Räume sind

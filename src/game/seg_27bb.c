@@ -413,6 +413,40 @@ static void building_sides_layers(int32_t scroll_fine)
     }
 }
 
+/* Was draw(ctx) in die Spielszene zeichnet, als eigene Ebene herauslösen und im Grundbild wieder
+ * entfernen (Zeilen 3..0x70: der Bereich 4..0x70 und die Zeile darüber). Um gezeichnete Pixel
+ * sicher zu erkennen – auch solche in der Farbe des Untergrunds –, wird zweimal gezeichnet: auf das
+ * Bild und auf eine farblich vertauschte Kopie. Was danach in beiden gleich ist, stammt von draw.
+ * Ergebnis in g_ovl_px/g_ovl_mask; Rückgabe: ob überhaupt etwas gezeichnet wurde. */
+enum { SCENE_W = 0x140 }; /* Breite der Spielszene DS:8e62 */
+static uint8_t g_ovl_px[SCENE_W * 0x6e], g_ovl_mask[SCENE_W * 0x6e];
+
+static int scene_overlay_extract(void (*draw)(const void *ctx), const void *ctx)
+{
+    static uint8_t before[SCENE_W * 0x6e];
+    uint8_t *up = BMP_PX(g_upper_screen) + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
+    memcpy(before, up, sizeof before);
+    draw(ctx);
+    memcpy(g_ovl_px, up, sizeof g_ovl_px);
+    for (int i = 0; i < SCENE_W * 0x6e; i++)
+        up[i] = (uint8_t)(before[i] ^ 0x80);
+    draw(ctx);
+    int any = 0;
+    for (int i = 0; i < SCENE_W * 0x6e; i++) {
+        g_ovl_mask[i] = up[i] == g_ovl_px[i];
+        any |= g_ovl_mask[i];
+    }
+    memcpy(up, before, sizeof before);
+    return any;
+}
+
+static void hints_draw(const void *ctx)
+{
+    (void)ctx;
+    building_hover_draw();
+    building_markers_draw();
+}
+
 void building_render_smooth(void)
 {
     if (g_snap_count < 3 || g_cur_room != 0 || DS_I16(0x012c) == 2)
@@ -494,27 +528,8 @@ void building_render_smooth(void)
 
     /* Hinweise (Türschilder, Grüße, Meldungen, Tooltips) und Absperrung sind Bedienoberfläche bzw.
      * stehen fest auf dem Bildschirm: sie dürfen nicht mit Gebäude oder Kulisse fein verschoben
-     * werden. Was sie zeichnen, wird als oberste, unverschobene Ebene herausgelöst und im Grundbild
-     * wieder entfernt. Um gezeichnete Pixel sicher zu erkennen – auch solche in der Farbe des
-     * Untergrunds –, wird zweimal gezeichnet: auf das Bild und auf eine farblich vertauschte Kopie.
-     * Was danach in beiden gleich ist, stammt von den Hinweisen. */
-    enum { SCENE_W = 0x140 }; /* Breite der Spielszene DS:8e62 */
-    static uint8_t before[SCENE_W * 0x6e], over[SCENE_W * 0x6e], mask[SCENE_W * 0x6e];
-    uint8_t *up = BMP_PX(g_upper_screen) + 3 * SCENE_W; /* ab Zeile 3 (über dem Bereich) */
-    memcpy(before, up, sizeof before);
-    building_hover_draw();
-    building_markers_draw();
-    memcpy(over, up, sizeof over);
-    for (int i = 0; i < SCENE_W * 0x6e; i++)
-        up[i] = (uint8_t)(before[i] ^ 0x80);
-    building_hover_draw();
-    building_markers_draw();
-    int any = 0;
-    for (int i = 0; i < SCENE_W * 0x6e; i++) {
-        mask[i] = up[i] == over[i];
-        any |= mask[i];
-    }
-    memcpy(up, before, sizeof before);
+     * werden, sondern werden als oberste, unverschobene Ebene herausgelöst. */
+    int any = scene_overlay_extract(hints_draw, NULL);
 
     display_layers_begin();
     /* Feinverschiebung des Gebäudeausschnitts (0x38/4, 208 x 109); oben rückt die Gebäudezeile
@@ -525,7 +540,7 @@ void building_render_smooth(void)
                                BMP_PX(g_building) + row * g_building->wcols * 8);
     building_sides_layers(scroll_fine);
     if (any)
-        display_overlay(0, 4, SCENE_W, 0x6d, over, mask, SCENE_W);
+        display_overlay(0, 4, SCENE_W, 0x6d, g_ovl_px, g_ovl_mask, SCENE_W);
 
     /* Logikwerte zurück (g_top_floor bleibt passend zur gezeichneten Gebäudebitmap) */
     g_scroll = scroll;
@@ -1042,6 +1057,76 @@ char *door_label_text(int16_t slot, int16_t floor)
     }
 }
 
+/* ---- PORT: flüssiger Absturz ----
+ * Das Original schiebt in player_eliminated_sequence alle 3 Takte (16,7 Hz) Fassade und Vorsprung
+ * um 3 Pixel nach oben. Hier zeichnet jeder Schritt wie im Original seinen Stand; bis zum nächsten
+ * Schritt wird bei jedem angezeigten Bild der Zwischenstand dargestellt (wie building_render_smooth:
+ * Fassade und Seitenbereiche fein verschoben). Schrittweite, Schrittzeitpunkte und Gesamtdauer
+ * bleiben gleich, zu jedem Schrittzeitpunkt steht dasselbe Bild da. Die Figur steht dabei fest auf
+ * dem Bildschirm (eigene, unverschobene Ebene); Animationsbild und seitliches Ausweichen wechseln nur
+ * mit den Schritten. Den Fall unten am Gebäude (ohne Scroll) zeigt der Port wie das Original in
+ * Schritten: die Figur ist eine Bild-für-Bild-Animation, feines Gleiten passt nicht dazu (wie bei
+ * den gehenden Figuren). */
+typedef struct {
+    int32_t scroll_fine; /* Scroll in 1/256 Pixel */
+    int16_t ledge_ofs;   /* y des Vorsprungs (Bank DS:0108, Bild 0) minus Scroll */
+    int16_t frame, x;    /* Figur: Animationsbild, x */
+} FallView;
+
+static void fall_figure_draw(const void *ctx)
+{
+    const FallView *v = ctx;
+    draw_sprite((Bitmap *)((uint8_t *)DS_PTR(SpriteBank, 0x10c) + sprite_ofs(v->frame)), v->x, 0x3e);
+}
+
+/* Fassade und Vorsprung beim Scroll s */
+static void fall_facade_draw(int16_t s, int16_t ledge_ofs)
+{
+    g_scroll = s;
+    facade_draw();
+    draw_sprite(&DS_PTR(SpriteBank, 0x108)->bmp[0], 0xa6, (int16_t)(s + ledge_ofs));
+}
+
+static void fall_view_show(const FallView *v)
+{
+    static uint8_t row_above[0xd0];
+    int16_t scroll = g_scroll; /* Logikwert, zum Zeichnen vorübergehend der Zwischenwert */
+    int16_t s = (int16_t)(v->scroll_fine >> 8);
+    int frac = (int)(v->scroll_fine & 0xff);
+    if (frac != 0) { /* Zeile über dem Ausschnitt = oberste Zeile bei einem Pixel mehr Scroll */
+        fall_facade_draw((int16_t)(s + 1), v->ledge_ofs);
+        memcpy(row_above, BMP_PX(g_upper_screen) + 4 * SCENE_W + 0x38, sizeof row_above);
+    }
+    fall_facade_draw(s, v->ledge_ofs);
+    int any = scene_overlay_extract(fall_figure_draw, v);
+
+    display_layers_begin();
+    if (frac != 0)
+        display_subpixel_shift(0x38, 4, 0xd0, 0x6d, frac, row_above);
+    building_sides_layers(v->scroll_fine);
+    if (any)
+        display_overlay(0, 4, SCENE_W, 0x6d, g_ovl_px, g_ovl_mask, SCENE_W);
+    g_scroll = scroll;
+    scr_blit(g_upper_screen, 0, 0);
+    display_layers_commit();
+}
+
+/* Schritt mit Stand v von begin bis end (µs) darstellen: jedes Bild, das in diese Zeit fällt, zeigt
+ * den Zwischenstand zu seinem Anzeigezeitpunkt auf dem Weg zum nächsten Schritt (Scroll um scroll_d
+ * in 1/256 Pixel) */
+static void fall_step_play(const FallView *v, int32_t scroll_d, uint64_t begin, uint64_t end)
+{
+    int64_t len = (int64_t)(end - begin);
+    do {
+        uint64_t when = display_next_frame_us();
+        int64_t el = when <= begin ? 0 : (int64_t)(when - begin) >= len ? len : (int64_t)(when - begin);
+        FallView w = *v;
+        w.scroll_fine += (int32_t)(scroll_d * el / len);
+        fall_view_show(&w);
+        platform_wait_frame();
+    } while (display_next_frame_us() < end);
+}
+
 /* 27bb:231e – Spieler DS:7a34 scheidet aus: Figur fällt an der Fassade herab; beim
  * menschlichen Spieler Spielende, sonst werden seine Räume und Programme freigegeben */
 void player_eliminated_sequence(void)
@@ -1088,41 +1173,47 @@ void player_eliminated_sequence(void)
     DS_I16(0x7a24) = 0;
 
     int16_t frame = 1, x = 0xa5;
-    uint16_t last = ticks_get();
+    /* PORT: Schritte auf festem Raster alle 3 Takte (der erste 3 Takte nach dem Übergang, wie im
+     * Original); jeden Schritt stellt fall_step_play samt Zwischenständen dar */
+    uint64_t step_us = ticks_to_us(3), t = time_us() + step_us;
+    while (display_next_frame_us() < t)
+        platform_wait_frame();
+    FallView v;
     while (g_scroll >= 0) {
-        if (last + 3u <= ticks_get()) {
-            last = ticks_get();
-            facade_draw();
-            draw_sprite(&DS_PTR(SpriteBank, 0x108)->bmp[0], 0xa6, fall_y);
-            draw_sprite((Bitmap *)((uint8_t *)DS_PTR(SpriteBank, 0x10c) + sprite_ofs(frame)), x, 0x3e);
-            screen_update();
-            g_scroll -= 3;
-            fall_y -= 3;
-            frame++;
-            if (frame > 8)
-                frame = 1;
-            /* Ausweichbewegung an Vorsprüngen (Tabelle DS:11a6, 5 Paare je Spieler) */
-            int16_t k;
-            for (k = 0; x <= DS_U8(0x11a6 + (player - 1) * 10 + k * 2) && k < 5; k++)
-                ;
-            if (k < 5 && DS_U8(0x11a6 + (player - 1) * 10 + k * 2) != 0)
-                x = (int16_t)(x - DS_U8(0x11a7 + (player - 1) * 10 + k * 2));
-        }
+        v.scroll_fine = (int32_t)g_scroll * 256;
+        v.ledge_ofs = (int16_t)(fall_y - g_scroll);
+        v.frame = frame;
+        v.x = x;
+        int16_t next = g_scroll >= 3 ? (int16_t)(g_scroll - 3) : 0; /* danach steht der Scroll auf 0 */
+        fall_step_play(&v, (int32_t)(next - g_scroll) * 256, t, t + step_us);
+        g_scroll -= 3;
+        fall_y -= 3;
+        frame++;
+        if (frame > 8)
+            frame = 1;
+        /* Ausweichbewegung an Vorsprüngen (Tabelle DS:11a6, 5 Paare je Spieler) */
+        int16_t k;
+        for (k = 0; x <= DS_U8(0x11a6 + (player - 1) * 10 + k * 2) && k < 5; k++)
+            ;
+        if (k < 5 && DS_U8(0x11a6 + (player - 1) * 10 + k * 2) != 0)
+            x = (int16_t)(x - DS_U8(0x11a7 + (player - 1) * 10 + k * 2));
+        t += step_us;
     }
     g_scroll = 0;
+    display_layers_begin(); /* PORT: ab hier wieder nur das Grundbild */
     for (int16_t y = 0x3b; y < 0x5e;) {
-        if (last + 3u <= ticks_get()) {
-            last = ticks_get();
-            facade_draw();
-            draw_sprite((Bitmap *)((uint8_t *)DS_PTR(SpriteBank, 0x10c) + sprite_ofs(frame)), x, y);
-            screen_update();
-            frame++;
-            if (frame > 8)
-                frame = 1;
-            if (x > 0x14)
-                x--;
-            y += 3;
-        }
+        while (display_next_frame_us() < t) /* PORT: Schrittraster wie oben */
+            platform_wait_frame();
+        facade_draw();
+        draw_sprite((Bitmap *)((uint8_t *)DS_PTR(SpriteBank, 0x10c) + sprite_ofs(frame)), x, y);
+        screen_update();
+        frame++;
+        if (frame > 8)
+            frame = 1;
+        if (x > 0x14)
+            x--;
+        y += 3;
+        t += step_us;
     }
     draw_sprite(&DS_PTR(SpriteBank, 0x108)->bmp[1], 6, 0x53);
     screen_update();
